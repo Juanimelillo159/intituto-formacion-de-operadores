@@ -39,11 +39,33 @@ body {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
 }
+.navbar-nav {
+    display: flex;
+    align-items: center;
+}
+.navbar-nav .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.nav-item a button {
+    margin-top: 0; /* Asegúrate de que no haya margen superior */
+    padding: 0.5rem 1.5rem; /* Ajusta el padding para centrar verticalmente */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .navbar-nav .nav-link {
     color: var(--color-light) !important;
     font-weight: bold;
     position: relative;
     transition: color 0.3s ease-in-out;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
 }
 .navbar-nav .nav-link::after {
     content: '';
@@ -208,24 +230,23 @@ font-size: 1.2rem;
     align-items: center;
     gap: 0.6em;
     font-weight: bold;
-  }
-  
-  .nav-item a button .arrow-wrapper {
+}
+
+.nav-item a button .arrow-wrapper {
     display: flex;
     justify-content: center;
     align-items: center;
-  }
-  
-  .nav-item a button .arrow {
+}
+
+.nav-item a button .arrow {
     margin-top: 1px;
     width: var(--arrow-width);
     background: var(--primary-color);
     height: var(--arrow-stroke);
     position: relative;
     transition: 0.2s;
-  }
-  
-  .nav-item a button .arrow::before {
+}
+.nav-item a button .arrow::before {
     content: "";
     box-sizing: border-box;
     position: absolute;
@@ -237,16 +258,15 @@ font-size: 1.2rem;
     transition: 0.2s;
     padding: 3px;
     transform: rotate(-45deg);
-  }
-  
-  .nav-item a button:hover {
+}
+.nav-item a button:hover {
     background-color: var(--hover-color);
-  }
-  
-  .nav-item a button:hover .arrow {
+}
+.nav-item a button:hover .arrow {
     background: var(--secondary-color);
-  }
-  
-  .nav-item a button:hover .arrow:before {
+}
+
+
+.nav-item a button:hover .arrow:before {
     right: 0;
-  }
+}
