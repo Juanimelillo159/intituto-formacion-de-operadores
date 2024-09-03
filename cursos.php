@@ -3,7 +3,7 @@ require_once 'sbd.php';
 
 $search = isset($_POST['search']) ? $_POST['search'] : '';
 $page = isset($_POST['page']) ? (int)$_POST['page'] : 1;
-$items_per_page = 9;
+$items_per_page = 6;
 $offset = ($page - 1) * $items_per_page;
 
 $sql = $con->prepare("SELECT * FROM cursos WHERE nombre LIKE :search LIMIT :offset, :items_per_page");
@@ -27,6 +27,7 @@ $total_pages = ceil($total_cursos / $items_per_page);
             <div class="card h-100 d-flex flex-column">
                 <div class="card-body">
                     <h5 class="card-title"><?php echo $curso["nombre"]?></h5>
+                    <p class="card-text"><?php echo $curso["descripcion"]?></p>
                 </div>
                 <div class="card-footer bg-transparent border-0 mt-auto">
                     <div class="text-center">

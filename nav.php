@@ -26,7 +26,7 @@
             <a class="nav-link" href="index.php#contacto">Contáctanos</a>
             </li>
             <li class="nav-item">
-                <a class="" href="login.php">
+                <a class="text-decoration-none" href="login.php">
                     <button  class="button">
                         iniciar sesion
                         <div class="arrow-wrapper">

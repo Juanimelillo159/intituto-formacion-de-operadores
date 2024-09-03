@@ -94,7 +94,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-image: url('assets/imagenes/noimagen.jpg'); /* Imagen de fondo */
+    background-image: url('assets/imagenes/fondo/2.png'); /* Imagen de fondo */
     background-size: cover;
     background-position: center;
 }
@@ -114,6 +114,7 @@ body {
 .hero-text h1 {
     font-size: 2.5rem; /* Aumenta el tamaño del texto */
     font-weight: bold;
+    color: #fff;
 }
 .hero-logo {
     max-width: 80%;
@@ -142,10 +143,9 @@ html {
     padding-bottom: 2rem; /* Añade padding inferior */
 }
 .contact-image {
-    max-width: 60%; /* Reduce el tamaño de la imagen al 60% */
+    max-width: 80%; /* Reduce el tamaño de la imagen al 60% */
     height: auto;
     display: block;
-    margin: 0 auto 1rem auto;
 }
 .service-subtitle {
 font-size: 1.2rem;
@@ -223,7 +223,6 @@ font-size: 1.2rem;
     border: 0;
     border-radius: 20px;
     color: var(--secondary-color);
-    padding: 1em 1.8em;
     background: var(--primary-color);
     display: flex;
     transition: 0.2s background;

@@ -162,9 +162,7 @@
               <div class="mb-4 text-center">
                   <input type="text" id="search-input" placeholder="Buscar cursos..." class="form-control w-50 d-inline-block">
               </div>
-              <div id="cursos-list">
-                  <!-- Aquí se cargará dinámicamente la lista de cursos y la paginación -->
-              </div>
+              <div id="cursos-list"> </div>
           </div>
         </section>
 
@@ -192,7 +190,7 @@
                         </form>
                     </div>
                     <div class="col-md-6 p-5">
-                        <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/no%20imagen-lP6G9FYKBGQ6BVhP1Ps2HkZ1eXQdyb.jpg" alt="Asesoramiento" class="img-fluid contact-image">
+                        <img src="assets/imagenes/fondo/contactanos.webp" alt="Asesoramiento" class="img-fluid contact-image">
                     </div>
                 </div>
             </div>
