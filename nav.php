@@ -27,7 +27,7 @@
             </li>
             <li class="nav-item">
                 <a class="text-decoration-none" href="login.php">
-                    <button  class="button">
+                    <button class="button-nav">
                         iniciar sesion
                         <div class="arrow-wrapper">
                             <div class="arrow"></div>
