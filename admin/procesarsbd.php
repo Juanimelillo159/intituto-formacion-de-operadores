@@ -1,4 +1,6 @@
 <?php
+include ("../sbd.php");
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_curso'])) {
     // Recibir los datos del formulario
     $id_curso = $_POST['id_curso'];
@@ -20,5 +22,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_curso'])) {
     $sql_editar_curso->execute();            
     header('Location: curso.php?id_curso=' . $id_curso);
     exit;
+}
+
+
+
+if($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["iniciar-sesion"])){
+    //recibir los datos del usuario
+    $email = $_POST["email"];
+    $password = $_POST["password"];
+    //verificar si el usuario existe
+    $sql_usuario = $con->prepare("SELECT * FROM usuarios WHERE email = :email");
+    $sql_usuario->bindParam(":email", $email);
+    $sql_usuario->execute();
+    $usuario = $sql_usuario->fetch(PDO::FETCH_ASSOC);
+    if($usuario){
+        //verificar si la contraseña es correcta
+        if(password_verify($password, $usuario["password"])){
+            //iniciar sesión
+            session_start();
+            $_SESSION["id_usuario"] = $usuario["id"];
+            $_SESSION["email"] = $usuario["email"];
+            $_SESSION["permiso"] = $usuario["id_permiso"];
+            header("Location: admin/admin.php");
+            exit;
+        }else{
+            echo "La contraseña es incorrecta";
+        }
 }
 ?>

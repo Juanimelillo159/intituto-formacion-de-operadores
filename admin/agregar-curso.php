@@ -107,7 +107,7 @@ include '../admin/footer.php';
                                         <!-- /.card-body -->
                                         <div class="card-footer">
                                             <button type="button" onclick="volver()" class="btn btn-primary">Volver</button>
-                                            <button type="submit" class="btn btn-success">Guardar</button>
+                                            <button type="submit" name="agregar-curso" class="btn btn-success">Guardar</button>
 
                                         </div>
                                 </form>
