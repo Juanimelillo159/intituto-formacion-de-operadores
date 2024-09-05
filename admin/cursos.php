@@ -51,15 +51,15 @@
                     <div class="card card-primary">
                         <div class="card-header">
                             <h3 class="card-title text-center" style="min-height: 50px; display: flex; align-items: center; justify-content: center;">
-                                <?php echo $curso["nombre"]?>
+                                <?php echo $curso["nombre_curso"]?>
                             </h3>
                         </div>
                         <div class="card-body">
-                            <?php echo $curso["descripcion"]?>
+                            <?php echo $curso["descripcion_curso"]?>
                         </div>
                         <div class="card-footer text-center">
-                            <button class="btn btn-danger mx-2">Eliminar</button>
-                            <button class="btn btn-warning mx-2">Editar</button>
+                            <a href="eliminar_curso.php?id_curso=<?php echo $curso['id_curso']; ?>"><button class="btn btn-danger mx-2">Eliminar</button></a>
+                            <a href="curso.php?id_curso=<?php echo $curso['id_curso']; ?>"><button class="btn btn-primary mx-2">ver</button></a>
                         </div>
                     </div>
                 </div>
