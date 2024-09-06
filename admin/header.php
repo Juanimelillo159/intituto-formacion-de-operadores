@@ -1,3 +1,8 @@
+<?php 
+session_start();
+?>
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -54,6 +59,9 @@
       <li class="nav-item d-none d-sm-inline-block">
         <a href="admin.php" class="nav-link">inicio</a>
       </li> 
+      <li class="nav-item d-none d-sm-inline-block">
+        <a href="../index.php" class="nav-link">Pagina principal</a>
+      </li> 
     </ul>
 
     <!-- Right navbar links -->
@@ -61,7 +69,7 @@
       <!-- Navbar Search -->
       <li class="dropdown user user-menu">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-              <span class="hidden-xs"><?php echo ("nombre de permiso");?></span>
+              <span class="hidden-xs"><?php echo $_SESSION["email"];?></span>
             </a>
             <ul class="dropdown-menu">
                 <!-- User image -->
@@ -75,7 +83,7 @@
                 <!-- Menu Footer-->
                 <li class="user-footer">
                     <div class="pull-right">
-                      <a href="../logout.php" class="btn btn-default btn-flat">Cerrar Sesión</a>
+                      <a href="cerrar_sesion.php" class="btn btn-default btn-flat">Cerrar Sesión</a>
                     </div>
                 </li>
             </ul>
