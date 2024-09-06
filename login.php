@@ -17,13 +17,13 @@
             <form method="POST" action="admin/procesarsbd.php">
                 <div class="mb-3">
                     <label for="email" class="form-label">Correo electrónico</label>
-                    <input type="email" class="form-control" id="email" required>
+                    <input type="email" class="form-control" name="email" id="email" required>
                 </div>
                 <div class="mb-3">
-                    <label for="password" class="form-label">Contraseña</label>
-                    <input type="password" class="form-control" id="password" required>
+                    <label for="clave" class="form-label">Contraseña</label>
+                    <input type="password" class="form-control" name="clave" id="clave" required>
                 </div>
-                <button type="submit" name="iniciar-sesion" class="btn btn-primary w-100">Iniciar sesión</button>
+                <button type="submit" name="iniciar_sesion" class="btn btn-primary w-100">Iniciar sesión</button>
             </form>
         </div>
     </div>
