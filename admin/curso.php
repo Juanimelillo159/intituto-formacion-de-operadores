@@ -69,7 +69,7 @@ $modalidades_curso = $sql_modalidades_curso->fetchall(PDO::FETCH_ASSOC);
                 </div>
                 <!-- /.card-header -->
                 <!-- form start -->
-                <form id="form" action="editar_curso.php" method="POST">
+                <form id="form" action="procesarsbd.php" method="POST">
                   <input type="hidden" name="id_curso" value="<?php echo $id_curso ?>">
                   <div class="card-body">
                     <div class="form-group">
@@ -123,25 +123,22 @@ $modalidades_curso = $sql_modalidades_curso->fetchall(PDO::FETCH_ASSOC);
                       $niveles = $sql_dificultad->fetchall(PDO::FETCH_ASSOC);
                       ?>
                       <label for="dificultad">Dificultad</label>
-                      <select disabled class="form-control" id="dificultad" name=dificultad>
+                      <select disabled class="form-control" id="dificultad" name="dificultad">
                         <?php
                         foreach ($niveles as $nivel) {
-                          $selected = $nivel["id_complejidad"] == $dificultadic ? "selected" : "";
+                          $selected = $nivel["id_complejidad"] == $dificultad ? "selected" : "";
                           echo "<option value='" . $nivel["id_complejidad"] . "' $selected>" . $nivel["nombre_complejidad"] . "</option>";
                         }
                         ?>
                       </select>
                     </div>
                   </div>
-                  <!-- /.card-body -->
 
                   <div class="card-footer">
-                    <button type="button" onclick="editarCampos()" class="btn btn-warning">editar</button>
+                    <button type="button" onclick="editarCampos()" class="btn btn-warning">Editar</button>
                     <button type="submit" name="editar_curso" class="btn btn-success d-none">Guardar</button>
-                    <button type="button" onclick="cancelar()" class="btn btn-danger d-none">cancelar</button>
+                    <button type="button" onclick="cancelar()" class="btn btn-danger d-none">Cancelar</button>
                     <button type="button" onclick="volver()" class="btn btn-primary">Volver</button>
-
-
                   </div>
                 </form>
               </div>

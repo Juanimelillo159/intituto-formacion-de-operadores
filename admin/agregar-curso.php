@@ -46,7 +46,6 @@ include '../admin/footer.php';
                                 <!-- /.card-header -->
                                 <!-- form start -->
                                 <form action="procesarsbd.php" method="POST">
-                                    <input type="hidden" name="id_curso">
                                     <div class="card-body">
                                         <div class="form-group">
                                             <label for="courseName">Nombre</label>
@@ -92,22 +91,22 @@ include '../admin/footer.php';
                                         </div>
                                         <div class="form-group">
                                             <?php
-                                            $sql_dificultad = $con->prepare("SELECT * FROM complejidad");
-                                            $sql_dificultad->execute();
-                                            $niveles = $sql_dificultad->fetchall(PDO::FETCH_ASSOC);
+                                            $sql_complejidad = $con->prepare("SELECT * FROM complejidad");
+                                            $sql_complejidad->execute();
+                                            $complejidades = $sql_complejidad->fetchall(PDO::FETCH_ASSOC);
                                             ?>
-                                            <label for="dificultad">Dificultad</label>
-                                            <select class="form-control" id="dificultad" name=dificultad>
+                                            <label for="complejidad">complejidad</label>
+                                            <select class="form-control" id="complejidad" name=complejidad>
                                                 <?php
-                                                foreach ($niveles as $nivel) { ?>
-                                                    <option value=<?php $nivel["id_complejidad"] ?>> <?php echo $nivel["nombre_complejidad"] ?> </option>
+                                                foreach ($complejidades as $complejidades) { ?>
+                                                    <option value=<?php echo $complejidades["id_complejidad"]; ?>> <?php echo $complejidades["nombre_complejidad"]; ?> </option>
                                                 <?php } ?>
                                             </select>
                                         </div>
                                         <!-- /.card-body -->
                                         <div class="card-footer">
                                             <button type="button" onclick="volver()" class="btn btn-primary">Volver</button>
-                                            <button type="submit" name="agregar-curso" class="btn btn-success">Guardar</button>
+                                            <button type="submit" name="agregar_curso" class="btn btn-success">Guardar</button>
 
                                         </div>
                                 </form>
