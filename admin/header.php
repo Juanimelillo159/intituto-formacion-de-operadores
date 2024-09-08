@@ -1,8 +1,12 @@
 <?php 
 session_start();
-?>
 
-
+// Verificar si no hay una sesión iniciada
+if (!isset($_SESSION['usuario'])) {
+    // Redirigir al usuario a una página de inicio de sesión o mostrar un mensaje de error
+    header("Location: ../index.php");
+    exit;
+}?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

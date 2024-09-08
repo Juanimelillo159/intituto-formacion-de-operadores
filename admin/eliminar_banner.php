@@ -1,8 +1,16 @@
 <?php 
 
-include '../sbd.php';
+session_start();
 
-if (isset($_GET["id_banner"])) {
+  // Verificar si no hay una sesión iniciada
+
+include '../sbd.php';
+if (!isset($_SESSION['usuario'])) {
+    // Redirigir al usuario a una página de inicio de sesión o mostrar un mensaje de error
+    header("Location: ../index.php");
+    exit;
+}
+elseif (isset($_GET["id_banner"])) {
     // Recibir el id del banner
     $id_banner = $_GET["id_banner"];
 

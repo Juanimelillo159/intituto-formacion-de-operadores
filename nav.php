@@ -30,7 +30,7 @@ session_start()
                     <a class="nav-link" href="index.php#contacto">Contáctanos</a>
                 </li>
                 <?php
-                if (isset($_SESSION["id_usuario"])) { ?>
+                if (isset($_SESSION["usuario"])) { ?>
                     <li class="nav-item">
                         <a class="text-decoration-none" href="admin/admin.php">
                             <button class="button-nav">

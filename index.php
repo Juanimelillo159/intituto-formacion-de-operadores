@@ -1,5 +1,14 @@
+<?php
+include 'sbd.php';
+$sql_carrusel = $con->prepare("SELECT * FROM banner");
+$sql_carrusel->execute();
+$banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
+?>
+
+
 <!DOCTYPE html>
 <html lang="es">
+
 
 <head>
   <meta charset="UTF-8">
@@ -13,8 +22,6 @@
 </head>
 
 <body>
-  <div class="background-shape shape-1"></div>
-  <div class="background-shape shape-2"></div>
   <div class="content-wrapper">
     <?php include("nav.php") ?>
     <header class="hero-section py-5">
@@ -34,26 +41,21 @@
       <div class="container">
         <div id="imageCarousel" class="carousel slide" data-bs-ride="carousel">
           <div class="carousel-inner">
-            <div class="carousel-item active">
-              <img src="assets/imagenes/fondo/img1.jpg" class="d-block w-100" alt="Imagen 1">
-            </div>
-            <div class="carousel-item">
-              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/no%20imagen-lP6G9FYKBGQ6BVhP1Ps2HkZ1eXQdyb.jpg" class="d-block w-100" alt="Imagen 2">
-            </div>
-            <div class="carousel-item">
-              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/no%20imagen-lP6G9FYKBGQ6BVhP1Ps2HkZ1eXQdyb.jpg" class="d-block w-100" alt="Imagen 3">
-            </div>
+            <?php foreach ($banners as $index => $banner) { ?>
+              <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                <img class="d-block w-100" src="imagenes/banners/<?php echo $banner['imagen_banner']; ?>" alt="Slide <?php echo $index + 1; ?>">
+              </div>
+            <?php } ?>
+            <button class="carousel-control-prev" type="button" data-bs-target="#imageCarousel" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Anterior</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#imageCarousel" data-bs-slide="next">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span>
+              <span class="visually-hidden">Siguiente</span>
+            </button>
           </div>
-          <button class="carousel-control-prev" type="button" data-bs-target="#imageCarousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Anterior</span>
-          </button>
-          <button class="carousel-control-next" type="button" data-bs-target="#imageCarousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            <span class="visually-hidden">Siguiente</span>
-          </button>
         </div>
-      </div>
     </section>
     <section id="quienes-somos" class=" bg-light section-padding ">
       <div class="container">

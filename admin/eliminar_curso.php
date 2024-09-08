@@ -1,9 +1,12 @@
 <?php 
-
+session_start();
 include '../sbd.php';
-
-
-if (isset($_GET['id_curso'])) {
+if (!isset($_SESSION['usuario'])) {
+    // Redirigir al usuario a una página de inicio de sesión o mostrar un mensaje de error
+    header("Location: ../index.php");
+    exit;
+}
+elseif(isset($_GET['id_curso'])) {
     // Recibir el id del curso
     $id_curso = $_GET['id_curso'];
 

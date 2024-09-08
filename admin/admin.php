@@ -1,6 +1,6 @@
 
 <?php
-  
+
   include '../admin/header.php';
   include '../admin/aside.php';
   include '../admin/footer.php';
@@ -36,7 +36,6 @@
       </div><!-- /.container-fluid -->
     </div><!-- /.content-header -->
     <!-- Main content -->
-             
   </div> <!-- /.content-wrapper -->
 </div><!-- ./wrapper -->
 

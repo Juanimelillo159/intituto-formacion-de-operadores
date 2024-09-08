@@ -17,8 +17,6 @@ body {
     background-size: 100px 100px;
     position: relative;
     overflow-x: hidden;
-
-    height: 216vh;
     background: linear-gradient(135deg, #0014AE 0%, #00BDA3 100%);
 }
 
