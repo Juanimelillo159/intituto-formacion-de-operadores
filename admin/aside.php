@@ -61,7 +61,7 @@
                 </li>
 
                 <li class="nav-item">
-                  <a href="agregar-curso.php" class="nav-link">
+                  <a href="agregar_curso.php" class="nav-link">
                     <i class="fas fa-solid fa-plus"></i>
                     <p>Añadir curso</p>
                   </a>
@@ -86,7 +86,7 @@
                 </li>
 
                 <li class="nav-item">
-                  <a href="añadir_producto.php" class="nav-link">
+                  <a href="agregar_imagen.php" class="nav-link">
                     <i class="fas fa-solid fa-plus"></i>
                     <p>Añadir imagen</p>
                   </a>
