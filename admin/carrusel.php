@@ -3,6 +3,12 @@ include '../sbd.php';
 include '../admin/header.php';
 include '../admin/aside.php';
 include '../admin/footer.php';
+
+$sql_banner = $con->prepare("SELECT * FROM banner");
+$sql_banner->execute();
+$banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
+
+
 ?>
 
 <!DOCTYPE html>
@@ -12,7 +18,6 @@ include '../admin/footer.php';
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Editar curso</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         #imageCarousel {
             max-width: 800px;
@@ -28,13 +33,6 @@ include '../admin/footer.php';
         .carousel-control-next {
             width: 5%;
         }
-
-        .carousel-control-prev-icon,
-        .carousel-control-next-icon {
-            background-color: rgba(0, 0, 0, 0.5);
-            border-radius: 50%;
-            padding: 10px;
-        }
     </style>
 </head>
 
@@ -44,17 +42,6 @@ include '../admin/footer.php';
 
         <!-- Content Wrapper. Contains page content -->
         <div class="content-wrapper">
-            <!-- Content Header (Page header) -->
-            <section class="content-header">
-                <div class="container-fluid">
-                    <div class="row mb-2">
-                        <div class="col-sm-6">
-                            <h2>Agregar curso</h2>
-                        </div>
-                    </div>
-                </div><!-- /.container-fluid -->
-            </section>
-
             <!-- Main content -->
             <section class="content">
                 <div class="container-fluid">
@@ -64,34 +51,33 @@ include '../admin/footer.php';
                             <!-- general form elements -->
                             <div class="card card-primary">
                                 <div class="card-header">
-                                    <h3 class="card-title">Detalle del curso</h3>
+                                    <h3 class="card-title">Carrusel</h3>
                                 </div>
                                 <!-- /.card-header -->
-                                <div id="carouselExampleIndicators" class="carousel slide w-50 mx-auto" data-bs-ride="carousel">
-                                    <div class="carousel-indicators">
-                                        <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
-                                        <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="1" aria-label="Slide 2"></button>
-                                        <button type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide-to="2" aria-label="Slide 3"></button>
-                                    </div>
+                                <div id="carruselbanner" class="carousel slide" data-ride="carousel">
+                                    <ol class="carousel-indicators">
+                                        <?php foreach ($banners as $index => $banner) { ?>
+                                            <li data-target="#carruselbanner" data-slide-to="<?php echo $index; ?>" <?php echo $index === 0 ? 'class="active"' : ''; ?>></li>
+                                        <?php } ?>
+                                    </ol>
                                     <div class="carousel-inner">
-                                        <div class="carousel-item active">
-                                            <img src="../assets/imagenes/fondo/1.png" class="d-block w-100" alt="Primera imagen">
-                                        </div>
-                                        <div class="carousel-item">
-                                            <img src="../assets/imagenes/fondo/2.png" class="d-block w-100" alt="Segunda imagen">
-                                        </div>
-                                        <div class="carousel-item">
-                                            <img src="../assets/imagenes/fondo/img1.jpg" class="d-block w-100" alt="Tercera imagen">
-                                        </div>
+                                        <?php foreach ($banners as $index => $banner) { ?>
+                                            <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                                                <img class="d-block w-100" src="../imagenes/banners/<?php echo $banner['imagen_banner']; ?>" alt="Slide <?php echo $index + 1; ?>">
+                                                <div class="carousel-caption d-none d-md-block">
+                                                    <h5><?php echo $banner['nombre_banner']; ?></h5>
+                                                </div>
+                                            </div>
+                                        <?php } ?>
                                     </div>
-                                    <button class="carousel-control-prev" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="prev">
+                                    <a class="carousel-control-prev" href="#carruselbanner" role="button" data-slide="prev">
                                         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                                        <span class="visually-hidden">Anterior</span>
-                                    </button>
-                                    <button class="carousel-control-next" type="button" data-bs-target="#carouselExampleIndicators" data-bs-slide="next">
+                                        <span class="sr-only">Previous</span>
+                                    </a>
+                                    <a class="carousel-control-next" href="#carruselbanner" role="button" data-slide="next">
                                         <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                                        <span class="visually-hidden">Siguiente</span>
-                                    </button>
+                                        <span class="sr-only">Next</span>
+                                    </a>
                                 </div>
                             </div>
                             <!-- /.card -->
@@ -99,15 +85,60 @@ include '../admin/footer.php';
                         <!--/.col (left) -->
                     </div>
                     <!-- /.row -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h3 class="card-title">Imagenes</h3>
+                                </div>
+                                <!-- /.card-header -->
+                                <div class="card-body">
+                                    <table id="registros" class="table table-bordered table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>nombre</th>
+                                                <th>imagen</th>
+                                                <th>Acciones</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php
+                                            foreach ($banners as $banner) { ?>
+                                                <tr>
+                                                    <td> <?php echo $banner['nombre_banner'] ?> </td>
+                                                    <td> <?php echo $banner['imagen_banner'] ?> </td>
+                                                    <td>
+                                                        <a href="editar_banner.php?id_banner=<?php echo $banner['id_banner']; ?>" type="button" class="btn bg-orange btn-flat margin"> <i class="fas fa-user-edit"></i></a>
+
+                                                        <a href="eliminar_banner.php?id_banner=<?php echo $banner['id_banner']; ?>" type="button" class="btn bg-maroon btn-flat margin"><i class="fa fa-trash" aria-hidden="true"></i></a>
+                                                    </td>
+                                                </tr>
+                                            <?php } ?>
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <th>Nombre</th>
+                                                <th>imagen</th>
+                                                <th>Acciones</th>
+
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <!-- /.card-body -->
+                            </div>
+                            <!-- /.card -->
+                        </div>
+                        <!-- /.col -->
+                    </div>
+                    <!-- /.row -->
                 </div><!-- /.container-fluid -->
             </section>
-            <!-- /.content -->
         </div>
         <!-- /.content-wrapper -->
 
     </div>
     <!-- ./wrapper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 
 </html>
