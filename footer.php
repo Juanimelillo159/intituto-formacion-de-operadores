@@ -7,7 +7,7 @@
             </div>
             <div class="col-md-4 mb-4 mb-md-0">
                 <h5 class="mb-3">Contacto</h5>
-                <p><i class="fas fa-map-marker-alt me-2"></i>Sarmiento 1385, Comodoro Rivadavia, Argentina</p>
+                <!-- <p><i class="fas fa-map-marker-alt me-2"></i>Sarmiento 1385, Comodoro Rivadavia, Argentina</p> -->
                 <p><i class="fas fa-phone me-2"></i>297-5305505</p>
                 <p><i class="fas fa-envelope me-2"></i>bbs.oil.mining@gmail.com</p>
             </div>

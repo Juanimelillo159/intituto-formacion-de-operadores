@@ -17,7 +17,38 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-
+  <style>
+    body {
+      background-color: #1a1a1a;
+      color: white;
+    }
+    .navbar {
+      background-color: #000;
+    }
+    .product-card {
+      margin-bottom: 30px;
+    }
+    .product-image {
+      height: 200px;
+      object-fit: cover;
+    }
+    .card-title {
+      color: #ff1493;
+    }
+    .footer {
+      background-color: #000;
+      padding: 20px 0;
+      text-align: center;
+    }
+    .price {
+      color: #00ff00;
+      font-size: 1.5rem;
+    }
+    .btn-custom {
+      background-color: #ff1493;
+      color: white;
+    }
+  </style>
 
 </head>
 
@@ -59,7 +90,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
     </section>
     <section id="quienes-somos" class=" bg-light section-padding ">
       <div class="container">
-        <h2 class="text-center mb-4">¿Quiénes Somos?</h2>
+        <h2 class="display-4 text-center mb-4">¿Quiénes Somos?</h2>
         <div class="row">
           <div class="col-lg-8 mx-auto">
             <p class="text-center">
@@ -87,6 +118,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
     </section>
     <section id="servicios-capacitacion" class="py-5 bg-light">
       <div class="container">
+        <h2 class="display-4 text-center mb-4">Servicios</h2>
         <!-- Equipos de izaje -->
         <div class="row align-items-center mb-5">
           <div class="col-md-6">
@@ -162,7 +194,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
     </section>
     <section id="cursos" class="section-padding">
       <div class="container">
-        <h2 class="text-center mb-4">Otros Cursos Disponibles</h2>
+        <h2 class="dispaly-2 text-center mb-4">Cursos Disponibles</h2>
         <div class="mb-4 text-center">
           <input type="text" id="search-input" placeholder="Buscar cursos..." class="form-control w-50 d-inline-block">
         </div>
@@ -206,6 +238,8 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
           d="M214.6 41.4c-12.5-12.5-32.8-12.5-45.3 0l-160 160c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L160 141.2V448c0 17.7 14.3 32 32 32s32-14.3 32-32V141.2L329.4 246.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3l-160-160z"></path>
       </svg>
     </button>
+
+
     <script>
       function scrollToTop() {
         window.scrollTo({

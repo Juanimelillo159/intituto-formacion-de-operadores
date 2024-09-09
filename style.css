@@ -89,7 +89,8 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-image: url('assets/imagenes/fondo/2.png'); /* Imagen de fondo */
+    background: linear-gradient(rgba(0 0 0 / .1),rgba(0 0 0 / .8)), url("assets/imagenes/fondo/2.png");
+
     background-size: cover;
     background-position: center;
 }
