@@ -88,6 +88,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
           </div>
         </div>
     </section>
+
     <section id="quienes-somos" class=" bg-light section-padding ">
       <div class="container">
         <h2 class="display-4 text-center mb-4">¿Quiénes Somos?</h2>
@@ -118,7 +119,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
     </section>
     <section id="servicios-capacitacion" class="py-5 bg-light">
       <div class="container">
-        <h2 class="display-4 text-center mb-4">Servicios</h2>
+        <h2 class="display-4 text-center mb-4">SERVICIOS</h2>
         <!-- Equipos de izaje -->
         <div class="row align-items-center mb-5">
           <div class="col-md-6">
