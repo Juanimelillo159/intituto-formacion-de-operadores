@@ -59,7 +59,8 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
       <div class="container h-100">
         <div class="row h-100 align-items-center">
           <div class="col-md-6 d-flex justify-content-center align-items-center">
-            <img src="logos/LOGO PNG_Mesa de trabajo 1.png" alt="Instituto de Formación de Operadores" class="hero-logo img-fluid">
+            <img src="logos/LOGO PNG-04.png" alt="Instituto de Formación de Operadores logo" class="hero-logo img-fluid logo-small">
+            <img src="logos/LOGO PNG_Mesa de trabajo 1.svg" alt="Instituto de Formación de Operadores letras" class="hero-logo img-fluid logo-small">
           </div>
           <div class="col-md-6 d-flex justify-content-center align-items-center">
             <div class="hero-text text-center">
@@ -131,23 +132,23 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
             <ul class="list-unstyled service-list">
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Grúa Móvil</span>
-                <i class="fas fa-truck-moving text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/1.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Grúa Móvil de Pluma Articulada</span>
-                <i class="fas fa-truck-pickup text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/2.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Hidroelevador</span>
-                <i class="fas fa-truck-loading text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/3.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Autoelevador</span>
-                <i class="fas fa-forklift text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/4.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador Rigger</span>
-                <i class="fas fa-hard-hat text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/5.svg" alt="">
               </li>
             </ul>
             <div class="mt-4">
@@ -167,23 +168,23 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
             <ul class="list-unstyled service-list">
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Motoniveladora</span>
-                <i class="fas fa-road text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/6.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Cargadora</span>
-                <i class="fas fa-truck-monster text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/7.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Retroexcavadora</span>
-                <i class="fas fa-truck-pickup text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/8.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Excavadora</span>
-                <i class="fas fa-digger text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/9.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Topador</span>
-                <i class="fas fa-tractor text-primary"></i>
+                <img class="icono" src="assets/iconos/Iconossvg/10.svg" alt="">
               </li>
             </ul>
             <div class="mt-4">

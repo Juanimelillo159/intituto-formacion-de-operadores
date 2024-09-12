@@ -2,6 +2,7 @@
     font-family: "nevermind-m";
     src: url("NeverMindRounded-Medium.ttf");
 }
+
 :root {
     --color-primary: #00BDA3;
     --color-primary-rgb: 0, 189, 163;
@@ -11,6 +12,7 @@
     --color-gray-dark: #585856;
     --color-dark: #000000;
 }
+
 body {
     font-family: 'nevermind-m';
     background-color: var(--color-light);
@@ -23,27 +25,34 @@ body {
 .bg-primary {
     background-color: var(--color-primary) !important;
 }
+
 .bg-secondary {
     background-color: var(--color-secondary) !important;
 }
+
 .text-primary {
     color: var(--color-primary) !important;
 }
+
 .text-secondary {
     color: var(--color-secondary) !important;
 }
+
 .btn-primary {
     background-color: var(--color-secondary);
     border-color: var(--color-secondary);
 }
+
 .btn-primary:hover {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
 }
+
 .navbar-nav {
     display: flex;
     align-items: center;
 }
+
 .navbar-nav .nav-item {
     display: flex;
     align-items: center;
@@ -62,6 +71,7 @@ body {
     justify-content: center;
     height: 100%;
 }
+
 .navbar-nav .nav-link::after {
     content: '';
     display: block;
@@ -73,27 +83,33 @@ body {
     left: 0;
     bottom: -3px;
 }
+
 .navbar-nav .nav-link:hover {
     color: var(--color-dark) !important;
 }
+
 .navbar-nav .nav-link:hover::after {
     width: 100%;
 }
+
 .navbar-brand img {
     height: 60px;
 }
+
 .hero-section {
     position: relative;
     padding: 0;
-    height: 50vh; /* Altura completa de la pantalla */
+    height: 50vh;
+    /* Altura completa de la pantalla */
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(rgba(0 0 0 / .8),rgba(0 0 0 / .8)), url("assets/imagenes/fondo/2.png");
+    background: linear-gradient(rgba(0 0 0 / .8), rgba(0 0 0 / .8)), url("assets/imagenes/fondo/2.png");
 
     background-size: cover;
     background-position: center;
 }
+
 .hero-content {
     display: flex;
     justify-content: space-between;
@@ -101,78 +117,102 @@ body {
     width: 100%;
     padding: 2rem;
 }
+
 .hero-text {
     flex: 1;
     color: var(--color-dark);
     text-align: left;
     padding: 1rem;
 }
+
 .hero-text h1 {
-    font-size: 2.5rem; /* Aumenta el tamaño del texto */
+    font-size: 2.5rem;
+    /* Aumenta el tamaño del texto */
     font-weight: bold;
     color: #fff;
 }
-.hero-logo {
-    max-width: 80%;
-    height: auto;
+
+.logo-small {
+    max-width: 240px;
+    /* Cambia el valor para ajustar el tamaño de las imágenes */
+    margin-left: 10px;
+    /* Espacio entre las imágenes */
 }
+
 .footer-logo {
     max-width: 200px;
     height: auto;
 }
+
 .social-icons a {
     color: var(--color-light);
     font-size: 1.5rem;
     margin-right: 1rem;
 }
+
 .social-icons a:hover {
     color: var(--color-primary);
 }
+
 html {
     scroll-behavior: smooth;
 }
+
 .section-padding {
-    padding-top: 100px; /* Ajusta este valor según la altura de tu navbar */
+    padding-top: 100px;
+    /* Ajusta este valor según la altura de tu navbar */
     padding-bottom: 50px;
 }
+
 .contact-section {
-    padding-bottom: 2rem; /* Añade padding inferior */
+    padding-bottom: 2rem;
+    /* Añade padding inferior */
 }
+
 .contact-image {
-    max-width: 80%; /* Reduce el tamaño de la imagen al 60% */
+    max-width: 80%;
+    /* Reduce el tamaño de la imagen al 60% */
     height: auto;
     display: block;
 }
+
 .service-subtitle {
-font-size: 1.2rem;
+    font-size: 1.2rem;
     color: var(--color-primary);
     text-transform: uppercase;
     margin-bottom: 0.5rem;
 }
+
 .service-title {
     font-size: 2.5rem;
     margin-bottom: 1.5rem;
 }
+
 .service-list li {
     font-size: 1.2rem;
     margin-bottom: 1rem;
 }
+
 .btn-lg {
     font-size: 1.2rem;
     padding: 0.75rem 1.5rem;
 }
+
 #imageCarousel {
     max-width: 800px;
     margin: 0 auto;
-}  
+}
+
 .carousel-item img {
     height: 400px;
     object-fit: cover;
 }
+
 .carousel-control-prev,
 .carousel-control-next {
     width: 5%;
 }
+
 .carousel-control-prev-icon,
 .carousel-control-next-icon {
     background-color: rgba(0, 0, 0, 0.5);
@@ -188,25 +228,31 @@ font-size: 1.2rem;
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
 }
+
 .login-logo {
     text-align: center;
     margin-bottom: 30px;
 }
+
 .login-logo img {
     max-width: 200px;
 }
+
 .btn-primary {
     background-color: var(--color-secondary);
     border-color: var(--color-secondary);
 }
+
 .btn-primary:hover {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
 }
+
 .form-control:focus {
     border-color: var(--color-primary);
     box-shadow: 0 0 0 0.2rem rgba(0, 189, 163, 0.25);
 }
+
 .nav-item a .button-nav {
     --primary-color: #00BDA3;
     --secondary-color: #fff;
@@ -223,8 +269,10 @@ font-size: 1.2rem;
     align-items: center;
     gap: 0.6em;
     font-weight: bold;
-    margin-top: 0; /* Asegúrate de que no haya margen superior */
-    padding: 0.5rem 1.5rem; /* Ajusta el padding para centrar verticalmente */
+    margin-top: 0;
+    /* Asegúrate de que no haya margen superior */
+    padding: 0.5rem 1.5rem;
+    /* Ajusta el padding para centrar verticalmente */
     display: flex;
     justify-content: center;
 }
@@ -243,6 +291,7 @@ font-size: 1.2rem;
     position: relative;
     transition: 0.2s;
 }
+
 .nav-item a .button-nav .arrow::before {
     content: "";
     box-sizing: border-box;
@@ -256,9 +305,11 @@ font-size: 1.2rem;
     padding: 3px;
     transform: rotate(-45deg);
 }
+
 .nav-item a .button-nav:hover {
     background-color: var(--hover-color);
 }
+
 .nav-item a .button-nav:hover .arrow {
     background: var(--secondary-color);
 }
@@ -268,7 +319,7 @@ font-size: 1.2rem;
     right: 0;
 }
 
-/* From Uiverse.io by vinodjangid07 */ 
+/* From Uiverse.io by vinodjangid07 */
 .button {
     width: 50px;
     height: 50px;
@@ -286,45 +337,52 @@ font-size: 1.2rem;
     position: fixed;
     bottom: 20px;
     right: 20px;
-  }
-  
-  .svgIcon {
+}
+
+.svgIcon {
     width: 12px;
     transition-duration: 0.3s;
-  }
-  
-  .svgIcon path {
+}
+
+.svgIcon path {
     fill: white;
-  }
-  
-  .button:hover {
+}
+
+.button:hover {
     width: 140px;
     border-radius: 50px;
     transition-duration: 0.3s;
     background-color: var(--color-primary);
     align-items: center;
-  }
-  
-  .button:hover .svgIcon {
+}
+
+.button:hover .svgIcon {
     /* width: 20px; */
     transition-duration: 0.3s;
     transform: translateY(-200%);
-  }
-  
-  .button::before {
+}
+
+.button::before {
     position: absolute;
     bottom: -20px;
     content: "Volver al inicio";
     color: white;
     /* transition-duration: .3s; */
     font-size: 0px;
-  }
-  
-  .button:hover::before {
+}
+
+.button:hover::before {
     font-size: 13px;
     opacity: 1;
     bottom: unset;
     /* transform: translateY(-30px); */
     transition-duration: 0.3s;
-  }
-  
+}
+
+.icono {
+    width: 35px;
+    height: 35px;
+    display: inline-block;
+    line-height: 20px;
+    text-align: center;
+}
