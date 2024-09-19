@@ -189,7 +189,7 @@ html {
 }
 
 .service-list li {
-    font-size: 1.2rem;
+    font-size: 1.9rem;
     margin-bottom: 1rem;
 }
 
@@ -380,8 +380,8 @@ html {
 }
 
 .icono {
-    width: 35px;
-    height: 35px;
+    width: 80px;
+    height: 60px;
     display: inline-block;
     line-height: 20px;
     text-align: center;

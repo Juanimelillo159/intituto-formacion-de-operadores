@@ -48,6 +48,9 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
       background-color: #ff1493;
       color: white;
     }
+    .subrayado {
+            text-decoration: underline;
+        }
   </style>
 
 </head>
@@ -96,7 +99,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
         <div class="row">
           <div class="col-lg-8 mx-auto">
             <p class="text-center">
-              EN EL INSTITUTO DE FORMACIÓN DE OPERADORES, NOS ENORGULLECE SER LÍDERES EN EL ÁREA DE CAPACITACIÓN DEL PERSONAL. DESDE NUESTRA FUNDACIÓN NOS HEMOS DEDICADO A LA ARDUA Y FUNDAMENTAL TAREA DE DARLE A LAS PERSONAS LAS HERRAMIENTAS PARA DESARROLLAR DE MANERA SEGURA Y EFICIENTE, LAS TAREAS QUE DESEMPEÑA.
+              EN EL INSTITUTO DE FORMACIÓN DE OPERADORES, NOS ENORGULLECE SER LÍDERES EN EL ÁREA DE CAPACITACIÓN DEL PERSONAL. DESDE NUESTRA ORGANIZACIÓN NOS HEMOS DEDICADO A LA ARDUA Y FUNDAMENTAL TAREA DE DARLE A LAS PERSONAS LAS HERRAMIENTAS PARA DESARROLLAR DE MANERA SEGURA Y EFICIENTE, LAS TAREAS QUE DESEMPEÑA.
             </p>
           </div>
         </div>
@@ -120,15 +123,15 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
     </section>
     <section id="servicios-capacitacion" class="py-5 bg-light">
       <div class="container">
-        <h2 class="display-4 text-center mb-4">SERVICIOS</h2>
+        <h2 class="display-4 text-center mb-4 subrayado">SERVICIOS</h2>
         <!-- Equipos de izaje -->
         <div class="row align-items-center mb-5">
           <div class="col-md-6">
             <img src="assets/imagenes/equipos de izaje/1.jpg" alt="Equipos de izaje" class="img-fluid rounded">
           </div>
           <div class="col-md-6">
-            <p class="service-subtitle">Formacion en:</p>
-            <h2 class="service-title">Equipos de izaje</h2>
+            <p class="service-subtitle ">Formacion en:</p>
+            <h2 class="service-title text-primary ">Equipos de izaje</h2>
             <ul class="list-unstyled service-list">
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Grúa Móvil</span>
@@ -163,8 +166,8 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
             <img src="assets/imagenes/maquinaria vial/2.jpg" alt="Maquinaria Vial" class="img-fluid rounded">
           </div>
           <div class="col-md-6 order-md-1">
-            <p class="service-subtitle">Formacion en:</p>
-            <h2 class="service-title">Maquinaria Vial</h2>
+            <p class="service-subtitle ">Formacion en:</p>
+            <h2 class="service-title text-primary">Maquinaria Vial</h2>
             <ul class="list-unstyled service-list">
               <li class="d-flex justify-content-between align-items-center">
                 <span>Operador de Motoniveladora</span>
