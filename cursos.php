@@ -39,7 +39,7 @@ $total_pages = ceil($total_cursos / $items_per_page);
     <?php } ?>
 </div>
 
-<nav aria-label="Page navigation">
+<div class="mt-5" aria-label="Page navigation">
   <ul class="pagination justify-content-center">
     <?php for ($i = 1; $i <= $total_pages; $i++) { ?>
       <li class="page-item <?php if ($i == $page) echo 'active'; ?>">
@@ -47,4 +47,4 @@ $total_pages = ceil($total_cursos / $items_per_page);
       </li>
     <?php } ?>
   </ul>
-</nav>
+</div>
