@@ -17,41 +17,6 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
-    body {
-      background-color: #1a1a1a;
-      color: white;
-    }
-    .navbar {
-      background-color: #000;
-    }
-    .product-card {
-      margin-bottom: 30px;
-    }
-    .product-image {
-      height: 200px;
-      object-fit: cover;
-    }
-    .card-title {
-      color: #ff1493;
-    }
-    .footer {
-      background-color: #000;
-      padding: 20px 0;
-      text-align: center;
-    }
-    .price {
-      color: #00ff00;
-      font-size: 1.5rem;
-    }
-    .btn-custom {
-      background-color: #ff1493;
-      color: white;
-    }
-    .subrayado {
-            text-decoration: underline;
-        }
-  </style>
 
 </head>
 
@@ -61,17 +26,21 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
     <header class="hero-section py-5">
       <div class="container h-100">
         <div class="row h-100 align-items-center">
-          <div class="col-md-6 d-flex justify-content-center align-items-center">
-            <img src="logos/LOGO PNG-04.png" alt="Instituto de Formación de Operadores logo" class="hero-logo img-fluid logo-small">
+          <div class="col-md-6 d-flex justify-content-center align-items-center logos-container">
+            <!-- Aquí los logos estarán lado a lado en desktop y uno debajo del otro en móvil -->
+            <img src="logos/LOGO PNG-04.png" alt="Instituto de Formación de Operadores logo" class="hero-logo img-fluid logo-small me-3">
             <img src="logos/LOGO PNG_Mesa de trabajo 1.svg" alt="Instituto de Formación de Operadores letras" class="hero-logo img-fluid logo-small">
           </div>
           <div class="col-md-6 d-flex justify-content-center align-items-center">
             <div class="hero-text text-center">
-              <h1>Capacitación profesional para personas mediante nuestros diversos cursos</h1>
+              <h1 class="display-4 display-md-3">Capacitación profesional para empresas y particulares</h1>
             </div>
           </div>
         </div>
+      </div>
     </header>
+
+
     <section id="carrusel" class="py-5 section-transition">
       <div class="container">
         <div id="imageCarousel" class="carousel slide" data-bs-ride="carousel">

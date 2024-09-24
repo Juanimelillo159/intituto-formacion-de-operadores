@@ -386,3 +386,80 @@ html {
     line-height: 20px;
     text-align: center;
 }
+
+.hero-section {
+    min-height: 70vh;
+    background-size: cover;
+    position: relative;
+    z-index: 1;
+}
+
+@media (max-width: 768px) {
+    .logos-container {
+        flex-direction: column;
+    }
+
+    .hero-section {
+        padding: 3rem 1rem;
+    }
+
+    .hero-logo {
+        max-width: 80%;
+        margin-bottom: 1rem;
+    }
+
+    .hero-text h1 {
+        font-size: 1.75rem;
+    }
+}
+
+@media (min-width: 769px) {
+    .hero-section {
+        padding: 5rem 2rem;
+    }
+
+    .hero-logo {
+        max-width: 50%;
+    }
+}
+
+.subrayado {
+    text-decoration: underline;
+}
+
+.product-card {
+    margin-bottom: 30px;
+}
+
+.product-image {
+    height: 200px;
+    object-fit: cover;
+}
+
+.card-title {
+    flex-shrink: 0;
+    /* Evita que el título se contraiga */
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+}
+
+.card-text {
+    flex-grow: 1;
+    line-height: 1.5em; /* Define la altura de la línea */
+    max-height: calc(1.5em * 3); /* Máximo de 3 líneas */
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+}
+
+.card-footer {
+    flex-shrink: 0;
+    /* Evita que el pie de página se expanda */
+}
