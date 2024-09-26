@@ -1,90 +1,35 @@
-$(document).ready(function() {
+document.addEventListener('DOMContentLoaded', function() {
+  function loadCourses(page = 1, search = '') {
+      const formData = new FormData();
+      formData.append('page', page);
+      formData.append('search', search);
 
-    $('#pedidos').DataTable({
+      fetch('lista_curso.php', {
+          method: 'POST',
+          body: formData
+      })
+      .then(response => response.text())
+      .then(data => {
+          document.querySelector('#lista_curso').innerHTML = data;
+          addPaginationEventListeners(); // Volver a añadir los eventos a los nuevos enlaces de paginación
+      })
+      .catch(error => console.error('Error:', error));
+  }
 
-        'paging'      : true,
-        'lengthChange': false,
-        'searching'   : true,
-        'ordering'    : true,
-        'info'        : true,
-        'autoWidth'   : false,
-        'pageLength'  : 7,
-        'language': {
-            paginate: {
-              next: 'Siguiente',
-              previous: 'Anterior' 
-              
-            },
-            info: "Mostrando _START_ a _END_ de _TOTAL_ resultados",
-            search: 'Buscar', 
-            emptyTable: 'Aun no se registro ningun pedido',
-            infoEmpty: 'Mostrando 0 a 0 de 0 entradas' 
-          }
-    });
+  function addPaginationEventListeners() {
+      document.querySelectorAll('.page-link').forEach(link => {
+          link.addEventListener('click', function(e) {
+              e.preventDefault();
+              const page = this.getAttribute('data-page');
+              const search = document.querySelector('#search-input').value;
+              loadCourses(page, search);
+          });
+      });
+  }
 
-    $('#gastos').DataTable({
-
-      'paging'      : true,
-      'lengthChange': false,
-      'searching'   : true,
-      'ordering'    : true,
-      'info'        : true,
-      'autoWidth'   : false,
-      'pageLength'  : 7,
-      'language': {
-          paginate: {
-            next: 'Siguiente', 
-            previous: 'Anterior'  
-            
-          },
-          info: "Mostrando _START_ a _END_ de _TOTAL_ resultados",
-          search: 'Buscar', 
-          emptyTable: 'Aun no hay pagos registrados',
-          infoEmpty: 'Mostrando 0 a 0 de 0 entradas' 
-        }
+  document.querySelector('#search-input').addEventListener('input', function() {
+      loadCourses(1, this.value);
   });
 
-  $('#registros').DataTable({
-
-    'paging'      : true,
-    'lengthChange': false,
-    'searching'   : false,
-    'ordering'    : true,
-    'info'        : true,
-    'autoWidth'   : false,
-    'pageLength'  : 7,
-    'language': {
-        paginate: {
-          next: 'Siguiente', 
-          previous: 'Anterior'  
-          
-        },
-        info: "Mostrando _START_ a _END_ de _TOTAL_ resultados",
-        emptyTable: 'Aun no se encuentran datos registrados',
-        infoEmpty: 'Mostrando 0 a 0 de 0 entradas' 
-      }
+  loadCourses(); // Cargar cursos inicialmente
 });
-$('#domicilio').DataTable({
-
-  'paging'      : true,
-  'lengthChange': false,
-  'searching'   : false,
-  'ordering'    : true,
-  'info'        : true,
-  'autoWidth'   : false,
-  'pageLength'  : 7,
-  'language': {
-      paginate: {
-        next: 'Siguiente', 
-        previous: 'Anterior'  
-        
-      },
-      info: "Mostrando _START_ a _END_ de _TOTAL_ resultados",
-      emptyTable: 'No hay registros de domicilios',
-      infoEmpty: 'Mostrando 0 a 0 de 0 entradas' 
-    }
-});
-
-    
-  });
-
