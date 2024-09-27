@@ -42,7 +42,7 @@ if (!isset($_SESSION['usuario'])) {
   <link rel="stylesheet" href="../admin/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="../admin/css/responsive.bootstrap4.min.css">
   <link rel="stylesheet" href="../admin/css/buttons.bootstrap4.min.css">
-
+  <link rel="stylesheet" href="../style.css">
   <!-- Bootstrap 3.3.7 -->
   <!-- <link rel="stylesheet" href="../admin/css/bootstrap.min.css"> -->
 </head>

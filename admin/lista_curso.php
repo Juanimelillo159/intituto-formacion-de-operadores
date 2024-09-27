@@ -21,20 +21,26 @@ $total_cursos = $total_sql->fetchColumn();
 $total_pages = ceil($total_cursos / $items_per_page);
 ?>
 
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+</head>
 
 <div class="row d-flex" id="course-container">
     <?php foreach ($cursos as $curso) { ?>
         <div class="col-md-3 d-flex align-items-stretch course-card">
             <div class="card card-primary">
                 <div class="card-header">
-                    <h3 class="card-title text-center" style="min-height: 50px; display: flex; align-items: center; justify-content: center;">
+                    <h3 class="card-title text-center curso-titulo" style="min-height: 50px; display: flex; align-items: center; justify-content: center;">
                         <?php echo $curso["nombre_curso"] ?>
                     </h3>
                 </div>
                 <div class="card-body">
-                    <div class="description">
-                        <?php echo $curso["descripcion_curso"] ?>
-                    </div>
+                    <p class="card-text flex-grow-1"><?php echo $curso["descripcion_curso"]; ?></p>
                 </div>
                 <div class="card-footer text-center">
                     <a href="eliminar_curso.php?id_curso=<?php echo $curso['id_curso']; ?>"><button class="btn btn-danger mx-2">Eliminar</button></a>
@@ -55,3 +61,5 @@ $total_pages = ceil($total_cursos / $items_per_page);
         <?php } ?>
     </ul>
 </div>
+
+</html>
