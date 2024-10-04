@@ -1,4 +1,5 @@
 <?php
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
@@ -15,28 +16,32 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $mail = new PHPMailer(true);
 
     try {
-        // Configuración del servidor SMTP de Hostinger
+        // Configuración del servidor SMTP
+        $mail->SMTPDebug = 0;
         $mail->isSMTP();
-        $mail->Host = 'smtp.hostinger.com'; // Cambia a tu servidor SMTP
+        $mail->Host = 'smtp.hostinger.com';  // Cambia a tu servidor SMTP
         $mail->SMTPAuth = true;
-        $mail->Username = 'pruebas@institutodeoperadores.com'; // Cambia al correo de tu dominio
-        $mail->Password = 'Ju4ni159@'; // Cambia a la contraseña de tu correo
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port = 587;
+        $mail->Username = 'pruebas@institutodeoperadores.com';  // Cambia al correo de tu dominio
+        $mail->Password = 'Ju4ni159@';  // Cambia a la contraseña de tu correo
+        $mail->SMTPSecure = 'ssl';
+        $mail->Port = 465;
 
         // Remitente y destinatarios
-        $mail->setFrom('pruebas@institutodeoperadores.com', 'Consulta');
-        $mail->addAddress('pruebas@institutodeoperadores.com', 'Tu Nombre'); // El correo donde recibirás los mensajes
+        $mail->setFrom('pruebas@institutodeoperadores.com', 'Consulta');  // Remitente válido
+        $mail->addReplyTo($email, $nombre);  // El correo del usuario para respuesta
+        $mail->addAddress('pruebas@institutodeoperadores.com', 'Tu Nombre');  // El correo receptor de las consultas
 
         // Contenido del correo
         $mail->isHTML(true);
-        $mail->Subject = 'Nuevo mensaje de asesoramiento';
+        $mail->Subject = 'Nuevo mensaje de prueba';
         $mail->Body    = "Nombre: $nombre<br>Email: $email<br>Teléfono: $telefono<br>Mensaje: $mensaje";
 
         $mail->send();
-        echo 'El mensaje ha sido enviado exitosamente.';
+        echo "<script type='text/javascript'>
+            alert('El mensaje ha sido enviado exitosamente.');
+            window.location.href = '/index.php';
+              </script>";
     } catch (Exception $e) {
         echo "El mensaje no pudo ser enviado. Error: {$mail->ErrorInfo}";
     }
 }
-?>

@@ -181,7 +181,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
         <h2 class="text-center mb-4">Asesoramiento gratuito</h2>
         <div class="row">
           <div class="col-md-6 p-5">
-            <form form action="https://formsubmit.co/juanimelillo@gmail.com" method="POST">
+            <form form action="enviar.php" method="POST">
               <div class="mb-3">
                 <input type="text" class="form-control" name="nombre" placeholder="Nombre" required>
               </div>

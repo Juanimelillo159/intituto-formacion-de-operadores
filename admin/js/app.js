@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
     })
       .then((response) => response.text())
       .then((data) => {
-        document.querySelector("#lista_curso").innerHTML = data;
+        document.querySelector("#lista_cursos").innerHTML = data;
         addPaginationEventListeners(); // Volver a añadir los eventos a los nuevos enlaces de paginación
       })
       .catch((error) => console.error("Error:", error));

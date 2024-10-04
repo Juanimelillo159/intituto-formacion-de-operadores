@@ -48,7 +48,7 @@ $cursos = $sql_curso->fetchAll(PDO::FETCH_ASSOC);
                             <div class="mb-4 text-center">
                                 <input type="text" id="search-input" placeholder="Buscar cursos..." class="form-control w-50 d-inline-block">
                             </div>
-                            <div id="lista_curso"> </div>
+                            <div id="lista_cursos"> </div>
                         </div>
                     </div>
                 </div>
