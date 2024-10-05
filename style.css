@@ -1,12 +1,13 @@
-
 @font-face {
     font-family: "aller_b";
     src: url("Aller.ttf");
 }
+
 @font-face {
     font-family: "aller_lt";
     src: url("Aller_Lt.ttf");
 }
+
 :root {
     --color-primary: #00BDA3;
     --color-primary-rgb: 0, 189, 163;
@@ -25,9 +26,14 @@ body {
     overflow-x: hidden;
     background: linear-gradient(135deg, #0014AE 0%, #00BDA3 100%);
 }
-h1,h2,h3,h4,h5,h6 {
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-family: 'aller_b';
-    color: var(--color-dark);
 }
 
 .bg-primary {
@@ -461,8 +467,10 @@ html {
 
 .card-text {
     flex-grow: 1;
-    line-height: 1.5em; /* Define la altura de la línea */
-    max-height: calc(1.5em * 3); /* Máximo de 3 líneas */
+    line-height: 1.5em;
+    /* Define la altura de la línea */
+    max-height: calc(1.5em * 3);
+    /* Máximo de 3 líneas */
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -472,4 +480,41 @@ html {
 .card-footer {
     flex-shrink: 0;
     /* Evita que el pie de página se expanda */
+}
+
+
+/* From Uiverse.io by Jedi-hongbin */
+#back button {
+    display: flex;
+    height: 3em;
+    width: 100px;
+    align-items: center;
+    justify-content: center;
+    background-color: #eeeeee4b;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    transition: all 0.2s linear;
+    cursor: pointer;
+    border: none;
+    background: #fff;
+}
+
+#back button>svg {
+    margin-right: 5px;
+    margin-left: 5px;
+    font-size: 20px;
+    transition: all 0.4s ease-in;
+}
+
+#back button:hover>svg {
+    font-size: 1.2em;
+    transform: translateX(-5px);
+}
+
+#back button:hover {
+    width: 140px;
+    border-radius: 50px;
+    transition-duration: 0.3s;
+    background-color: var(--color-primary);
+    align-items: center;
 }
