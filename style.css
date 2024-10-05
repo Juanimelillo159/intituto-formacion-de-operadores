@@ -1,7 +1,3 @@
-@font-face {
-    font-family: "nevermind-m";
-    src: url("NeverMindRounded-Medium.ttf");
-}
 
 @font-face {
     font-family: "aller_b";
@@ -28,6 +24,10 @@ body {
     position: relative;
     overflow-x: hidden;
     background: linear-gradient(135deg, #0014AE 0%, #00BDA3 100%);
+}
+h1,h2,h3,h4,h5,h6 {
+    font-family: 'aller_b';
+    color: var(--color-dark);
 }
 
 .bg-primary {
@@ -182,6 +182,8 @@ html {
     /* Reduce el tamaño de la imagen al 60% */
     height: auto;
     display: block;
+    border: solid 5px var(--color-secondary);
+    border-radius: 25px;
 }
 
 .service-subtitle {
