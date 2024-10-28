@@ -45,6 +45,8 @@ if (!isset($_SESSION['usuario'])) {
   <link rel="stylesheet" href="../style.css">
   <!-- Bootstrap 3.3.7 -->
   <!-- <link rel="stylesheet" href="../admin/css/bootstrap.min.css"> -->
+
+  <link rel="icon" type="image/png" href="icono.png">
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed layout-footer-fixed">
