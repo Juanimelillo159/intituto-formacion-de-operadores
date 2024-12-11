@@ -43,7 +43,9 @@ h6 {
 .bg-secondary {
     background-color: var(--color-secondary) !important;
 }
-
+.bg-nosotros{
+    background-color: #9ccbf9 ;
+}
 .text-primary {
     color: var(--color-primary) !important;
 }
@@ -463,6 +465,7 @@ html {
     display: flex;
     flex-direction: column;
     min-height: 200px;
+    justify-content: center;
 }
 
 .card-text {

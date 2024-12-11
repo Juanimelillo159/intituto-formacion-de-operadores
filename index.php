@@ -62,7 +62,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </section>
 
-    <section id="quienes-somos" class=" bg-light section-padding ">
+    <section id="quienes-somos" class="bg-nosotros section-padding">
       <div class="container">
         <h2 class="display-2 text-center mb-4">¿Quiénes Somos?</h2>
         <div class="row">
