@@ -62,9 +62,9 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
         </div>
     </section>
 
-    <section id="quienes-somos" class=" bg-light section-padding ">
+    <section id="quienes-somos" class="bg-nosotros section-padding">
       <div class="container">
-        <h2 class="display-4 text-center mb-4">¿Quiénes Somos?</h2>
+        <h2 class="display-2 text-center mb-4">¿Quiénes Somos?</h2>
         <div class="row">
           <div class="col-lg-8 mx-auto">
             <p class="text-center">
@@ -92,7 +92,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
     </section>
     <section id="servicios-capacitacion" class="py-5 bg-light">
       <div class="container">
-        <h2 class="display-4 text-center mb-4 subrayado">SERVICIOS</h2>
+        <h2 class="display-2 text-center mb-4 subrayado">SERVICIOS</h2>
         <!-- Equipos de izaje -->
         <div class="row align-items-center mb-5">
           <div class="col-md-6">
@@ -168,7 +168,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
     </section>
     <section id="cursos" class="section-padding">
       <div class="container">
-        <h2 class="dispaly-2 text-center mb-4">Cursos Disponibles</h2>
+        <h2 class="display-2 text-center mb-4">Cursos Disponibles</h2>
         <div class="mb-4 text-center">
           <input type="text" id="search-input" placeholder="Buscar cursos..." class="form-control w-50 d-inline-block">
         </div>
@@ -178,7 +178,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
 
     <section id="contacto" class="bg-light section-padding contact-section">
       <div class="container">
-        <h2 class="text-center mb-4">Asesoramiento gratuito</h2>
+        <h2 class="display-4 text-center mb-4">Asesoramiento gratuito</h2>
         <div class="row">
           <div class="col-md-6 p-5">
             <form form action="enviar.php" method="POST">

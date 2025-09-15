@@ -38,8 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $mail->send();
         echo "<script type='text/javascript'>
-            alert('El mensaje ha sido enviado exitosamente.');
-            window.location.href = '/index.php';
+            window.location.href = '/confirmacion.php';
               </script>";
     } catch (Exception $e) {
         echo "El mensaje no pudo ser enviado. Error: {$mail->ErrorInfo}";
