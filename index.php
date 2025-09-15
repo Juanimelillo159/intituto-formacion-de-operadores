@@ -17,6 +17,8 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
 
 </head>
 
@@ -123,9 +125,6 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
                 <img class="icono" src="assets/iconos/Iconossvg/5.svg" alt="">
               </li>
             </ul>
-            <div class="mt-4">
-              <a href="#contacto" class="btn btn-primary btn-lg">CONTACTO</a>
-            </div>
           </div>
         </div>
 
@@ -159,19 +158,13 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
                 <img class="icono" src="assets/iconos/Iconossvg/10.svg" alt="">
               </li>
             </ul>
-            <div class="mt-4">
-              <a href="#contacto" class="btn btn-primary btn-lg">CONTACTO</a>
-            </div>
           </div>
         </div>
       </div>
     </section>
     <section id="cursos" class="section-padding">
       <div class="container">
-        <h2 class="display-2 text-center mb-4">Cursos Disponibles</h2>
-        <div class="mb-4 text-center">
-          <input type="text" id="search-input" placeholder="Buscar cursos..." class="form-control w-50 d-inline-block">
-        </div>
+        <h2 class="display-2 text-center mb-4">Inscripciones</h2>
         <div id="cursos-list"> </div>
       </div>
     </section>
