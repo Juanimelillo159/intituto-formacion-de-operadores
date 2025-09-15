@@ -1,16 +1,19 @@
 <?php
 session_start()
+
+/*  */
 ?>
 
 <head>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" type="image/png" href="icono.png">
 </head>
-<nav class="navbar navbar-expand-lg navbar-light bg-secondary sticky-top">
+<nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
     <div class="container">
         <a class="navbar-brand" href="index.php">
-            <img src="logos/LOGO PNG-10.png" alt="Logo">
+            <img src="logos/LOGO PNG-03.png" alt="Logo">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>

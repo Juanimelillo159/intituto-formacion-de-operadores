@@ -43,7 +43,9 @@ h6 {
 .bg-secondary {
     background-color: var(--color-secondary) !important;
 }
-
+.bg-nosotros{
+    background-color: #9ccbf9 ;
+}
 .text-primary {
     color: var(--color-primary) !important;
 }
@@ -75,7 +77,7 @@ h6 {
 
 
 .navbar-nav .nav-link {
-    color: var(--color-light) !important;
+    color: var(--color-secondary) !important;
     font-weight: bold;
     position: relative;
     transition: color 0.3s ease-in-out;
@@ -91,7 +93,7 @@ h6 {
     display: block;
     width: 0;
     height: 2px;
-    background-color: var(--color-dark);
+    background-color: var(--color-primary);
     transition: width 0.3s ease-in-out;
     position: absolute;
     left: 0;
@@ -99,7 +101,7 @@ h6 {
 }
 
 .navbar-nav .nav-link:hover {
-    color: var(--color-dark) !important;
+    color: var(--color-primary) !important;
 }
 
 .navbar-nav .nav-link:hover::after {
@@ -463,6 +465,7 @@ html {
     display: flex;
     flex-direction: column;
     min-height: 200px;
+    justify-content: center;
 }
 
 .card-text {
@@ -517,4 +520,14 @@ html {
     transition-duration: 0.3s;
     background-color: var(--color-primary);
     align-items: center;
+}
+
+
+.course-container {
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    max-width: 1000px;
+    width: 100%;
 }
