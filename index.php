@@ -1,5 +1,9 @@
 <?php
 include 'sbd.php';
+
+$page_title = "Inicio | Instituto de Formación";
+$page_description = "Pagina principal del Instituto de Formación de Operadores";
+
 $sql_carrusel = $con->prepare("SELECT * FROM banner");
 $sql_carrusel->execute();
 $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
@@ -10,21 +14,11 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
 <html lang="es">
 
 
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Instituto de Formación de Operadores</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-
-
-</head>
+<?php include("head.php") ?>
 
 <body>
+  <?php include("nav.php") ?>
   <div class="content-wrapper">
-    <?php include("nav.php") ?>
     <header class="hero-section py-5">
       <div class="container h-100">
         <div class="row h-100 align-items-center">
@@ -49,7 +43,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
           <div class="carousel-inner">
             <?php foreach ($banners as $index => $banner) { ?>
               <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                <img class="d-block w-100" src="imagenes/banners/<?php echo $banner['imagen_banner']; ?>" alt="Slide <?php echo $index + 1; ?>">
+                <img class="d-block w-100" src="assets/imagenes/banners/<?php echo $banner['imagen_banner']; ?>" alt="Slide <?php echo $index + 1; ?>">
               </div>
             <?php } ?>
             <button class="carousel-control-prev" type="button" data-bs-target="#imageCarousel" data-bs-slide="prev">

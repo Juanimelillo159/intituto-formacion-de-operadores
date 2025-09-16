@@ -1,21 +1,19 @@
 <?php
 include("sbd.php");
-include("nav.php");
 
+$page_title = "Login | Instituto de Formación";
+$page_description = "Pagina de inicio de sesión del Instituto de Formación de Operadores";
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesión</title>
-    <link rel="icon" href="/logos/LOGO PNG-04.png" type="image/png">
-    
-</head>
+
+<?php include("head.php") ?>
 
 <body>
+<?php include("nav.php"); ?>
+
     <section class="content-wrapper">
         <div class="container">
             <div class="login-container">
