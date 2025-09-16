@@ -197,6 +197,11 @@ $modalidades_curso = $sql_modalidades_curso->fetchall(PDO::FETCH_ASSOC);
     function volver() {
       window.location.href = 'cursos.php';
     }
+    document.addEventListener('DOMContentLoaded', function() {
+      <?php if (isset($_GET['mode']) && $_GET['mode'] === 'edit'): ?>
+        editarCampos();
+      <?php endif; ?>
+    });
   </script>
 </body>
 
