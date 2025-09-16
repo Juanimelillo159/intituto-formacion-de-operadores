@@ -7,6 +7,7 @@ include("nav.php");
 
 $login_mensaje = isset($_SESSION['login_mensaje']) ? $_SESSION['login_mensaje'] : null;
 $login_tipo = isset($_SESSION['login_tipo']) ? $_SESSION['login_tipo'] : 'info';
+$googleClientId = getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE';
 if ($login_mensaje !== null) {
     unset($_SESSION['login_mensaje'], $_SESSION['login_tipo']);
 }
@@ -21,6 +22,8 @@ if ($login_mensaje !== null) {
     <title>Iniciar sesi&oacute;n</title>
     <link rel="icon" href="/logos/LOGO PNG-04.png" type="image/png">
     
+    <script>window.googleClientId = '<?php echo htmlspecialchars($googleClientId, ENT_QUOTES, 'UTF-8'); ?>';</script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
@@ -47,12 +50,19 @@ if ($login_mensaje !== null) {
                     <button type="submit" name="iniciar_sesion" class="btn btn-primary w-100">Iniciar sesi&oacute;n</button>
                     <p class="text-center mt-3">&iquest;No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
                 </form>
+                <div class="text-center mt-3">
+                    <span class="text-muted">o contin&amp;uacute;a con</span>
+                </div>
+                <div id="googleSignInMessage" role="alert" style="display:none;"></div>
+                <div id="googleSignInButton" class="mt-3 w-100"></div>
             </div>
         </div>
     </section>
     <?php include("footer.php"); ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+    <script>window.googleAuthEndpoint = 'admin/google_auth.php';</script>
+    <script src="assets/js/google-auth.js"></script>
 </body>
 
 </html>

@@ -7,6 +7,7 @@ include("nav.php");
 
 $registro_mensaje = isset($_SESSION['registro_mensaje']) ? $_SESSION['registro_mensaje'] : null;
 $registro_tipo = isset($_SESSION['registro_tipo']) ? $_SESSION['registro_tipo'] : 'info';
+$googleClientId = getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE';
 if ($registro_mensaje !== null) {
     unset($_SESSION['registro_mensaje'], $_SESSION['registro_tipo']);
 }
@@ -19,6 +20,8 @@ if ($registro_mensaje !== null) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Crear cuenta</title>
     <link rel="icon" href="/logos/LOGO PNG-04.png" type="image/png">
+    <script>window.googleClientId = '<?php echo htmlspecialchars($googleClientId, ENT_QUOTES, 'UTF-8'); ?>';</script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
     <section class="content-wrapper">
@@ -47,11 +50,15 @@ if ($registro_mensaje !== null) {
                     </div>
                     <button type="submit" name="registrar_usuario" class="btn btn-primary w-100">Crear cuenta</button>
                 </form>
+                <div class="text-center mt-3">
+                    <span class="text-muted">o reg&amp;iacute;strate con</span>
+                </div>
+                <div id="googleSignInMessage" role="alert" style="display:none;"></div>
+                <div id="googleSignInButton" class="mt-3 w-100"></div>
             </div>
         </div>
     </section>
     <?php include("footer.php"); ?>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function () {
             var form = document.getElementById('form-registro');
@@ -78,5 +85,8 @@ if ($registro_mensaje !== null) {
             }
         })();
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>window.googleAuthEndpoint = 'admin/google_auth.php';</script>
+    <script src="assets/js/google-auth.js"></script>
 </body>
 </html>
