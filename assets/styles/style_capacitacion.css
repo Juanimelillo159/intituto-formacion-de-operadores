@@ -1,0 +1,248 @@
+
+  /* Paleta global proporcionada */
+        :root {
+            --color-primary: #00BDA3;
+            --color-primary-rgb: 0, 189, 163;
+            --color-secondary: #0014AE;
+            --color-light: #FFFFFF;
+            --color-gray-light: #F5F5F5;
+            --color-gray-dark: #585856;
+            --color-dark: #000000;
+        }
+
+        /* === TEMA CAPACITACIONES (usa color secundario como primario) === */
+        body.capacitaciones {
+            --primary-color: var(--color-secondary);
+            /* azul */
+            --accent-color: #28a745;
+            /* verde (botones) */
+            --text-dark: var(--color-gray-dark);
+            --border-radius: 12px;
+            --shadow: 0 4px 20px rgba(0, 20, 174, 0.10);
+        }
+
+        /* Base compartida */
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+        }
+
+        .back-button {
+            background: rgba(0, 0, 0, .04);
+            border: 2px solid rgba(0, 0, 0, .06);
+            color: var(--primary-color);
+            padding: 10px 18px;
+            border-radius: 50px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: .25s;
+        }
+
+        .back-button:hover {
+            background: rgba(0, 0, 0, .07);
+            transform: translateY(-1px);
+        }
+
+        .content-wrapper {
+            background: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .course-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 40px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .course-title {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 15px;
+            font-size: 2.2rem;
+        }
+
+        .course-subtitle {
+            color: #6c757d;
+            margin: 0;
+            font-size: 1.05rem;
+        }
+
+        .course-content {
+            padding: 40px;
+        }
+
+        .section-title {
+            color: var(--primary-color);
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .section-title i {
+            color: var(--accent-color);
+        }
+
+        .course-description {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: var(--border-radius);
+            border-left: 4px solid var(--primary-color);
+            margin-bottom: 30px;
+        }
+
+        .details-card {
+            background: #fff;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            position: sticky;
+            top: 20px;
+        }
+
+        .details-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #0056b3 100%);
+            color: #fff;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .details-body {
+            padding: 28px;
+        }
+
+        .detail-item {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid #f1f3f4;
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            background: linear-gradient(135deg, var(--primary-color), #0056b3);
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            color: #6c757d;
+        }
+
+        .enroll-button {
+            background: linear-gradient(135deg, var(--accent-color) 0%, #20c997 100%);
+            border: none;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 50px;
+            font-weight: 700;
+            width: 100%;
+            margin-top: 22px;
+            transition: .3s;
+        }
+
+        .enroll-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(40, 167, 69, .35);
+            color: #fff;
+        }
+
+        .objectives-list {
+            background: #fff;
+            border-radius: var(--border-radius);
+            padding: 25px;
+            border: 1px solid #e9ecef;
+        }
+
+        .badge-level {
+            display: inline-flex;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: 18px;
+            font-weight: 700;
+            font-size: .85rem;
+        }
+
+        .badge-beginner {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-intermediate {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-advanced {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Acordeón */
+        .accordion.curso-accordion .accordion-item {
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .accordion.curso-accordion .accordion-item+.accordion-item {
+            margin-top: 14px;
+        }
+
+        .accordion.curso-accordion .accordion-button {
+            padding: 16px 18px;
+            font-weight: 600;
+            color: var(--text-dark);
+            background: #fff;
+        }
+
+        .accordion.curso-accordion .accordion-button:not(.collapsed) {
+            color: var(--primary-color);
+            background: #f8f9fa;
+            box-shadow: none;
+        }
+
+        .accordion.curso-accordion .accordion-body {
+            background: #fff;
+            color: #495057;
+        }
+
+        @media (max-width:768px) {
+            .course-title {
+                font-size: 1.8rem;
+            }
+
+            .course-header,
+            .course-content {
+                padding: 24px;
+            }
+
+            .details-card {
+                position: static;
+                margin-top: 28px;
+            }
+        }
