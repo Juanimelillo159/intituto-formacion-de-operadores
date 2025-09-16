@@ -1,8 +1,17 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include 'sbd.php';
 $sql_carrusel = $con->prepare("SELECT * FROM banner");
 $sql_carrusel->execute();
 $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
+
+$registro_mensaje = isset($_SESSION['registro_mensaje']) ? $_SESSION['registro_mensaje'] : null;
+$registro_tipo = isset($_SESSION['registro_tipo']) ? $_SESSION['registro_tipo'] : 'info';
+if ($registro_mensaje !== null) {
+    unset($_SESSION['registro_mensaje'], $_SESSION['registro_tipo']);
+}
 ?>
 
 
@@ -13,7 +22,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Instituto de Formación de Operadores</title>
+  <title>Instituto de Formaci??n de Operadores</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -25,17 +34,24 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
 <body>
   <div class="content-wrapper">
     <?php include("nav.php") ?>
+    <?php if ($registro_mensaje !== null) : ?>
+      <div class="container mt-3">
+        <div class="alert alert-<?php echo htmlspecialchars($registro_tipo); ?> text-center" role="alert">
+          <?php echo htmlspecialchars($registro_mensaje); ?>
+        </div>
+      </div>
+    <?php endif; ?>
     <header class="hero-section py-5">
       <div class="container h-100">
         <div class="row h-100 align-items-center">
           <div class="col-md-6 d-flex justify-content-center align-items-center logos-container">
-            <!-- Aquí los logos estarán lado a lado en desktop y uno debajo del otro en móvil -->
-            <img src="logos/LOGO PNG-04.png" alt="Instituto de Formación de Operadores logo" class="hero-logo img-fluid logo-small me-3">
-            <img src="logos/LOGO PNG_Mesa de trabajo 1.svg" alt="Instituto de Formación de Operadores letras" class="hero-logo img-fluid logo-small">
+            <!-- Aqu?? los logos estar??n lado a lado en desktop y uno debajo del otro en m??vil -->
+            <img src="logos/LOGO PNG-04.png" alt="Instituto de Formaci??n de Operadores logo" class="hero-logo img-fluid logo-small me-3">
+            <img src="logos/LOGO PNG_Mesa de trabajo 1.svg" alt="Instituto de Formaci??n de Operadores letras" class="hero-logo img-fluid logo-small">
           </div>
           <div class="col-md-6 d-flex justify-content-center align-items-center">
             <div class="hero-text text-center">
-              <h1 class="display-4 display-md-3">Capacitación profesional para empresas y particulares</h1>
+              <h1 class="display-4 display-md-3">Capacitaci??n profesional para empresas y particulares</h1>
             </div>
           </div>
         </div>
@@ -66,11 +82,11 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
 
     <section id="quienes-somos" class="bg-nosotros section-padding">
       <div class="container">
-        <h2 class="display-2 text-center mb-4">¿Quiénes Somos?</h2>
+        <h2 class="display-2 text-center mb-4">??Qui??nes Somos?</h2>
         <div class="row">
           <div class="col-lg-8 mx-auto">
             <p class="text-center">
-              EN EL INSTITUTO DE FORMACIÓN DE OPERADORES, NOS ENORGULLECE SER LÍDERES EN EL ÁREA DE CAPACITACIÓN DEL PERSONAL. DESDE NUESTRA ORGANIZACIÓN NOS HEMOS DEDICADO A LA ARDUA Y FUNDAMENTAL TAREA DE DARLE A LAS PERSONAS LAS HERRAMIENTAS PARA DESARROLLAR DE MANERA SEGURA Y EFICIENTE, LAS TAREAS QUE DESEMPEÑA.
+              EN EL INSTITUTO DE FORMACI??N DE OPERADORES, NOS ENORGULLECE SER L??DERES EN EL ??REA DE CAPACITACI??N DEL PERSONAL. DESDE NUESTRA ORGANIZACI??N NOS HEMOS DEDICADO A LA ARDUA Y FUNDAMENTAL TAREA DE DARLE A LAS PERSONAS LAS HERRAMIENTAS PARA DESARROLLAR DE MANERA SEGURA Y EFICIENTE, LAS TAREAS QUE DESEMPE??A.
             </p>
           </div>
         </div>
@@ -78,16 +94,16 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
       <div class="container p-5">
         <div class="row">
           <div class="col-md-4 mb-4">
-            <h3 class="text-secondary"><i class="fas fa-bullseye me-2"></i>MISIÓN</h3>
-            <p>EN EL INSTITUTO DE FORMACIÓN DE OPERADORES CREEMOS FIRMEMENTE EN EL CRECIMIENTO CONJUNTO ENTRE CLIENTE Y PROVEEDOR, PARA ELLO TENEMOS LA MISIÓN CLARA DE BUSCAR EL LIDERAZGO EN LAS DIFERENTES ÁREAS EN QUE NOS DESARROLLAMOS APLICANDO CALIDAD, SEGURIDAD Y COMPROMISO PLENO EN NUESTRO ACCIONAR.</p>
+            <h3 class="text-secondary"><i class="fas fa-bullseye me-2"></i>MISI??N</h3>
+            <p>EN EL INSTITUTO DE FORMACI??N DE OPERADORES CREEMOS FIRMEMENTE EN EL CRECIMIENTO CONJUNTO ENTRE CLIENTE Y PROVEEDOR, PARA ELLO TENEMOS LA MISI??N CLARA DE BUSCAR EL LIDERAZGO EN LAS DIFERENTES ??REAS EN QUE NOS DESARROLLAMOS APLICANDO CALIDAD, SEGURIDAD Y COMPROMISO PLENO EN NUESTRO ACCIONAR.</p>
           </div>
           <div class="col-md-4 mb-4">
-            <h3 class="text-secondary"><i class="fas fa-eye me-2"></i>VISIÓN</h3>
-            <p>SER UNA ORGANIZACIÓN DONDE EMPRESAS Y PERSONAS ENCUENTREN SOLUCIONES AGILES Y CONFIABLES PARA SUS NECESIDADES</p>
+            <h3 class="text-secondary"><i class="fas fa-eye me-2"></i>VISI??N</h3>
+            <p>SER UNA ORGANIZACI??N DONDE EMPRESAS Y PERSONAS ENCUENTREN SOLUCIONES AGILES Y CONFIABLES PARA SUS NECESIDADES</p>
           </div>
           <div class="col-md-4 mb-4">
             <h3 class="text-secondary"><i class="fas fa-hands-helping me-2"></i>VALORES</h3>
-            <p>LA ORGANIZACIÓN ESTÁ FUNDADA SOBRE FUERTES VALORES SOCIALES, DE DESARROLLO Y PROFESIONALES, COMO LO SON LA ÉTICA, LA HONESTIDAD, EL RESPETO POR EL MEDIO AMBIENTE, LA BÚSQUEDA DE LA EXCELENCIA Y LA MEJORA CONTINUA, TODO ELLO PUESTO AL SERVICIO DE NUESTROS CLIENTES.</p>
+            <p>LA ORGANIZACI??N EST?? FUNDADA SOBRE FUERTES VALORES SOCIALES, DE DESARROLLO Y PROFESIONALES, COMO LO SON LA ??TICA, LA HONESTIDAD, EL RESPETO POR EL MEDIO AMBIENTE, LA B??SQUEDA DE LA EXCELENCIA Y LA MEJORA CONTINUA, TODO ELLO PUESTO AL SERVICIO DE NUESTROS CLIENTES.</p>
           </div>
         </div>
       </div>
@@ -105,11 +121,11 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
             <h2 class="service-title text-primary ">Equipos de izaje</h2>
             <ul class="list-unstyled service-list">
               <li class="d-flex justify-content-between align-items-center">
-                <span>Operador de Grúa Móvil</span>
+                <span>Operador de Gr??a M??vil</span>
                 <img class="icono" src="assets/iconos/Iconossvg/1.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
-                <span>Operador de Grúa Móvil de Pluma Articulada</span>
+                <span>Operador de Gr??a M??vil de Pluma Articulada</span>
                 <img class="icono" src="assets/iconos/Iconossvg/2.svg" alt="">
               </li>
               <li class="d-flex justify-content-between align-items-center">
@@ -179,10 +195,10 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
                 <input type="text" class="form-control" name="nombre" placeholder="Nombre" required>
               </div>
               <div class="mb-3">
-                <input type="email" class="form-control" name="email" placeholder="Correo electrónico" required>
+                <input type="email" class="form-control" name="email" placeholder="Correo electr??nico" required>
               </div>
               <div class="mb-3">
-                <input type="tel" class="form-control" name="telefono" placeholder="Teléfono" required>
+                <input type="tel" class="form-control" name="telefono" placeholder="Tel??fono" required>
               </div>
               <div class="mb-3">
                 <textarea class="form-control" rows="4" placeholder="Mensaje" name="mensaje" required></textarea>
@@ -224,3 +240,4 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
 </body>
 
 </html>
+

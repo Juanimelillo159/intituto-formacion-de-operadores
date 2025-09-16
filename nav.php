@@ -1,5 +1,7 @@
 <?php
-session_start()
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 /*  */
 ?>
@@ -30,7 +32,7 @@ session_start()
                     <a class="nav-link" href="index.php#cursos">Cursos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="index.php#contacto">Contáctanos</a>
+                    <a class="nav-link" href="index.php#contacto">Cont&aacute;ctanos</a>
                 </li>
                 <?php
                 if (isset($_SESSION["usuario"])) { ?>
