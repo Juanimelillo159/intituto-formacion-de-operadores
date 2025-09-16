@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include("../sbd.php");
 
 function establecerMensajeRegistro($mensaje, $tipo = 'info')
@@ -9,7 +11,6 @@ function establecerMensajeRegistro($mensaje, $tipo = 'info')
 }
 
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["registrar_usuario"])) {
-    $nombre = isset($_POST["nombre_completo"]) ? trim($_POST["nombre_completo"]) : "";
     $email = isset($_POST["email"]) ? trim($_POST["email"]) : "";
     $password = isset($_POST["clave"]) ? $_POST["clave"] : "";
     $confirm = isset($_POST["confirmar_clave"]) ? $_POST["confirmar_clave"] : "";
@@ -20,8 +21,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["registrar_usuario"]))
         exit;
     }
 
-    if ($nombre === "" || $email === "" || $password === "") {
-        establecerMensajeRegistro('Todos los campos son obligatorios.', 'danger');
+    if ($email === "" || $password === "") {
+        establecerMensajeRegistro('El correo y la contrasena son obligatorios.', 'danger');
         header("Location: ../registro.php");
         exit;
     }
@@ -44,12 +45,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["registrar_usuario"]))
         }
 
         $hash = password_hash($password, PASSWORD_DEFAULT);
+        $estado = 1;
+        $permiso = 2;
 
-        $sql_insertar = $con->prepare("INSERT INTO usuarios (nombre_completo, email, clave, id_permiso) VALUES (:nombre, :email, :clave, :permiso)");
-        $sql_insertar->bindParam(":nombre", $nombre);
+        $sql_insertar = $con->prepare("INSERT INTO usuarios (email, clave, id_estado, id_permiso) VALUES (:email, :clave, :estado, :permiso)");
         $sql_insertar->bindParam(":email", $email);
         $sql_insertar->bindParam(":clave", $hash);
-        $permiso = 2;
+        $sql_insertar->bindParam(":estado", $estado, PDO::PARAM_INT);
         $sql_insertar->bindParam(":permiso", $permiso, PDO::PARAM_INT);
         $sql_insertar->execute();
 
@@ -61,8 +63,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["registrar_usuario"]))
         header("Location: ../registro.php");
         exit;
     }
-} else {
-    header("Location: ../registro.php");
-    exit;
 }
+
+header("Location: ../registro.php");
+exit;
 ?>

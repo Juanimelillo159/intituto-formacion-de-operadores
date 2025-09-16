@@ -32,14 +32,27 @@ if (session_status() === PHP_SESSION_NONE) {
                     <a class="nav-link" href="index.php#cursos">Cursos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="index.php#contacto">Cont&aacute;ctanos</a>
+                    <a class="nav-link" href="index.php#contacto">Contactanos</a>
                 </li>
                 <?php
-                if (isset($_SESSION["usuario"])) { ?>
-                    <li class="nav-item">
-                        <a class="text-decoration-none" href="admin/admin.php">
+                $permiso = isset($_SESSION["permiso"]) ? (int)$_SESSION["permiso"] : null;
+                if (isset($_SESSION["usuario"])) {
+                    if ($permiso === 1) { ?>
+                        <li class="nav-item">
+                            <a class="text-decoration-none" href="admin/admin.php">
+                                <button class="button-nav">
+                                    panel adm
+                                    <div class="arrow-wrapper">
+                                        <div class="arrow"></div>
+                                    </div>
+                                </button>
+                            </a>
+                        </li>
+                    <?php } ?>
+                    <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
+                        <a class="text-decoration-none" href="admin/cerrar_sesion.php">
                             <button class="button-nav">
-                                panel adm
+                                cerrar sesion
                                 <div class="arrow-wrapper">
                                     <div class="arrow"></div>
                                 </div>

@@ -34,19 +34,15 @@ if ($registro_mensaje !== null) {
                 <?php endif; ?>
                 <form method="POST" action="admin/registro.php" id="form-registro">
                     <div class="mb-3">
-                        <label for="nombre_completo" class="form-label">Nombre completo</label>
-                        <input type="text" class="form-control" name="nombre_completo" id="nombre_completo" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="email" class="form-label">Correo electr&oacute;nico</label>
+                        <label for="email" class="form-label">Correo electronico</label>
                         <input type="email" class="form-control" name="email" id="email" required>
                     </div>
                     <div class="mb-3">
-                        <label for="clave" class="form-label">Contrase&ntilde;a</label>
+                        <label for="clave" class="form-label">Contrasena</label>
                         <input type="password" class="form-control" name="clave" id="clave" required>
                     </div>
                     <div class="mb-3">
-                        <label for="confirmar_clave" class="form-label">Repetir contrase&ntilde;a</label>
+                        <label for="confirmar_clave" class="form-label">Repetir contrasena</label>
                         <input type="password" class="form-control" name="confirmar_clave" id="confirmar_clave" required>
                     </div>
                     <button type="submit" name="registrar_usuario" class="btn btn-primary w-100">Crear cuenta</button>
@@ -84,4 +80,3 @@ if ($registro_mensaje !== null) {
     </script>
 </body>
 </html>
-
