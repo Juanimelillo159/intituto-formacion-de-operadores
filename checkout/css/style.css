@@ -240,6 +240,20 @@
     color: #fff;
 }
 
+.btn-mercado-pago {
+    background: #009ee3;
+    color: #fff;
+    border: none;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-mercado-pago:hover,
+.btn-mercado-pago:focus {
+    color: #fff;
+    background: #007ebc;
+    box-shadow: 0 12px 28px rgba(0, 158, 227, 0.35);
+}
+
 .btn-outline-light {
     color: #1b2a4e;
     border-color: rgba(21, 101, 216, 0.35);

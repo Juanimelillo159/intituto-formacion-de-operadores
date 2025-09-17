@@ -1,7 +1,18 @@
 <?php
 // procesarsbd.php (sin sesiones)
 declare(strict_types=1);
+
+use MercadoPago\Item;
+use MercadoPago\Preference;
+use MercadoPago\SDK;
+use PHPMailer\PHPMailer\Exception as PHPMailerException;
+use PHPMailer\PHPMailer\PHPMailer;
+
 require_once __DIR__ . '/../sbd.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../PHPMailer/src/Exception.php';
+require_once __DIR__ . '/../PHPMailer/src/PHPMailer.php';
+require_once __DIR__ . '/../PHPMailer/src/SMTP.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
@@ -64,6 +75,363 @@ function parse_dt_local(string $v): string
     return $dt->format('Y-m-d H:i:s');
 }
 
+function esc_html($value): string
+{
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+}
+
+function formatear_monto($monto, string $moneda): string
+{
+    $currency = strtoupper($moneda !== '' ? $moneda : 'ARS');
+    return $currency . ' ' . number_format((float)$monto, 2, ',', '.');
+}
+
+function ensure_checkout_mp_table(PDO $con): void
+{
+    static $mpTableEnsured = false;
+    if ($mpTableEnsured) {
+        return;
+    }
+    $sql = <<<'SQL'
+CREATE TABLE IF NOT EXISTS `checkout_mercadopago` (
+  `id_mp` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_pago` INT UNSIGNED NOT NULL,
+  `preference_id` VARCHAR(80) NOT NULL,
+  `init_point` VARCHAR(255) NOT NULL,
+  `sandbox_init_point` VARCHAR(255) DEFAULT NULL,
+  `external_reference` VARCHAR(120) DEFAULT NULL,
+  `status` VARCHAR(60) NOT NULL DEFAULT 'pendiente',
+  `status_detail` VARCHAR(120) DEFAULT NULL,
+  `payment_id` VARCHAR(60) DEFAULT NULL,
+  `payment_type` VARCHAR(80) DEFAULT NULL,
+  `payer_email` VARCHAR(150) DEFAULT NULL,
+  `payload` LONGTEXT,
+  `creado_en` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_mp`),
+  UNIQUE KEY `ux_checkout_mp_pago` (`id_pago`),
+  UNIQUE KEY `ux_checkout_mp_pref` (`preference_id`),
+  CONSTRAINT `fk_checkout_mp_pago` FOREIGN KEY (`id_pago`) REFERENCES `checkout_pagos` (`id_pago`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL;
+    $con->exec($sql);
+    $mpTableEnsured = true;
+}
+
+function mapear_estado_mercadopago(string $status): string
+{
+    $normalized = strtolower(trim($status));
+    switch ($normalized) {
+        case 'approved':
+            return 'aprobado';
+        case 'pending':
+            return 'pendiente';
+        case 'in_process':
+            return 'procesando';
+        case 'authorized':
+            return 'autorizado';
+        case 'in_mediation':
+            return 'en_mediacion';
+        case 'rejected':
+            return 'rechazado';
+        case 'cancelled':
+            return 'cancelado';
+        case 'refunded':
+            return 'reintegrado';
+        case 'charged_back':
+            return 'contracargo';
+        default:
+            return $normalized !== '' ? $normalized : 'pendiente';
+    }
+}
+
+function descripcion_metodo_pago(string $metodo): string
+{
+    $metodo = strtolower(trim($metodo));
+    switch ($metodo) {
+        case 'mercado_pago':
+            return 'Mercado Pago';
+        case 'transferencia':
+            return 'Transferencia bancaria';
+        default:
+            $metodo = str_replace('_', ' ', $metodo);
+            return $metodo !== '' ? ucfirst($metodo) : 'No especificado';
+    }
+}
+
+function crear_preferencia_mercadopago(array $config, array $curso, array $inscripcion, array $pago, int $idInscripcion, int $idPago): array
+{
+    $mpConfig = $config['mercadopago'] ?? [];
+    $accessToken = trim((string)($mpConfig['access_token'] ?? ''));
+    $baseUrl = rtrim((string)($config['app']['base_url'] ?? ''), '/');
+    if ($accessToken === '') {
+        throw new RuntimeException('Falta configurar el access token de Mercado Pago en config/config.php.');
+    }
+    if ($baseUrl === '') {
+        throw new RuntimeException('Falta configurar la URL base de la aplicación en config/config.php.');
+    }
+
+    SDK::setAccessToken($accessToken);
+
+    $preference = new Preference();
+
+    $item = new Item();
+    $item->title = (string)($curso['nombre_curso'] ?? 'Curso');
+    $item->quantity = 1;
+    $item->unit_price = (float)($pago['monto'] ?? 0);
+    $item->currency_id = strtoupper((string)($pago['moneda'] ?? 'ARS'));
+    $preference->items = [$item];
+
+    $preference->payer = [
+        'name' => (string)($inscripcion['nombre'] ?? ''),
+        'surname' => (string)($inscripcion['apellido'] ?? ''),
+        'email' => (string)($inscripcion['email'] ?? ''),
+    ];
+
+    $externalReference = sprintf('checkout:%d:%d', $idInscripcion, $idPago);
+    $preference->external_reference = $externalReference;
+    $preference->notification_url = $baseUrl . '/checkout/mp_notificacion.php';
+    $preference->back_urls = [
+        'success' => $baseUrl . '/checkout/gracias.php',
+        'pending' => $baseUrl . '/checkout/retorno.php?status=pending',
+        'failure' => $baseUrl . '/checkout/retorno.php?status=failure',
+    ];
+    $preference->auto_return = 'approved';
+    $preference->statement_descriptor = 'IF Operadores';
+    $preference->metadata = [
+        'id_inscripcion' => $idInscripcion,
+        'id_pago' => $idPago,
+        'curso' => (string)($curso['nombre_curso'] ?? ''),
+        'email' => (string)($inscripcion['email'] ?? ''),
+    ];
+
+    $preference->save();
+
+    return [
+        'preference_id' => (string)$preference->id,
+        'init_point' => (string)$preference->init_point,
+        'sandbox_init_point' => (string)($preference->sandbox_init_point ?? ''),
+        'external_reference' => $externalReference,
+        'notification_url' => (string)$preference->notification_url,
+    ];
+}
+
+function registrar_preferencia_mercadopago(PDO $con, int $idPago, array $datos): void
+{
+    ensure_checkout_mp_table($con);
+
+    $del = $con->prepare('DELETE FROM checkout_mercadopago WHERE id_pago = :pago');
+    $del->execute([':pago' => $idPago]);
+
+    $sandbox = trim((string)($datos['sandbox_init_point'] ?? ''));
+    if ($sandbox === '') {
+        $sandbox = null;
+    }
+
+    $ins = $con->prepare('INSERT INTO checkout_mercadopago (id_pago, preference_id, init_point, sandbox_init_point, external_reference, status) VALUES (:pago, :pref, :init, :sandbox, :ref, :status)');
+    $ins->execute([
+        ':pago' => $idPago,
+        ':pref' => (string)($datos['preference_id'] ?? ''),
+        ':init' => (string)($datos['init_point'] ?? ''),
+        ':sandbox' => $sandbox,
+        ':ref' => $datos['external_reference'] ?? null,
+        ':status' => 'pendiente',
+    ]);
+}
+
+function normalizar_emails($value): array
+{
+    if (is_array($value)) {
+        $lista = $value;
+    } elseif (is_string($value)) {
+        $lista = preg_split('/[;,]+/', $value) ?: [];
+    } else {
+        return [];
+    }
+    $emails = [];
+    foreach ($lista as $email) {
+        $email = trim((string)$email);
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $emails[] = $email;
+        }
+    }
+    return array_values(array_unique($emails));
+}
+
+function enviar_resumen_compra(array $config, array $curso, array $inscripcion, array $pago, ?array $mpDatos = null): void
+{
+    $mailConfig = $config['mail'] ?? [];
+    $host = trim((string)($mailConfig['host'] ?? ''));
+    $username = trim((string)($mailConfig['username'] ?? ''));
+    $password = (string)($mailConfig['password'] ?? '');
+    if ($host === '' || $username === '' || $password === '') {
+        log_cursos('correo_config_incompleta', ['host' => $host !== '', 'username' => $username !== '']);
+        return;
+    }
+
+    $port = (int)($mailConfig['port'] ?? 587);
+    $encryption = trim((string)($mailConfig['encryption'] ?? ''));
+    $fromEmail = trim((string)($mailConfig['from_email'] ?? $username));
+    $fromName = trim((string)($mailConfig['from_name'] ?? 'Instituto de Formación de Operadores'));
+
+    $ordenId = isset($inscripcion['id']) ? (int)$inscripcion['id'] : 0;
+    $ordenFormat = $ordenId > 0 ? str_pad((string)$ordenId, 6, '0', STR_PAD_LEFT) : 's/d';
+    $metodo = descripcion_metodo_pago($pago['metodo'] ?? '');
+    $monto = formatear_monto($pago['monto'] ?? 0, (string)($pago['moneda'] ?? 'ARS'));
+    $estado = ucfirst($pago['estado'] ?? 'Pendiente');
+    $observaciones = trim((string)($pago['observaciones'] ?? ''));
+    $mpLink = isset($mpDatos['init_point']) && $mpDatos['init_point'] !== '' ? (string)$mpDatos['init_point'] : null;
+
+    $nombre = trim((string)($inscripcion['nombre'] ?? ''));
+    $apellido = trim((string)($inscripcion['apellido'] ?? ''));
+    $nombreCompleto = trim($nombre . ' ' . $apellido);
+    if ($nombreCompleto === '') {
+        $nombreCompleto = trim((string)($inscripcion['email'] ?? ''));
+    }
+    $cursoNombre = (string)($curso['nombre_curso'] ?? 'Curso');
+
+    $usuarioHtml = '<p>Hola ' . esc_html($nombreCompleto !== '' ? $nombreCompleto : 'alumno') . ',</p>';
+    $usuarioHtml .= '<p>Gracias por inscribirte en <strong>' . esc_html($cursoNombre) . '</strong>. Este es el detalle de tu orden:</p>';
+    $usuarioHtml .= '<ul style="padding-left:16px;">';
+    $usuarioHtml .= '<li><strong>Número de orden:</strong> #' . esc_html($ordenFormat) . '</li>';
+    $usuarioHtml .= '<li><strong>Método de pago:</strong> ' . esc_html($metodo) . '</li>';
+    $usuarioHtml .= '<li><strong>Monto:</strong> ' . esc_html($monto) . '</li>';
+    $usuarioHtml .= '<li><strong>Estado:</strong> ' . esc_html($estado) . '</li>';
+    if ($observaciones !== '') {
+        $usuarioHtml .= '<li><strong>Observaciones:</strong> ' . esc_html($observaciones) . '</li>';
+    }
+    $usuarioHtml .= '</ul>';
+    if ($mpLink) {
+        $usuarioHtml .= '<p>Para completar el pago ingresá al siguiente enlace seguro de Mercado Pago:</p>';
+        $usuarioHtml .= '<p><a href="' . esc_html($mpLink) . '" style="color:#009ee3; font-weight:600;">Pagar ahora con Mercado Pago</a></p>';
+    }
+    $usuarioHtml .= '<p>En breve nuestro equipo se comunicará para finalizar tu inscripción.</p>';
+    $usuarioHtml .= '<p>Saludos cordiales,<br>Instituto de Formación de Operadores</p>';
+
+    $usuarioTexto = 'Hola ' . ($nombreCompleto !== '' ? $nombreCompleto : 'alumno') . ',' . PHP_EOL;
+    $usuarioTexto .= 'Gracias por inscribirte en ' . $cursoNombre . '. Detalle de tu orden:' . PHP_EOL;
+    $usuarioTexto .= '- Número de orden: #' . $ordenFormat . PHP_EOL;
+    $usuarioTexto .= '- Método de pago: ' . $metodo . PHP_EOL;
+    $usuarioTexto .= '- Monto: ' . $monto . PHP_EOL;
+    $usuarioTexto .= '- Estado: ' . $estado . PHP_EOL;
+    if ($observaciones !== '') {
+        $usuarioTexto .= '- Observaciones: ' . $observaciones . PHP_EOL;
+    }
+    if ($mpLink) {
+        $usuarioTexto .= 'Completá el pago ingresando a: ' . $mpLink . PHP_EOL;
+    }
+    $usuarioTexto .= PHP_EOL . 'Nos contactaremos a la brevedad para coordinar los próximos pasos.' . PHP_EOL;
+    $usuarioTexto .= 'Instituto de Formación de Operadores';
+
+    $usuarioEmail = (string)($inscripcion['email'] ?? '');
+    $destinatarios = [];
+    if ($usuarioEmail !== '' && filter_var($usuarioEmail, FILTER_VALIDATE_EMAIL)) {
+        $destinatarios[] = [
+            'email' => $usuarioEmail,
+            'nombre' => $nombreCompleto !== '' ? $nombreCompleto : $usuarioEmail,
+            'subject' => 'Resumen de tu inscripción #' . $ordenFormat,
+            'html' => $usuarioHtml,
+            'text' => $usuarioTexto,
+        ];
+    }
+
+    $adminEmails = normalizar_emails($mailConfig['admin_email'] ?? []);
+    if (!empty($adminEmails)) {
+        $adminHtml = '<p>Hola equipo,</p>';
+        $adminHtml .= '<p>Se registró una nueva compra a través del sitio web.</p>';
+        $adminHtml .= '<h4 style="margin-top:18px;">Datos del curso</h4>';
+        $adminHtml .= '<ul style="padding-left:16px;">';
+        $adminHtml .= '<li><strong>Curso:</strong> ' . esc_html($cursoNombre) . '</li>';
+        $adminHtml .= '<li><strong>Número de orden:</strong> #' . esc_html($ordenFormat) . '</li>';
+        $adminHtml .= '<li><strong>Método de pago:</strong> ' . esc_html($metodo) . '</li>';
+        $adminHtml .= '<li><strong>Monto:</strong> ' . esc_html($monto) . '</li>';
+        $adminHtml .= '<li><strong>Estado:</strong> ' . esc_html($estado) . '</li>';
+        $adminHtml .= '</ul>';
+        $adminHtml .= '<h4 style="margin-top:18px;">Datos del alumno</h4>';
+        $adminHtml .= '<ul style="padding-left:16px;">';
+        $adminHtml .= '<li><strong>Nombre:</strong> ' . esc_html(trim($nombre . ' ' . $apellido)) . '</li>';
+        $adminHtml .= '<li><strong>Email:</strong> ' . esc_html($usuarioEmail) . '</li>';
+        $adminHtml .= '<li><strong>Teléfono:</strong> ' . esc_html($inscripcion['telefono'] ?? '') . '</li>';
+        $adminHtml .= '<li><strong>DNI:</strong> ' . esc_html($inscripcion['dni'] ?? '') . '</li>';
+        $adminHtml .= '<li><strong>Dirección:</strong> ' . esc_html($inscripcion['direccion'] ?? '') . '</li>';
+        $adminHtml .= '<li><strong>Ciudad:</strong> ' . esc_html($inscripcion['ciudad'] ?? '') . '</li>';
+        $adminHtml .= '<li><strong>Provincia:</strong> ' . esc_html($inscripcion['provincia'] ?? '') . '</li>';
+        $adminHtml .= '<li><strong>País:</strong> ' . esc_html($inscripcion['pais'] ?? '') . '</li>';
+        $adminHtml .= '</ul>';
+        if ($observaciones !== '') {
+            $adminHtml .= '<p><strong>Observaciones del alumno:</strong> ' . esc_html($observaciones) . '</p>';
+        }
+        if ($mpDatos) {
+            $adminHtml .= '<p><strong>Mercado Pago:</strong> Preferencia ' . esc_html($mpDatos['preference_id'] ?? '') . '.</p>';
+            if ($mpLink) {
+                $adminHtml .= '<p><a href="' . esc_html($mpLink) . '" style="color:#009ee3;">Ver enlace de pago</a></p>';
+            }
+        }
+        $adminHtml .= '<p>Este mensaje se envió automáticamente desde el checkout.</p>';
+
+        $adminTexto = 'Nueva compra registrada.' . PHP_EOL;
+        $adminTexto .= 'Curso: ' . $cursoNombre . PHP_EOL;
+        $adminTexto .= 'Orden: #' . $ordenFormat . PHP_EOL;
+        $adminTexto .= 'Método: ' . $metodo . PHP_EOL;
+        $adminTexto .= 'Monto: ' . $monto . PHP_EOL;
+        $adminTexto .= 'Estado: ' . $estado . PHP_EOL;
+        $adminTexto .= 'Alumno: ' . trim($nombre . ' ' . $apellido) . PHP_EOL;
+        $adminTexto .= 'Email: ' . $usuarioEmail . PHP_EOL;
+        $adminTexto .= 'Teléfono: ' . ($inscripcion['telefono'] ?? '') . PHP_EOL;
+        $adminTexto .= 'DNI: ' . ($inscripcion['dni'] ?? '') . PHP_EOL;
+        $adminTexto .= 'Dirección: ' . ($inscripcion['direccion'] ?? '') . PHP_EOL;
+        $adminTexto .= 'Ciudad: ' . ($inscripcion['ciudad'] ?? '') . PHP_EOL;
+        $adminTexto .= 'Provincia: ' . ($inscripcion['provincia'] ?? '') . PHP_EOL;
+        $adminTexto .= 'País: ' . ($inscripcion['pais'] ?? '') . PHP_EOL;
+        if ($observaciones !== '') {
+            $adminTexto .= 'Observaciones: ' . $observaciones . PHP_EOL;
+        }
+        if ($mpDatos) {
+            $adminTexto .= 'Preferencia MP: ' . ($mpDatos['preference_id'] ?? '') . PHP_EOL;
+            if ($mpLink) {
+                $adminTexto .= 'Enlace de pago: ' . $mpLink . PHP_EOL;
+            }
+        }
+
+        foreach ($adminEmails as $adminEmail) {
+            $destinatarios[] = [
+                'email' => $adminEmail,
+                'nombre' => 'Equipo Administrativo',
+                'subject' => 'Nueva inscripción #' . $ordenFormat . ' - ' . $cursoNombre,
+                'html' => $adminHtml,
+                'text' => $adminTexto,
+            ];
+        }
+    }
+
+    foreach ($destinatarios as $dest) {
+        try {
+            $mailer = new PHPMailer(true);
+            $mailer->isSMTP();
+            $mailer->Host = $host;
+            $mailer->SMTPAuth = true;
+            $mailer->Username = $username;
+            $mailer->Password = $password;
+            $mailer->Port = $port;
+            if ($encryption !== '') {
+                $mailer->SMTPSecure = $encryption;
+            }
+            $mailer->CharSet = 'UTF-8';
+            $mailer->setFrom($fromEmail !== '' ? $fromEmail : $username, $fromName !== '' ? $fromName : 'Instituto de Formación de Operadores');
+            $mailer->addAddress($dest['email'], $dest['nombre']);
+            $mailer->isHTML(true);
+            $mailer->Subject = $dest['subject'];
+            $mailer->Body = $dest['html'];
+            $mailer->AltBody = $dest['text'];
+            $mailer->send();
+        } catch (PHPMailerException $e) {
+            log_cursos('correo_envio_error', ['destinatario' => $dest['email'], 'subject' => $dest['subject']], $e);
+        } catch (Throwable $e) {
+            log_cursos('correo_envio_error', ['destinatario' => $dest['email'], 'subject' => $dest['subject']], $e);
+        }
+    }
+}
+
 /* =================== MAIN FLOW ================== */
 $checkoutUploadAbs = null;
 $checkoutUploadTmp = null;
@@ -78,6 +446,16 @@ try {
     if (!($con instanceof PDO)) {
         throw new RuntimeException('Conexión PDO inválida.');
     }
+
+    $configFile = __DIR__ . '/../config/config.php';
+    if (!is_file($configFile)) {
+        throw new RuntimeException('No se encontró el archivo de configuración (config/config.php).');
+    }
+    $configData = require $configFile;
+    if (!is_array($configData)) {
+        throw new RuntimeException('El archivo de configuración debe retornar un array.');
+    }
+    $config = $configData;
 
     $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $con->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
@@ -266,6 +644,33 @@ try {
             ':obs' => $observacionesPago !== '' ? $observacionesPago : null,
         ]);
 
+        $idPago = (int)$con->lastInsertId();
+
+        $inscripcionResumen = [
+            'id' => $idInscripcion,
+            'nombre' => $nombreInscrito,
+            'apellido' => $apellidoInscrito,
+            'email' => $emailInscrito,
+            'telefono' => $telefonoInscrito,
+            'dni' => $dniInscrito !== '' ? $dniInscrito : null,
+            'direccion' => $direccionInsc !== '' ? $direccionInsc : null,
+            'ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
+            'provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
+            'pais' => $paisInsc,
+        ];
+
+        $pagoResumen = [
+            'id_pago' => $idPago,
+            'metodo' => $metodoPago,
+            'estado' => 'pendiente',
+            'monto' => $precioFinal,
+            'moneda' => $monedaPrecio,
+            'observaciones' => $observacionesPago !== '' ? $observacionesPago : null,
+            'comprobante' => $checkoutUploadRel,
+        ];
+
+        $mpPreferenceData = null;
+
         if ($metodoPago === 'transferencia' && $checkoutUploadAbs !== null) {
             if (!move_uploaded_file($checkoutUploadTmp, $checkoutUploadAbs)) {
                 throw new RuntimeException('No se pudo guardar el comprobante de la transferencia.');
@@ -273,22 +678,37 @@ try {
             $checkoutUploadMoved = true;
         }
 
+        if ($metodoPago === 'mercado_pago') {
+            $mpPreferenceData = crear_preferencia_mercadopago($config, $cursoRow, $inscripcionResumen, $pagoResumen, $idInscripcion, $idPago);
+            registrar_preferencia_mercadopago($con, $idPago, $mpPreferenceData);
+        }
+
         $con->commit();
+
+        enviar_resumen_compra($config, $cursoRow, $inscripcionResumen, $pagoResumen, $mpPreferenceData);
 
         $_SESSION['checkout_success'] = [
             'orden' => $idInscripcion,
             'metodo' => $metodoPago,
         ];
 
-        log_cursos('checkout_crear_orden_ok', [
+        $logData = [
             'orden' => $idInscripcion,
             'id_curso' => $checkoutCursoId,
             'metodo' => $metodoPago,
             'monto' => $precioFinal,
             'moneda' => $monedaPrecio,
-        ]);
+        ];
+        if ($mpPreferenceData) {
+            $logData['mp_preference'] = $mpPreferenceData['preference_id'] ?? null;
+        }
+        log_cursos('checkout_crear_orden_ok', $logData);
 
-        header('Location: ../checkout/checkout.php?id_curso=' . $checkoutCursoId);
+        if ($metodoPago === 'mercado_pago' && $mpPreferenceData && !empty($mpPreferenceData['init_point'])) {
+            header('Location: ' . $mpPreferenceData['init_point']);
+        } else {
+            header('Location: ../checkout/checkout.php?id_curso=' . $checkoutCursoId);
+        }
         exit;
     }
 

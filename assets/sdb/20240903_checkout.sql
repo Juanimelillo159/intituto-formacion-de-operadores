@@ -40,3 +40,24 @@ CREATE TABLE IF NOT EXISTS `checkout_pagos` (
   KEY `idx_checkout_pagos_inscripcion` (`id_inscripcion`),
   CONSTRAINT `fk_checkout_pagos_inscripcion` FOREIGN KEY (`id_inscripcion`) REFERENCES `checkout_inscripciones` (`id_inscripcion`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `checkout_mercadopago` (
+  `id_mp` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `id_pago` INT UNSIGNED NOT NULL,
+  `preference_id` VARCHAR(80) NOT NULL,
+  `init_point` VARCHAR(255) NOT NULL,
+  `sandbox_init_point` VARCHAR(255) DEFAULT NULL,
+  `external_reference` VARCHAR(120) DEFAULT NULL,
+  `status` VARCHAR(60) NOT NULL DEFAULT 'pendiente',
+  `status_detail` VARCHAR(120) DEFAULT NULL,
+  `payment_id` VARCHAR(60) DEFAULT NULL,
+  `payment_type` VARCHAR(80) DEFAULT NULL,
+  `payer_email` VARCHAR(150) DEFAULT NULL,
+  `payload` LONGTEXT,
+  `creado_en` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `actualizado_en` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id_mp`),
+  UNIQUE KEY `ux_checkout_mp_pago` (`id_pago`),
+  UNIQUE KEY `ux_checkout_mp_pref` (`preference_id`),
+  CONSTRAINT `fk_checkout_mp_pago` FOREIGN KEY (`id_pago`) REFERENCES `checkout_pagos` (`id_pago`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

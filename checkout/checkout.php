@@ -254,7 +254,7 @@ include '../head.php';
                                                 <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago">
                                                 <div class="payment-info">
                                                     <strong>Mercado Pago</strong>
-                                                    <span>Próximamente disponible. Te avisaremos cuando esté habilitado.</span>
+                                                    <span>Pagá con tarjeta, débito, efectivo o dinero en cuenta.</span>
                                                 </div>
                                             </label>
 
@@ -282,7 +282,15 @@ include '../head.php';
 
                                             <div class="payment-details hidden" id="mpDetails">
                                                 <div class="summary-card">
-                                                    <p class="mb-0 text-muted">Pronto podrás completar el pago con Mercado Pago directamente desde esta pantalla.</p>
+                                                    <h6 class="mb-3"><i class="fas fa-credit-card me-2 text-primary"></i>Pago con Mercado Pago</h6>
+                                                    <p>Te redirigiremos a Mercado Pago para que completes la operación de manera segura y elijas el medio de pago que prefieras.</p>
+                                                    <?php if ($precio_vigente): ?>
+                                                        <ul class="mb-3 ps-3">
+                                                            <li><strong>Monto:</strong> <?php echo strtoupper($precio_vigente['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_vigente['precio'], 2, ',', '.'); ?></li>
+                                                            <li><strong>Concepto:</strong> <?php echo h($curso['nombre_curso']); ?></li>
+                                                        </ul>
+                                                    <?php endif; ?>
+                                                    <p class="mb-0 text-muted"><i class="fas fa-lock me-2"></i>Al finalizar, recibirás en tu correo el resumen de la compra y también notificaremos a nuestro equipo administrativo.</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -445,48 +453,88 @@ include '../head.php';
             const transferRadio = document.getElementById('metodo_transfer');
             const transferDetails = document.getElementById('transferDetails');
             const mpDetails = document.getElementById('mpDetails');
+            const form = document.getElementById('checkoutForm');
+            const confirmButton = document.getElementById('btnConfirmar');
+            const defaultConfirmContent = confirmButton ? confirmButton.innerHTML : '';
+            const mpConfirmContent = 'Ir a Mercado Pago <i class="fas fa-credit-card ms-2"></i>';
 
-            const togglePaymentDetails = () => {
-                if (transferRadio.checked) {
-                    transferDetails.classList.remove('hidden');
-                    mpDetails.classList.add('hidden');
-                } else if (mpRadio.checked) {
-                    mpDetails.classList.remove('hidden');
-                    transferDetails.classList.add('hidden');
+            const updateConfirmButton = () => {
+                if (!confirmButton) {
+                    return;
+                }
+                if (mpRadio && mpRadio.checked) {
+                    confirmButton.innerHTML = mpConfirmContent;
+                    confirmButton.classList.add('btn-mercado-pago');
+                    confirmButton.classList.remove('btn-gradient');
+                } else {
+                    confirmButton.innerHTML = defaultConfirmContent;
+                    confirmButton.classList.add('btn-gradient');
+                    confirmButton.classList.remove('btn-mercado-pago');
                 }
             };
 
-            mpRadio.addEventListener('change', togglePaymentDetails);
-            transferRadio.addEventListener('change', togglePaymentDetails);
+            const togglePaymentDetails = () => {
+                if (transferRadio && transferRadio.checked) {
+                    if (transferDetails) {
+                        transferDetails.classList.remove('hidden');
+                    }
+                    if (mpDetails) {
+                        mpDetails.classList.add('hidden');
+                    }
+                } else if (mpRadio && mpRadio.checked) {
+                    if (mpDetails) {
+                        mpDetails.classList.remove('hidden');
+                    }
+                    if (transferDetails) {
+                        transferDetails.classList.add('hidden');
+                    }
+                }
+                updateConfirmButton();
+            };
+
+            if (mpRadio) {
+                mpRadio.addEventListener('change', togglePaymentDetails);
+            }
+            if (transferRadio) {
+                transferRadio.addEventListener('change', togglePaymentDetails);
+            }
             togglePaymentDetails();
 
-            const form = document.getElementById('checkoutForm');
-            const confirmButton = document.getElementById('btnConfirmar');
-
-            confirmButton.addEventListener('click', () => {
-                if (!validateStep(2) || !validateStep(3)) {
-                    return;
-                }
-                Swal.fire({
-                    icon: 'question',
-                    title: 'Confirmar inscripción',
-                    text: '¿Deseás enviar la inscripción con los datos cargados?',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, enviar',
-                    cancelButtonText: 'Cancelar',
-                    customClass: {
-                        confirmButton: 'btn btn-gradient btn-rounded me-2',
-                        cancelButton: 'btn btn-outline-light btn-rounded'
-                    },
-                    buttonsStyling: false,
-                    reverseButtons: true
-                }).then(result => {
-                    if (result.isConfirmed) {
-                        document.getElementById('__accion').value = 'crear_orden';
-                        form.submit();
+            if (confirmButton) {
+                confirmButton.addEventListener('click', () => {
+                    if (!validateStep(2) || !validateStep(3)) {
+                        return;
                     }
+                    const mpSelected = mpRadio && mpRadio.checked;
+                    const swalTitle = mpSelected ? 'Pagar con Mercado Pago' : 'Confirmar inscripción';
+                    const swalText = mpSelected
+                        ? 'Al continuar, te redirigiremos a Mercado Pago para completar el pago.'
+                        : '¿Deseás enviar la inscripción con los datos cargados?';
+                    const confirmText = mpSelected ? 'Ir a Mercado Pago' : 'Sí, enviar';
+                    const confirmClass = mpSelected
+                        ? 'btn btn-mercado-pago btn-rounded me-2'
+                        : 'btn btn-gradient btn-rounded me-2';
+                    Swal.fire({
+                        icon: 'question',
+                        title: swalTitle,
+                        text: swalText,
+                        showCancelButton: true,
+                        confirmButtonText: confirmText,
+                        cancelButtonText: 'Cancelar',
+                        customClass: {
+                            confirmButton: confirmClass,
+                            cancelButton: 'btn btn-outline-light btn-rounded'
+                        },
+                        buttonsStyling: false,
+                        reverseButtons: true
+                    }).then(result => {
+                        if (result.isConfirmed) {
+                            document.getElementById('__accion').value = 'crear_orden';
+                            form.submit();
+                        }
+                    });
                 });
-            });
+            }
         })();
     </script>
 </body>
