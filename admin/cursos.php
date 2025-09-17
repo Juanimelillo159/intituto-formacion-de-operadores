@@ -6,9 +6,8 @@ include '../admin/footer.php';
 
 // Traemos todos los cursos (DataTables hará paginación/orden/búsqueda en el cliente)
 $sql_curso = $con->prepare(
-    "SELECT c.*, comp.nombre_complejidad
+    "SELECT c.*
      FROM cursos c
-     LEFT JOIN complejidad comp ON c.id_complejidad = comp.id_complejidad
      ORDER BY c.id_curso DESC"
 );
 $sql_curso->execute();
@@ -22,13 +21,6 @@ $totalCursos = is_array($cursos) ? count($cursos) : 0;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- AdminLTE DataTables CSS -->
-    <link rel="stylesheet" href="../adminlte/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
-    <link rel="stylesheet" href="../adminlte/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
-    <link rel="stylesheet" href="../adminlte/plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
-
-    <!-- Font Awesome (si tu header no lo incluye ya) -->
-    <link rel="stylesheet" href="../adminlte/plugins/fontawesome-free/css/all.min.css">
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -70,7 +62,6 @@ $totalCursos = is_array($cursos) ? count($cursos) : 0;
                                                     <th>Descripción</th>
                                                     <th>Duración</th>
                                                     <th>Complejidad</th>
-                                                    <th>Fecha creación</th>
                                                     <th style="width: 150px">Acciones</th>
                                                 </tr>
                                             </thead>
@@ -105,26 +96,11 @@ $totalCursos = is_array($cursos) ? count($cursos) : 0;
                                                                 <?php endif; ?>
                                                             </td>
                                                             <td>
-                                                                <?php if (!empty($curso['nombre_complejidad'])): ?>
-                                                                    <span class="badge badge-success"><?php echo htmlspecialchars($curso['nombre_complejidad'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                                <?php if (!empty($curso['complejidad'])): ?>
+                                                                    <span class="badge badge-success"><?php echo htmlspecialchars($curso['complejidad'], ENT_QUOTES, 'UTF-8'); ?></span>
                                                                 <?php else: ?>
                                                                     <span class="badge badge-secondary">Sin definir</span>
                                                                 <?php endif; ?>
-                                                            </td>
-                                                            <td
-                                                                <?php
-                                                                // Para orden correcto por fecha en DataTables, añadimos data-order en formato ISO.
-                                                                $iso = !empty($curso['fecha_creacion']) ? date('Y-m-d', strtotime($curso['fecha_creacion'])) : '';
-                                                                echo $iso ? 'data-order="' . htmlspecialchars($iso, ENT_QUOTES, 'UTF-8') . '"' : '';
-                                                                ?>>
-                                                                <?php
-                                                                if (!empty($curso['fecha_creacion'])) {
-                                                                    $timestamp = strtotime($curso['fecha_creacion']);
-                                                                    echo $timestamp ? date('d/m/Y', $timestamp) : htmlspecialchars($curso['fecha_creacion'], ENT_QUOTES, 'UTF-8');
-                                                                } else {
-                                                                    echo 'N/A';
-                                                                }
-                                                                ?>
                                                             </td>
                                                             <td>
                                                                 <div class="btn-group" role="group">
@@ -197,24 +173,7 @@ $totalCursos = is_array($cursos) ? count($cursos) : 0;
         </div>
     </div>
 
-    <!-- jQuery y Bootstrap (normalmente ya vienen con AdminLTE/header.php) -->
-    <script src="../adminlte/plugins/jquery/jquery.min.js"></script>
-    <script src="../adminlte/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
-
-    <!-- DataTables & Plugins -->
-    <script src="../adminlte/plugins/datatables/jquery.dataTables.min.js"></script>
-    <script src="../adminlte/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
-    <script src="../adminlte/plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
-    <script src="../adminlte/plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
-    <script src="../adminlte/plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
-    <script src="../adminlte/plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
-    <script src="../adminlte/plugins/jszip/jszip.min.js"></script>
-    <script src="../adminlte/plugins/pdfmake/pdfmake.min.js"></script>
-    <script src="../adminlte/plugins/pdfmake/vfs_fonts.js"></script>
-    <script src="../adminlte/plugins/datatables-buttons/js/buttons.html5.min.js"></script>
-    <script src="../adminlte/plugins/datatables-buttons/js/buttons.print.min.js"></script>
-    <script src="../adminlte/plugins/datatables-buttons/js/buttons.colVis.min.js"></script>
-
+  
     <script>
         // Confirmación de eliminación
         function confirmarEliminacion(cursoId) {

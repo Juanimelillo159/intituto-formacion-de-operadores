@@ -1,251 +1,419 @@
 <?php
-session_start();
-include("../sbd.php");
-if (!isset($_SESSION['usuario'])) {
-    // Redirigir al usuario a una página de inicio de sesión o mostrar un mensaje de error
-    header("Location: ../index.php");
-    exit;
-} else {
+// procesarsbd.php (sin sesiones)
+declare(strict_types=1);
+require_once __DIR__ . '/../sbd.php';
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_curso'])) {
-        // Recibir los datos del formulario
-        $id_curso = $_POST['id_curso'];
-        $nombre = $_POST['nombre'];
-        $descripcion = $_POST['descripcion'];
-        $duracion = $_POST['duracion'];
-        $objetivos = $_POST['objetivos'];
-        $modalidades = isset($_POST['modalidades']) ? $_POST['modalidades'] : []; // Es un array
-        $dificultad = $_POST['dificultad'];
+/* ===================== LOG ===================== */
+function log_cursos(string $accion, array $data = [], ?Throwable $ex = null): void
+{
+    $logDir = __DIR__ . '/../logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+    }
+    $file = $logDir . '/cursos.log';
+    $ip  = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+    $now = (new DateTime('now'))->format('Y-m-d H:i:s');
+    $row = ['ts' => $now, 'user' => 'anon', 'ip' => $ip, 'accion' => $accion, 'data' => $data];
+    if ($ex) {
+        $row['error'] = [
+            'type'    => get_class($ex),
+            'message' => $ex->getMessage(),
+            'code'    => (string)$ex->getCode(),
+        ];
+    }
+    @file_put_contents($file, json_encode($row, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
+}
 
-        // Iniciar transacción
-        $con->beginTransaction();
+/* ==================== HELPERS =================== */
+// Normaliza "120.000,50", "120000.50", "$ 120000" -> "120000.50" (string numérica con punto)
+function normalizar_precio(?string $raw): ?string
+{
+    if ($raw === null) return null;
+    $s = trim($raw);
+    if ($s === '') return null;
+    $s = preg_replace('/[^\d\.,]/', '', $s); // deja sólo dígitos, punto, coma
+    if ($s === '') return null;
+    $comma = strrpos($s, ',');
+    $dot = strrpos($s, '.');
+    $decSep = ($comma !== false && $dot !== false)
+        ? (($comma > $dot) ? ',' : '.')
+        : (($comma !== false) ? ',' : '.');
+    if ($decSep === ',') {
+        $s = str_replace('.', '', $s);
+        $s = str_replace(',', '.', $s);
+    } else {
+        $s = str_replace(',', '', $s);
+    }
+    if (!is_numeric($s)) return null;
+    return $s;
+}
 
-        try {
-            // Actualizar el curso en la base de datos
-            $sql_editar_curso = $con->prepare("UPDATE cursos SET nombre_curso = :nombre, descripcion_curso = :descripcion, duracion = :duracion, objetivos = :objetivos, id_complejidad = :dificultad WHERE id_curso = :id_curso");
-            $sql_editar_curso->bindParam(':nombre', $nombre);
-            $sql_editar_curso->bindParam(':descripcion', $descripcion);
-            $sql_editar_curso->bindParam(':duracion', $duracion);
-            $sql_editar_curso->bindParam(':objetivos', $objetivos);
-            $sql_editar_curso->bindParam(':dificultad', $dificultad);
-            $sql_editar_curso->bindParam(':id_curso', $id_curso);
-            $sql_editar_curso->execute();
+// Convierte input "YYYY-MM-DDTHH:MM" a "Y-m-d H:i:s"
+function parse_dt_local(string $v): string
+{
+    $v = trim($v);
+    if ($v === '') throw new InvalidArgumentException('Fecha inválida');
+    $v = str_replace('T', ' ', $v);
+    if (strlen($v) === 16) $v .= ':00';
+    $dt = DateTime::createFromFormat('Y-m-d H:i:s', $v);
+    if (!$dt) throw new InvalidArgumentException('Fecha inválida');
+    return $dt->format('Y-m-d H:i:s');
+}
 
-            // Borrar las modalidades actuales del curso
-            $sql_borrar_modalidades = $con->prepare("DELETE FROM curso_modalidad WHERE id_curso = :id_curso");
-            $sql_borrar_modalidades->bindParam(':id_curso', $id_curso);
-            $sql_borrar_modalidades->execute();
-
-            // Insertar las nuevas modalidades seleccionadas
-            $sql_insertar_modalidad = $con->prepare("INSERT INTO curso_modalidad (id_curso, id_modalidad) VALUES (:id_curso, :id_modalidad)");
-            foreach ($modalidades as $id_modalidad) {
-                $sql_insertar_modalidad->bindParam(':id_curso', $id_curso);
-                $sql_insertar_modalidad->bindParam(':id_modalidad', $id_modalidad);
-                $sql_insertar_modalidad->execute();
-            }
-
-            // Confirmar transacción
-            $con->commit();
-
-            // Redirigir a la página del curso
-            header('Location: curso.php?id_curso=' . $id_curso);
-            exit;
-        } catch (Exception $e) {
-            // Si hay un error, revertir transacción
-            $con->rollBack();
-            echo "Error al editar el curso: " . $e->getMessage();
-        }
+/* =================== MAIN FLOW ================== */
+try {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        throw new RuntimeException('Método no permitido');
+    }
+    if (!($con instanceof PDO)) {
+        throw new RuntimeException('Conexión PDO inválida.');
     }
 
+    $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $con->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_curso'])) {
-        // Recibir los datos del formulario
-        $nombre = $_POST['nombre'];
-        $descripcion = $_POST['descripcion'];
-        $duracion = $_POST['duracion'];
-        $objetivos = $_POST['objetivos'];
-        $modalidades = $_POST['modalidades']; // Es un array con las modalidades seleccionadas
-        $complejidad = $_POST['complejidad'];
+    // Fallback para acciones cuando el submit se hace por JS
+    $accion = $_POST['__accion'] ?? '';
 
-        // Iniciar una transacción para asegurar que ambas inserciones sean atómicas
+    $isAgregarPrecio = isset($_POST['agregar_precio']) || ($accion === 'agregar_precio');
+    $isEditarCurso   = isset($_POST['editar_curso'])   || ($accion === 'editar_curso');
+    $isAgregarCurso  = isset($_POST['agregar_curso'])  || ($accion === 'agregar_curso');
+
+    /* =============== AGREGAR PRECIO (HISTÓRICO) =============== */
+    if ($isAgregarPrecio) {
+        $id_curso   = (int)($_POST['id_curso'] ?? 0);
+        $precioRaw  = $_POST['precio'] ?? null;
+        $desdeRaw   = $_POST['desde'] ?? null;
+        $comentario = trim($_POST['comentario'] ?? '') ?: 'Alta manual en curso';
+
+        if ($id_curso <= 0) throw new InvalidArgumentException('Curso inválido.');
+        $precio = normalizar_precio($precioRaw);
+        if ($precio === null) throw new InvalidArgumentException('Precio inválido.');
+        $desde  = parse_dt_local((string)$desdeRaw);
+
         $con->beginTransaction();
 
-        try {
-            // Insertar el curso en la base de datos
-            $sql_insertar_curso = $con->prepare("
-            INSERT INTO cursos (nombre_curso, descripcion_curso, duracion, objetivos, id_complejidad)
-            VALUES (:nombre, :descripcion, :duracion, :objetivos, :complejidad)
-        ");
-            $sql_insertar_curso->bindParam(':nombre', $nombre);
-            $sql_insertar_curso->bindParam(':descripcion', $descripcion);
-            $sql_insertar_curso->bindParam(':duracion', $duracion);
-            $sql_insertar_curso->bindParam(':objetivos', $objetivos);
-            $sql_insertar_curso->bindParam(':complejidad', $complejidad);
-            $sql_insertar_curso->execute();
-
-            // Obtener el último ID insertado (id_curso)
-            $id_curso = $con->lastInsertId();
-
-            // Insertar cada modalidad seleccionada en la tabla curso_modalidad
-            $sql_insertar_modalidad = $con->prepare("
-            INSERT INTO curso_modalidad (id_curso, id_modalidad) VALUES (:id_curso, :id_modalidad)
-        ");
-
-            foreach ($modalidades as $id_modalidad) {
-                $sql_insertar_modalidad->bindParam(':id_curso', $id_curso);
-                $sql_insertar_modalidad->bindParam(':id_modalidad', $id_modalidad);
-                $sql_insertar_modalidad->execute();
-            }
-
-            // Confirmar la transacción
-            $con->commit();
-
-            // Redirigir después de la inserción
-            header('Location: cursos.php');
-            exit;
-        } catch (Exception $e) {
-            // Si hay un error, revertir la transacción
-            $con->rollBack();
-            echo "Error al insertar el curso: " . $e->getMessage();
+        // (0) no duplicar exacto mismo vigente_desde
+        $st = $con->prepare("SELECT 1 FROM curso_precio_hist WHERE id_curso = :c AND vigente_desde = :d LIMIT 1");
+        $st->execute([':c' => $id_curso, ':d' => $desde]);
+        if ($st->fetchColumn()) {
+            throw new RuntimeException('Ya existe un precio con esa fecha de vigencia.');
         }
+
+        // (1) próximo precio (si lo hay) -> tope del nuevo
+        $stNext = $con->prepare("
+          SELECT id, vigente_desde
+            FROM curso_precio_hist
+           WHERE id_curso = :c
+             AND vigente_desde > :d
+        ORDER BY vigente_desde ASC
+           LIMIT 1
+        ");
+        $stNext->execute([':c' => $id_curso, ':d' => $desde]);
+        $next = $stNext->fetch();
+        $nuevoHasta = null;
+        if ($next) {
+            $dt = new DateTime($next['vigente_desde']);
+            $dt->modify('-1 second');
+            $nuevoHasta = $dt->format('Y-m-d H:i:s');
+        }
+
+        // (2) cerrar precio(s) que cubran el instante "desde"
+        // FIX HY093: no repetir el mismo placeholder varias veces
+        $up = $con->prepare("
+          UPDATE curso_precio_hist
+             SET vigente_hasta = DATE_SUB(:d0, INTERVAL 1 SECOND)
+           WHERE id_curso = :c
+             AND vigente_desde < :d1
+             AND (vigente_hasta IS NULL OR vigente_hasta >= :d2)
+        ");
+        $up->execute([':d0' => $desde, ':c' => $id_curso, ':d1' => $desde, ':d2' => $desde]);
+
+        // (3) insertar nuevo
+        $ins = $con->prepare("
+          INSERT INTO curso_precio_hist (id_curso, precio, moneda, vigente_desde, vigente_hasta, comentario)
+          VALUES (:c, :p, 'ARS', :d, :h, :com)
+        ");
+        $ins->execute([
+            ':c' => $id_curso,
+            ':p' => $precio,
+            ':d' => $desde,
+            ':h' => $nuevoHasta,
+            ':com' => $comentario
+        ]);
+
+        $con->commit();
+        log_cursos('agregar_precio_ok', ['id_curso' => $id_curso, 'precio' => $precio, 'desde' => $desde, 'hasta' => $nuevoHasta]);
+
+        header('Location: curso.php?id_curso=' . $id_curso . '&tab=precios&saved=1');
+        exit;
     }
 
+    /* ======================== EDITAR CURSO ======================== */
+    if ($isEditarCurso) {
+        $id_curso     = (int)($_POST['id_curso'] ?? 0);
+        $nombre       = trim($_POST['nombre'] ?? '');
+        $descripcion  = trim($_POST['descripcion'] ?? '');
+        $duracion     = trim($_POST['duracion'] ?? '');
+        $objetivos    = trim($_POST['objetivos'] ?? '');
+        $complejidad  = trim($_POST['complejidad'] ?? ''); // VARCHAR
+        $programa     = trim($_POST['programa'] ?? '');
+        $publico      = trim($_POST['publico'] ?? '');
+        $cronograma   = trim($_POST['cronograma'] ?? '');
+        $requisitos   = trim($_POST['requisitos'] ?? '');
+        $observaciones = trim($_POST['observaciones'] ?? '');
+        $modalidades  = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
 
+        if ($id_curso <= 0 || $nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '' || $complejidad === '') {
+            throw new InvalidArgumentException('Campos obligatorios faltantes para edición.');
+        }
 
+        $con->beginTransaction();
 
+        $sql = $con->prepare("
+            UPDATE cursos
+               SET nombre_curso     = :nombre,
+                   descripcion_curso = :descripcion,
+                   duracion          = :duracion,
+                   objetivos         = :objetivos,
+                   complejidad       = :complejidad,
+                   programa          = :programa,
+                   publico           = :publico,
+                   cronograma        = :cronograma,
+                   requisitos        = :requisitos,
+                   observaciones     = :observaciones
+             WHERE id_curso         = :id
+        ");
+        $sql->execute([
+            ':nombre' => $nombre,
+            ':descripcion' => $descripcion,
+            ':duracion' => $duracion,
+            ':objetivos' => $objetivos,
+            ':complejidad' => $complejidad,
+            ':programa' => $programa,
+            ':publico' => $publico,
+            ':cronograma' => $cronograma,
+            ':requisitos' => $requisitos,
+            ':observaciones' => $observaciones,
+            ':id' => $id_curso,
+        ]);
 
-    if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["agregar_banner"])) {
-        // Recibir los datos del formulario
-        $nombre_banner = $_POST['nombre_banner'];
-        $imagen = $_FILES['imagen_banner'];
+        // Reemplazar modalidades
+        $del = $con->prepare("DELETE FROM curso_modalidad WHERE id_curso = :id");
+        $del->execute([':id' => $id_curso]);
+        if (!empty($modalidades)) {
+            $ins = $con->prepare("INSERT INTO curso_modalidad (id_curso, id_modalidad) VALUES (:c, :m)");
+            foreach ($modalidades as $m) {
+                $ins->execute([':c' => $id_curso, ':m' => (int)$m]);
+            }
+        }
 
-        // Verificar si se subió un archivo
-        if ($imagen['error'] === UPLOAD_ERR_OK) {
-            // Verificar si es una imagen válida (tipo MIME)
+        $con->commit();
+        log_cursos('editar_curso_ok', ['id_curso' => $id_curso, 'modalidades' => $modalidades]);
+
+        header('Location: curso.php?id_curso=' . $id_curso . '&saved=1');
+        exit;
+    }
+
+    /* ======================== AGREGAR CURSO ======================= */
+    if ($isAgregarCurso) {
+        $nombre        = trim($_POST['nombre'] ?? '');
+        $descripcion   = trim($_POST['descripcion'] ?? '');
+        $duracion      = trim($_POST['duracion'] ?? '');
+        $complejidad   = trim($_POST['complejidad'] ?? ''); // VARCHAR
+        $objetivos     = trim($_POST['objetivos'] ?? '');
+        $programa      = trim($_POST['programa'] ?? '');
+        $publico       = trim($_POST['publico'] ?? '');
+        $cronograma    = trim($_POST['cronograma'] ?? '');
+        $requisitos    = trim($_POST['requisitos'] ?? '');
+        $observaciones = trim($_POST['observaciones'] ?? '');
+        $modalidades   = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
+
+        // Precio inicial opcional (si el form manda "precio")
+        $precioInicialRaw = $_POST['precio'] ?? null;
+        $precioInicial    = normalizar_precio($precioInicialRaw);
+
+        if ($nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '' || $complejidad === '') {
+            throw new InvalidArgumentException('Faltan campos obligatorios.');
+        }
+
+        $con->beginTransaction();
+
+        $insCurso = $con->prepare("
+            INSERT INTO cursos (
+                nombre_curso, descripcion_curso, duracion, objetivos,
+                cronograma, publico, programa, requisitos, observaciones,
+                complejidad
+            ) VALUES (
+                :nombre, :descripcion, :duracion, :objetivos,
+                :cronograma, :publico, :programa, :requisitos, :observaciones,
+                :complejidad
+            )
+        ");
+        $insCurso->execute([
+            ':nombre'        => $nombre,
+            ':descripcion'   => $descripcion,
+            ':duracion'      => $duracion,
+            ':objetivos'     => $objetivos,
+            ':cronograma'    => $cronograma,
+            ':publico'       => $publico,
+            ':programa'      => $programa,
+            ':requisitos'    => $requisitos,
+            ':observaciones' => $observaciones,
+            ':complejidad'   => $complejidad,
+        ]);
+
+        $id_curso = (int)$con->lastInsertId();
+
+        if (!empty($modalidades)) {
+            $insMod = $con->prepare("INSERT INTO curso_modalidad (id_curso, id_modalidad) VALUES (:c, :m)");
+            foreach ($modalidades as $m) {
+                $insMod->execute([':c' => $id_curso, ':m' => (int)$m]);
+            }
+        }
+
+        // Precio inicial (si vino). Fecha = NOW()
+        if ($precioInicial !== null) {
+            $nuevoHasta = null;
+            $stNext = $con->prepare("
+              SELECT vigente_desde
+                FROM curso_precio_hist
+               WHERE id_curso = :c AND vigente_desde > NOW()
+            ORDER BY vigente_desde ASC
+               LIMIT 1
+            ");
+            $stNext->execute([':c' => $id_curso]);
+            $next = $stNext->fetchColumn();
+            if ($next) {
+                $dt = new DateTime($next);
+                $dt->modify('-1 second');
+                $nuevoHasta = $dt->format('Y-m-d H:i:s');
+            }
+
+            $con->prepare("
+              UPDATE curso_precio_hist
+                 SET vigente_hasta = DATE_SUB(NOW(), INTERVAL 1 SECOND)
+               WHERE id_curso = :c
+                 AND vigente_desde <  NOW()
+                 AND (vigente_hasta IS NULL OR vigente_hasta >= NOW())
+            ")->execute([':c' => $id_curso]);
+
+            $con->prepare("
+              INSERT INTO curso_precio_hist (id_curso, precio, moneda, vigente_desde, vigente_hasta, comentario)
+              VALUES (:c, :p, 'ARS', NOW(), :h, 'Alta inicial de curso')
+            ")->execute([':c' => $id_curso, ':p' => $precioInicial, ':h' => $nuevoHasta]);
+        }
+
+        $con->commit();
+        log_cursos('agregar_curso_ok', [
+            'id_curso'    => $id_curso,
+            'nombre'      => $nombre,
+            'complejidad' => $complejidad,
+            'modalidades' => $modalidades,
+            'precio_inicial' => $precioInicial,
+        ]);
+
+        header('Location: cursos.php');
+        exit;
+    }
+
+    /* ========================= BANNERS ========================= */
+    if (isset($_POST['agregar_banner'])) {
+        log_cursos('agregar_banner_inicio', ['post' => array_keys($_POST), 'files' => array_keys($_FILES)]);
+
+        $nombre_banner = $_POST['nombre_banner'] ?? '';
+        $imagen        = $_FILES['imagen_banner'] ?? null;
+
+        if (!$imagen || $imagen['error'] !== UPLOAD_ERR_OK) {
+            throw new RuntimeException('Error al subir la imagen.');
+        }
+
+        $mime = mime_content_type($imagen['tmp_name']);
+        $permitidos = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($mime, $permitidos, true)) {
+            throw new InvalidArgumentException('Tipo de imagen no permitido.');
+        }
+
+        $ext = pathinfo($imagen['name'], PATHINFO_EXTENSION);
+        $nombre_imagen = uniqid('imagen_') . ".$ext";
+        $destDir = __DIR__ . '/../imagenes/banners';
+        if (!is_dir($destDir)) {
+            mkdir($destDir, 0755, true);
+        }
+        $dest = $destDir . '/' . $nombre_imagen;
+
+        if (!move_uploaded_file($imagen['tmp_name'], $dest)) {
+            throw new RuntimeException('No se pudo mover la imagen.');
+        }
+
+        $sql = $con->prepare("INSERT INTO banner (nombre_banner, imagen_banner) VALUES (:n, :img)");
+        $sql->execute([':n' => $nombre_banner, ':img' => $nombre_imagen]);
+
+        log_cursos('agregar_banner_ok', ['nombre_banner' => $nombre_banner, 'imagen' => $nombre_imagen]);
+        header('Location: /p/admin/carrusel.php');
+        exit;
+    }
+
+    if (isset($_POST['editar_banner'])) {
+        log_cursos('editar_banner_inicio', ['post' => array_keys($_POST), 'files' => array_keys($_FILES)]);
+
+        $id_banner     = (int)($_POST['id_banner'] ?? 0);
+        $nombre_banner = $_POST['nombre_banner'] ?? '';
+        $imagen        = $_FILES['imagen_banner'] ?? null;
+
+        if ($id_banner <= 0) throw new InvalidArgumentException('id_banner inválido.');
+
+        if ($imagen && $imagen['error'] === UPLOAD_ERR_OK) {
             $mime = mime_content_type($imagen['tmp_name']);
             $permitidos = ['image/jpeg', 'image/png', 'image/gif'];
-
-            if (in_array($mime, $permitidos)) {
-                // Obtener la extensión del archivo
-                $extension = pathinfo($imagen['name'], PATHINFO_EXTENSION);
-                // Generar un nombre único para el archivo
-                $nombre_imagen = uniqid('imagen_') . ".$extension";
-
-                // Definir la ruta de destino
-                $ruta_destino = "../imagenes/banners/$nombre_imagen";
-
-                // Verificar si la carpeta de destino existe, si no, crearla
-                if (!is_dir("../imagenes/banners")) {
-                    mkdir("../imagenes/banners", 0755, true);
-                }
-
-                // Mover el archivo a la carpeta de imágenes
-                if (move_uploaded_file($imagen['tmp_name'], $ruta_destino)) {
-                    // Insertar el nombre de la imagen en la base de datos
-                    $sql_insertar_imagen = $con->prepare("INSERT INTO banner (nombre_banner, imagen_banner) VALUES (:nombre_banner, :imagen_banner)");
-                    $sql_insertar_imagen->bindParam(':nombre_banner', $nombre_banner);
-                    $sql_insertar_imagen->bindParam(':imagen_banner', $nombre_imagen);
-
-                    if ($sql_insertar_imagen->execute()) {
-                        echo
-                        "<script>
-                        alert('imagen agregada correctamente');
-                        window.location.href = '/p/admin/carrusel.php'; // Redirigir al login o a la página actual
-                    </script>";
-                    } else {
-                        echo "Error al insertar en la base de datos.";
-                    }
-                } else {
-                    echo "Error al mover el archivo a la carpeta de destino.";
-                }
-            } else {
-                echo "El archivo no es una imagen válida. Sólo se permiten JPG, PNG y GIF.";
+            if (!in_array($mime, $permitidos, true)) {
+                throw new InvalidArgumentException('Tipo de imagen no permitido.');
             }
+            $ext = pathinfo($imagen['name'], PATHINFO_EXTENSION);
+            $nombre_imagen = uniqid('imagen_') . ".$ext";
+            $destDir = __DIR__ . '/../imagenes/banners';
+            if (!is_dir($destDir)) {
+                mkdir($destDir, 0755, true);
+            }
+            $dest = $destDir . '/' . $nombre_imagen;
+            if (!move_uploaded_file($imagen['tmp_name'], $dest)) {
+                throw new RuntimeException('No se pudo mover la imagen.');
+            }
+
+            // nombre anterior
+            $st = $con->prepare("SELECT imagen_banner FROM banner WHERE id_banner = :id");
+            $st->execute([':id' => $id_banner]);
+            $anterior = $st->fetchColumn();
+
+            $up = $con->prepare("UPDATE banner SET nombre_banner = :n, imagen_banner = :img WHERE id_banner = :id");
+            $up->execute([':n' => $nombre_banner, ':img' => $nombre_imagen, ':id' => $id_banner]);
+
+            if ($anterior && is_file($destDir . '/' . $anterior)) {
+                @unlink($destDir . '/' . $anterior);
+            }
+
+            log_cursos('editar_banner_ok', ['id_banner' => $id_banner, 'imagen' => $nombre_imagen]);
+            header('Location: /p/admin/carrusel.php');
+            exit;
         } else {
-            echo "Error al subir la imagen: " . $imagen['error'];
+            // solo nombre
+            $up = $con->prepare("UPDATE banner SET nombre_banner = :n WHERE id_banner = :id");
+            $up->execute([':n' => $nombre_banner, ':id' => $id_banner]);
+
+            log_cursos('editar_banner_ok', ['id_banner' => $id_banner, 'solo_nombre' => true]);
+            header('Location: /p/admin/carrusel.php');
+            exit;
         }
     }
 
-    if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["editar_banner"])) {
-        // Recibir los datos del formulario
-        $id_banner = $_POST["id_banner"];
-        $nombre_banner = $_POST["nombre_banner"];
-        $imagen = $_FILES["imagen_banner"];
-
-        // Verificar si se subió una imagen
-        if ($imagen["error"] === UPLOAD_ERR_OK) {
-            // Verificar si es una imagen válida (tipo MIME)
-            $mime = mime_content_type($imagen["tmp_name"]);
-            $permitidos = ["image/jpeg", "image/png", "image/gif"];
-
-            if (in_array($mime, $permitidos)) {
-                // Obtener la extensión del archivo
-                $extension = pathinfo($imagen["name"], PATHINFO_EXTENSION);
-                // Generar un nombre único para el archivo
-                $nombre_imagen = uniqid("imagen_") . ".$extension";
-
-                // Definir la ruta de destino
-                $ruta_destino = "../imagenes/banners/$nombre_imagen";
-
-                // Verificar si la carpeta de destino existe, si no, crearla
-                if (!is_dir("../imagenes/banners")) {
-                    mkdir("../imagenes/banners", 0755, true);
-                }
-
-                // Mover el archivo a la carpeta de imágenes
-                if (move_uploaded_file($imagen["tmp_name"], $ruta_destino)) {
-                    // Obtener el nombre de la imagen actual
-                    $sql_nombre_imagen = $con->prepare("SELECT imagen_banner FROM banner WHERE id_banner = :id_banner");
-                    $sql_nombre_imagen->bindParam(":id_banner", $id_banner);
-                    $sql_nombre_imagen->execute();
-                    $nombre_imagen_actual = $sql_nombre_imagen->fetchColumn();
-
-                    // Actualizar el registro en la base de datos, incluyendo el nuevo nombre e imagen
-                    $sql_editar_banner = $con->prepare("UPDATE banner SET nombre_banner = :nombre_banner, imagen_banner = :imagen_banner WHERE id_banner = :id_banner");
-                    $sql_editar_banner->bindParam(":nombre_banner", $nombre_banner);
-                    $sql_editar_banner->bindParam(":imagen_banner", $nombre_imagen);
-                    $sql_editar_banner->bindParam(":id_banner", $id_banner);
-
-                    if ($sql_editar_banner->execute()) {
-                        // Eliminar la imagen anterior
-                        if (unlink("../imagenes/banners/$nombre_imagen_actual")) {
-                            echo
-                            "<script>
-                            alert('Imagen y nombre actualizados correctamente.');
-                            window.location.href = '/p/admin/carrusel.php';
-                        </script>";
-                        } else {
-                            echo "Error al eliminar la imagen anterior.";
-                        }
-                    } else {
-                        echo "Error al actualizar en la base de datos.";
-                    }
-                } else {
-                    echo "Error al mover el archivo a la carpeta de destino.";
-                }
-            } else {
-                echo "El archivo no es una imagen válida. Sólo se permiten JPG, PNG y GIF.";
-            }
-        } else {
-            // Si no se sube imagen, solo actualizar el nombre del banner
-            if ($imagen["error"] === UPLOAD_ERR_NO_FILE) {
-                // Actualizar solo el nombre en la base de datos
-                $sql_editar_banner = $con->prepare("UPDATE banner SET nombre_banner = :nombre_banner WHERE id_banner = :id_banner");
-                $sql_editar_banner->bindParam(":nombre_banner", $nombre_banner);
-                $sql_editar_banner->bindParam(":id_banner", $id_banner);
-
-                if ($sql_editar_banner->execute()) {
-                    echo
-                    "<script>
-                    alert('Nombre del banner actualizado correctamente.');
-                    window.location.href = '/p/admin/carrusel.php';
-                </script>";
-                } else {
-                    echo "Error al actualizar el nombre en la base de datos.";
-                }
-            } else {
-                echo "Error al subir la imagen: " . $imagen["error"];
-            }
-        }
+    // Si llegó acá, no coincidió ninguna acción
+    throw new RuntimeException('Acción no reconocida.');
+} catch (Throwable $e) {
+    if (isset($con) && $con instanceof PDO && $con->inTransaction()) {
+        $con->rollBack();
     }
+    log_cursos('error', ['post_keys' => array_keys($_POST ?? [])], $e);
+    http_response_code(400);
+    echo "Ocurrió un error al procesar la solicitud. Revisa el log para más detalles.";
+    exit;
 }
