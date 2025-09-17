@@ -1,3 +1,17 @@
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+/*  */
+?>
+
+<head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" type="image/png" href="icono.png">
+</head>
 <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
     <div class="container">
         <a class="navbar-brand" href="index.php">
@@ -18,14 +32,27 @@
                     <a class="nav-link" href="index.php#cursos">Cursos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="index.php#contacto">Contáctanos</a>
+                    <a class="nav-link" href="index.php#contacto">Contactanos</a>
                 </li>
                 <?php
-                if (isset($_SESSION["usuario"])) { ?>
-                    <li class="nav-item">
-                        <a class="text-decoration-none" href="admin/admin.php">
+                $permiso = isset($_SESSION["permiso"]) ? (int)$_SESSION["permiso"] : null;
+                if (isset($_SESSION["usuario"])) {
+                    if ($permiso === 1) { ?>
+                        <li class="nav-item">
+                            <a class="text-decoration-none" href="admin/admin.php">
+                                <button class="button-nav">
+                                    panel adm
+                                    <div class="arrow-wrapper">
+                                        <div class="arrow"></div>
+                                    </div>
+                                </button>
+                            </a>
+                        </li>
+                    <?php } ?>
+                    <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
+                        <a class="text-decoration-none" href="admin/cerrar_sesion.php">
                             <button class="button-nav">
-                                panel adm
+                                cerrar sesion
                                 <div class="arrow-wrapper">
                                     <div class="arrow"></div>
                                 </div>

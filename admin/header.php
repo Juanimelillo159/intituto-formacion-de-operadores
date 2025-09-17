@@ -1,12 +1,19 @@
 <?php
 session_start();
 
-// Verificar si no hay una sesión iniciada
-/* if (!isset($_SESSION['usuario'])) {
-  // Redirigir al usuario a una página de inicio de sesión o mostrar un mensaje de error
+// Verificar si hay una sesion iniciada
+if (!isset($_SESSION['usuario'])) {
   header("Location: ../index.php");
-  exit; 
-} */ ?>
+  exit;
+}
+
+// Permitir acceso solo a usuarios con rol de administrador (permiso 1)
+if (!isset($_SESSION['permiso']) || (int)$_SESSION['permiso'] !== 1) {
+  header("Location: ../index.php");
+  exit;
+}
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -43,11 +50,6 @@ session_start();
   <link rel="stylesheet" href="../admin/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="../admin/css/responsive.bootstrap4.min.css">
   <link rel="stylesheet" href="../admin/css/buttons.bootstrap4.min.css">
-  <link rel="stylesheet" href="../assets/styles/style.css">
-  <!-- Bootstrap 3.3.7 -->
-  <!-- <link rel="stylesheet" href="../admin/css/bootstrap.min.css"> -->
-
-  <link rel="icon" type="image/png" href="../assets/iconos/icono.png">
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed layout-footer-fixed">
@@ -75,24 +77,20 @@ session_start();
 
       <!-- Right navbar links -->
       <ul class="navbar-nav ml-auto">
-        <!-- Navbar Search -->
         <li class="dropdown user user-menu">
           <a href="#" class="dropdown-toggle" data-toggle="dropdown">
             <span class="hidden-xs"><?php echo $_SESSION["email"]; ?></span>
           </a>
           <ul class="dropdown-menu">
-            <!-- User image -->
             <li class="user-header">
               <img src="../logos/LOGO PNG-04.png" class="img-circle" alt="User Image">
-
               <p>
-                <?php echo ("nombre del usuario"); ?>
+                <?php echo "Usuario"; ?>
               </p>
             </li>
-            <!-- Menu Footer-->
             <li class="user-footer">
               <div class="pull-right">
-                <a href="cerrar_sesion.php" class="btn btn-default btn-flat">Cerrar Sesión</a>
+                <a href="cerrar_sesion.php" class="btn btn-default btn-flat">Cerrar sesion</a>
               </div>
             </li>
           </ul>
