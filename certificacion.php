@@ -11,7 +11,6 @@ $id_certificacion = $_GET['id_certificacion'] ?? null;
 $sql_item = $con->prepare("
   SELECT * 
   FROM cursos c 
-  JOIN complejidad n ON c.id_complejidad = n.id_complejidad 
   WHERE c.id_curso = :id
 ");
 $sql_item->bindParam(':id', $id_certificacion);
@@ -139,7 +138,7 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                                 <div class="detail-label">Nivel</div>
                                 <div class="detail-value">
                                     <?php
-                                    $nivel = strtolower($cert["nombre_complejidad"] ?? '');
+                                    $nivel = strtolower($cert["complejidad"] ?? '');
                                     $badge_class = 'badge-intermediate';
                                     if (strpos($nivel, 'principiante') !== false || strpos($nivel, 'básico') !== false || strpos($nivel, 'basico') !== false) {
                                         $badge_class = 'badge-beginner';
@@ -147,7 +146,7 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                                         $badge_class = 'badge-advanced';
                                     }
                                     ?>
-                                    <span class="badge-level <?php echo $badge_class; ?>"><?php echo htmlspecialchars($cert["nombre_complejidad"] ?? "Intermedio"); ?></span>
+                                    <span class="badge-level <?php echo $badge_class; ?>"><?php echo htmlspecialchars($cert["complejidad"] ?? "Intermedio"); ?></span>
                                 </div>
                             </div>
                         </div>
