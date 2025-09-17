@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -14,6 +14,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["registrar_usuario"]))
     $email = isset($_POST["email"]) ? trim($_POST["email"]) : "";
     $password = isset($_POST["clave"]) ? $_POST["clave"] : "";
     $confirm = isset($_POST["confirmar_clave"]) ? $_POST["confirmar_clave"] : "";
+    $acepta_terminos = isset($_POST["aceptar_terminos"]) && $_POST["aceptar_terminos"] === "on";
+
+    if (!$acepta_terminos) {
+        establecerMensajeRegistro('Debes aceptar los terminos y condiciones.', 'danger');
+        header("Location: ../registro.php");
+        exit;
+    }
 
     if ($password !== $confirm) {
         establecerMensajeRegistro('Las contrasenas no coinciden.', 'danger');
@@ -68,3 +75,4 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["registrar_usuario"]))
 header("Location: ../registro.php");
 exit;
 ?>
+
