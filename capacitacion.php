@@ -13,7 +13,6 @@ $id_curso = $_GET['id_curso'] ?? null;
 $sql_cursos = $con->prepare("
     SELECT * 
     FROM cursos c 
-    JOIN complejidad n ON c.id_complejidad = n.id_complejidad 
     WHERE c.id_curso = :id_curso
 ");
 $sql_cursos->bindParam(':id_curso', $id_curso);
@@ -36,10 +35,9 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
 <!DOCTYPE html>
 <html lang="es">
 
-<head>
-    <?php $page_styles = '<link rel="stylesheet" href="assets/styles/style_capacitacion.css">';?>
-    <?php include("head.php"); ?>
-</head>
+<?php $page_styles = '<link rel="stylesheet" href="assets/styles/style_capacitacion.css">'; ?>
+<?php include("head.php"); ?>
+
 
 <body class="capacitaciones">
     <?php include("nav.php"); ?>
@@ -149,7 +147,7 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                                 <div class="detail-label">Nivel</div>
                                 <div class="detail-value">
                                     <?php
-                                    $nivel = strtolower($curso["nombre_complejidad"] ?? '');
+                                    $nivel = strtolower($curso["complejidad"] ?? '');
                                     $badge_class = 'badge-intermediate';
                                     if (strpos($nivel, 'principiante') !== false || strpos($nivel, 'básico') !== false || strpos($nivel, 'basico') !== false) {
                                         $badge_class = 'badge-beginner';
@@ -157,7 +155,7 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                                         $badge_class = 'badge-advanced';
                                     }
                                     ?>
-                                    <span class="badge-level <?php echo $badge_class; ?>"><?php echo htmlspecialchars($curso["nombre_complejidad"] ?? "Intermedio"); ?></span>
+                                    <span class="badge-level <?php echo $badge_class; ?>"><?php echo htmlspecialchars($curso["complejidad"] ?? "Intermedio"); ?></span>
                                 </div>
                             </div>
                         </div>
