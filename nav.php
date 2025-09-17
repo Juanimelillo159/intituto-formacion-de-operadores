@@ -37,27 +37,21 @@ if (session_status() === PHP_SESSION_NONE) {
                 <?php
                 $permiso = isset($_SESSION["permiso"]) ? (int)$_SESSION["permiso"] : null;
                 if (isset($_SESSION["usuario"])) {
-                    if ($permiso === 1) { ?>
-                        <li class="nav-item">
-                            <a class="text-decoration-none" href="admin/admin.php">
-                                <button class="button-nav">
-                                    panel adm
-                                    <div class="arrow-wrapper">
-                                        <div class="arrow"></div>
-                                    </div>
-                                </button>
-                            </a>
-                        </li>
-                    <?php } ?>
-                    <li class="nav-item ms-lg-2 mt-2 mt-lg-0">
-                        <a class="text-decoration-none" href="admin/cerrar_sesion.php">
-                            <button class="button-nav">
-                                cerrar sesion
-                                <div class="arrow-wrapper">
-                                    <div class="arrow"></div>
-                                </div>
-                            </button>
+                    ?>
+                    <li class="nav-item dropdown user-menu">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center justify-content-center user-menu-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-user"></i>
                         </a>
+                        <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown" aria-labelledby="userMenu">
+                            <?php if ($permiso === 1) { ?>
+                                <li><a class="dropdown-item" href="admin/admin.php">Panel administrador</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                            <?php } ?>
+                            <li><a class="dropdown-item" href="mis_cursos.php">Mis cursos</a></li>
+                            <li><a class="dropdown-item" href="historial_compras.php">Historial de compras</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="admin/cerrar_sesion.php">Cerrar sesion</a></li>
+                        </ul>
                     </li>
                 <?php } else { ?>
                     <li class="nav-item">
