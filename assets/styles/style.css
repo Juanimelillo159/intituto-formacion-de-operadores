@@ -1,0 +1,619 @@
+@font-face {
+    font-family: "aller_b";
+    src: url("../fuentes/Aller.ttf");
+}
+
+@font-face {
+    font-family: "aller_lt";
+    src: url("../fuentes/Aller_Lt.ttf");
+}
+
+:root {
+    --color-primary: #00BDA3;
+    --color-primary-rgb: 0, 189, 163;
+    --color-secondary: #0014AE;
+    --color-light: #FFFFFF;
+    --color-gray-light: #F5F5F5;
+    --color-gray-dark: #585856;
+    --color-dark: #000000;
+    --navbar-height: 5rem;
+}
+
+body {
+
+    font-family: 'aller_lt';
+    margin: 0;
+    background-color: var(--color-light);
+    background-size: 100px 100px;
+    position: relative;
+    overflow-x: hidden;
+    background: linear-gradient(135deg, #0014AE 0%, #00BDA3 100%);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'aller_b';
+}
+
+.bg-primary {
+    background-color: var(--color-primary) !important;
+}
+
+.bg-secondary {
+    background-color: var(--color-secondary) !important;
+}
+
+.bg-nosotros {
+    background-color: #9ccbf9;
+}
+
+.text-primary {
+    color: var(--color-primary) !important;
+}
+
+.text-secondary {
+    color: var(--color-secondary) !important;
+}
+
+.btn-primary {
+    background-color: var(--color-secondary);
+    border-color: var(--color-secondary);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-secondary {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-secondary);
+    border-color: var(--color-secondary);
+}
+
+.navbar-nav {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-nav .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+.navbar-nav .nav-link {
+    color: var(--color-secondary) !important;
+    font-weight: bold;
+    position: relative;
+    transition: color 0.3s ease-in-out;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+.navbar-nav .nav-link::after {
+    content: '';
+    display: block;
+    width: 0;
+    height: 2px;
+    background-color: var(--color-primary);
+    transition: width 0.3s ease-in-out;
+    position: absolute;
+    left: 0;
+    bottom: -3px;
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--color-primary) !important;
+}
+
+.navbar-nav .nav-link:hover::after {
+    width: 100%;
+}
+
+.navbar-brand img {
+    height: 60px;
+}
+
+.navbar.sticky-top {
+    z-index: 1100;
+}
+
+
+.hero-section {
+    position: relative;
+    /* Altura completa de la pantalla */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 70vh;
+    padding: 5rem 2rem;
+    background: linear-gradient(rgba(0 0 0 / .8), rgba(0 0 0 / .8)), url("../imagenes/fondo/2.png");
+
+    background-size: cover;
+    background-position: center;
+    z-index: 1;
+}
+
+.hero-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 2rem;
+}
+
+.hero-text {
+    flex: 1;
+    color: var(--color-dark);
+    text-align: left;
+    padding: 1rem;
+}
+
+.hero-text h1 {
+    font-size: 2.5rem;
+    /* Aumenta el tamaño del texto */
+    font-weight: bold;
+    color: #fff;
+}
+
+.logo-small {
+    max-width: 240px;
+    /* Cambia el valor para ajustar el tamaño de las imágenes */
+    margin-left: 10px;
+    /* Espacio entre las imágenes */
+}
+
+.footer-logo {
+    max-width: 200px;
+    height: auto;
+}
+
+.social-icons a {
+    color: var(--color-light);
+    font-size: 1.5rem;
+    margin-right: 1rem;
+}
+
+.social-icons a:hover {
+    color: var(--color-primary);
+}
+
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: var(--navbar-height);
+}
+
+section[id] {
+    scroll-margin-top: var(--navbar-height);
+}
+
+.section-padding {
+    padding-top: calc(var(--navbar-height) + 20px);
+    padding-bottom: 50px;
+}
+
+.contact-section {
+    padding-bottom: 2rem;
+    /* Añade padding inferior */
+}
+
+.contact-image {
+    max-width: 80%;
+    /* Reduce el tamaño de la imagen al 60% */
+    height: auto;
+    display: block;
+    border: solid 5px var(--color-secondary);
+    border-radius: 25px;
+}
+
+.service-subtitle {
+    font-size: 1.2rem;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+}
+
+.service-title {
+    font-size: 2.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.service-list li {
+    font-size: 1.9rem;
+    margin-bottom: 1rem;
+}
+
+.btn-lg {
+    font-size: 1.2rem;
+    padding: 0.75rem 1.5rem;
+}
+
+#imageCarousel {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.carousel-item img {
+    height: 400px;
+    object-fit: cover;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+    width: 5%;
+}
+
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    padding: 10px;
+}
+
+.login-container {
+    max-width: 400px;
+    margin: 100px auto;
+    padding: 30px;
+    background-color: var(--color-light);
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+.login-logo {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.login-logo img {
+    max-width: 200px;
+}
+
+
+.form-control:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 0.2rem rgba(0, 189, 163, 0.25);
+}
+
+.nav-item a .button-nav {
+    --primary-color: #00BDA3;
+    --secondary-color: #fff;
+    --hover-color: #111;
+    --arrow-width: 10px;
+    --arrow-stroke: 2px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6em;
+    padding: 0.5rem 1.5rem;
+    font-weight: bold;
+    color: var(--secondary-color);
+    background-color: var(--primary-color);
+    border:0;
+    border-radius: 20px;
+    margin-top: 0;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.nav-item a .button-nav .arrow-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.nav-item a .button-nav .arrow {
+    margin-top: 1px;
+    width: var(--arrow-width);
+    background: var(--primary-color);
+    height: var(--arrow-stroke);
+    position: relative;
+    transition: 0.2s;
+}
+
+.nav-item a .button-nav .arrow::before {
+    content: "";
+    box-sizing: border-box;
+    position: absolute;
+    border: solid var(--secondary-color);
+    border-width: 0 var(--arrow-stroke) var(--arrow-stroke) 0;
+    display: inline-block;
+    top: -3px;
+    right: 3px;
+    transition: 0.2s;
+    padding: 3px;
+    transform: rotate(-45deg);
+}
+
+.nav-item a .button-nav:hover {
+    background-color: var(--hover-color);
+}
+
+.nav-item a .button-nav:hover .arrow {
+    background: var(--secondary-color);
+}
+
+
+.nav-item a .button-nav:hover .arrow:before {
+    right: 0;
+}
+
+/* From Uiverse.io by vinodjangid07 */
+.button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background-color: var(--color-secondary);
+    border: none;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0px 0px 0px 4px rgba(0, 0, 0, 0.253);
+    cursor: pointer;
+    transition-duration: 0.3s;
+    overflow: hidden;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+}
+
+.svgIcon {
+    width: 12px;
+    transition-duration: 0.3s;
+}
+
+.svgIcon path {
+    fill: white;
+}
+
+.button:hover {
+    width: 140px;
+    border-radius: 50px;
+    transition-duration: 0.3s;
+    background-color: var(--color-primary);
+    align-items: center;
+}
+
+.button:hover .svgIcon {
+    /* width: 20px; */
+    transition-duration: 0.3s;
+    transform: translateY(-200%);
+}
+
+.button::before {
+    position: absolute;
+    bottom: -20px;
+    content: "Volver al inicio";
+    color: white;
+    /* transition-duration: .3s; */
+    font-size: 0px;
+}
+
+.button:hover::before {
+    font-size: 13px;
+    opacity: 1;
+    bottom: unset;
+    /* transform: translateY(-30px); */
+    transition-duration: 0.3s;
+}
+
+.icono {
+    width: 80px;
+    height: 60px;
+    display: inline-block;
+    line-height: 20px;
+    text-align: center;
+}
+
+
+
+@media (max-width: 768px) {
+    .logos-container {
+        flex-direction: column;
+    }
+
+    .hero-section {
+        padding: 3rem 1rem;
+    }
+
+    .hero-logo {
+        max-width: 80%;
+        margin-bottom: 1rem;
+    }
+
+    .hero-text h1 {
+        font-size: 1.75rem;
+    }
+}
+
+@media (min-width: 769px) {
+    .hero-section {
+        padding: 5rem 2rem;
+    }
+
+    .hero-logo {
+        max-width: 50%;
+    }
+}
+
+.subrayado {
+    text-decoration: underline;
+}
+
+.product-card {
+    margin-bottom: 30px;
+}
+
+.product-image {
+    height: 200px;
+    object-fit: cover;
+}
+
+.card-title {
+    flex-shrink: 0;
+    /* Evita que el título se contraiga */
+    font-size: 1.25rem;
+    margin-bottom: 0.5rem;
+}
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    justify-content: center;
+}
+
+.card-text {
+    flex-grow: 1;
+    line-height: 1.5em;
+    /* Define la altura de la línea */
+    max-height: calc(1.5em * 3);
+    /* Máximo de 3 líneas */
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+}
+
+.card-footer {
+    flex-shrink: 0;
+    /* Evita que el pie de página se expanda */
+}
+
+
+/* From Uiverse.io by Jedi-hongbin */
+#back button {
+    display: flex;
+    height: 3em;
+    width: 100px;
+    align-items: center;
+    justify-content: center;
+    background-color: #eeeeee4b;
+    border-radius: 3px;
+    letter-spacing: 1px;
+    transition: all 0.2s linear;
+    cursor: pointer;
+    border: none;
+    background: #fff;
+}
+
+#back button>svg {
+    margin-right: 5px;
+    margin-left: 5px;
+    font-size: 20px;
+    transition: all 0.4s ease-in;
+}
+
+#back button:hover>svg {
+    font-size: 1.2em;
+    transform: translateX(-5px);
+}
+
+#back button:hover {
+    width: 140px;
+    border-radius: 50px;
+    transition-duration: 0.3s;
+    background-color: var(--color-primary);
+    align-items: center;
+}
+
+
+.course-container {
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    max-width: 1000px;
+    width: 100%;
+}
+
+
+/* Estilo general de la card para que se parezca a la imagen */
+.card-course {
+    border: 1px solid #eef0f2;
+    border-radius: 16px;
+    box-shadow: 0 4px 14px rgba(16, 24, 40, .06);
+}
+
+.card-course .card-body {
+    padding: 24px;
+}
+
+.card-course .card-footer {
+    padding: 0 24px 20px;
+}
+
+/* Icono cuadrado arriba-izquierda */
+.icon-box {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: #f6f7f9;
+    color: #111827;
+    border: 1px solid #eceff3;
+}
+
+/* Badge de nivel (arriba-derecha) */
+.level-badge {
+    background: #fff7cc;
+    /* amarillo suave */
+    color: #9a7b00;
+    /* texto ámbar */
+    border: 1px solid #ffe58f;
+    padding: .25rem .55rem;
+    font-size: .8rem;
+    border-radius: 999px;
+}
+
+/* Fila de metadatos (icono + texto gris) */
+.meta {
+    color: #6b7280;
+    font-size: .95rem;
+}
+
+/* Botones tipo pastilla */
+.btn-pill {
+    border-radius: 999px;
+    padding: .55rem 1rem;
+}
+
+.btn-training {
+    background: #16a34a;
+    border-color: #16a34a;
+}
+
+.btn-training:hover {
+    background: #15803d;
+    border-color: #15803d;
+}
+
+.btn-ghost {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+}
+
+.btn-ghost:hover {
+    background: #f9fafb;
+    color: #111827;
+}
+
+/* Espacios finos */
+.gap-12 {
+    gap: 12px;
+}

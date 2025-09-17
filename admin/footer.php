@@ -20,6 +20,7 @@
 
 
 <!-- PAGE PLUGINS -->
+ <script src="../admin/js/sweetalert2.min.js"></script>
 
 <!-- jQuery Mapael -->
 <script src="../admin/js/jquery.mousewheel.js"></script>
@@ -30,6 +31,8 @@
 <!-- ChartJS -->
 <script src="../admin/js/Chart.min.js"></script>
 
+
+
 <!-- DataTables  & Plugins -->
 <script src="../admin/js/jquery.dataTables.min.js"></script>
 <script src="../admin/js/dataTables.bootstrap4.min.js"></script>
@@ -38,6 +41,11 @@
 <script src="../admin/js/dataTables.buttons.min.js"></script>
 <script src="../admin/js/buttons.bootstrap4.min.js"></script>
 <script src="../admin/js/pdfmake.min.js"></script>
+<script src="../admin/js/vfs_fonts.js"></script>
+<script src="../admin/js/buttons.html5.min.js"></script>
+<script src="../admin/js/buttons.print.min.js"></script>
+<script src="../admin/js/buttons.colVis.min.js"></script>
+<script src="../admin/js/jszip.min.js"></script>
 
 
 </body>

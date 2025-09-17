@@ -11,6 +11,11 @@ $googleClientId = getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE';
 if ($login_mensaje !== null) {
     unset($_SESSION['login_mensaje'], $_SESSION['login_tipo']);
 }
+=======
+include("sbd.php");
+
+$page_title = "Login | Instituto de Formación";
+$page_description = "Pagina de inicio de sesión del Instituto de Formación de Operadores";
 ?>
 
 <!DOCTYPE html>
@@ -27,7 +32,11 @@ if ($login_mensaje !== null) {
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
+<?php include("head.php") ?>
+
 <body>
+<?php include("nav.php"); ?>
+
     <section class="content-wrapper">
         <div class="container">
             <div class="login-container">

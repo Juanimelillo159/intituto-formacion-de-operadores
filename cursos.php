@@ -45,12 +45,12 @@ $cursos = $sql->fetchAll(PDO::FETCH_ASSOC);
         <div class="card-footer bg-transparent border-0 mt-auto">
           <div class="d-flex gap-2">
             <a class="btn btn-primary  btn-pill d-inline-flex align-items-center"
-              href="curso.php?id_curso=<?php echo urlencode($curso['id_curso']); ?>">
+              href="capacitacion.php?id_curso=<?php echo urlencode($curso['id_curso']); ?>">
               <i class="bi bi-activity me-2"></i> Capacitaci&oacute;n
             </a>
 
             <a class="btn btn-secondary btn-pill d-inline-flex align-items-center"
-              href="inscripcion.php?id_curso=<?php echo urlencode($curso['id_curso']); ?>">
+              href="certificacion.php?id_curso=<?php echo urlencode($curso['id_curso']); ?>">
               <i class="bi bi-circle me-2"></i> Certificaci&oacute;n
             </a>
           </div>
