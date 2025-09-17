@@ -49,12 +49,12 @@ try {
         if ((int)$existing['verificado'] === 1) {
             $pdo->rollBack();
             http_response_code(409);
-            echo json_encode(['ok' => false, 'message' => 'No pudimos crear la cuenta con los datos proporcionados.']);
+            echo json_encode(['ok' => false, 'message' => 'Ya hay una cuenta registrada con ese email.']);
             exit;
         }
 
         $userId = (int)$existing['id_usuario'];
-        $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ? WHERE id_usuario = ?');
+        $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ?, id_permiso = 2 WHERE id_usuario = ?');
         $updateToken->execute([$token, $expiresAt, $userId]);
 
         $pdo->commit();
@@ -75,11 +75,11 @@ try {
 
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-    $insert = $pdo->prepare('INSERT INTO usuarios (email, clave, id_estado, id_permiso, verificado) VALUES (?, ?, 1, 1, 0)');
+    $insert = $pdo->prepare('INSERT INTO usuarios (email, clave, id_estado, id_permiso, verificado) VALUES (?, ?, 1, 2, 0)');
     $insert->execute([$email, $passwordHash]);
     $userId = (int)$pdo->lastInsertId();
 
-    $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ? WHERE id_usuario = ?');
+    $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ?, id_permiso = 2 WHERE id_usuario = ?');
     $updateToken->execute([$token, $expiresAt, $userId]);
 
     $pdo->commit();
@@ -111,3 +111,4 @@ try {
 }
 
 echo json_encode(['ok' => true, 'message' => 'Revisa tu correo para activar tu cuenta.']);
+

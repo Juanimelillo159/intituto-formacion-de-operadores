@@ -2,8 +2,8 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-include("sbd.php");
-include("nav.php");
+include "sbd.php";
+include "nav.php";
 
 $login_mensaje = isset($_SESSION['login_mensaje']) ? $_SESSION['login_mensaje'] : null;
 $login_tipo = isset($_SESSION['login_tipo']) ? $_SESSION['login_tipo'] : 'info';
@@ -19,10 +19,10 @@ if ($login_mensaje !== null) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesi&oacute;n</title>
+    <title>Iniciar sesión</title>
     <link rel="icon" href="/logos/LOGO PNG-04.png" type="image/png">
-    <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/toastr/toastr.min.css">
-    
+    <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.css">
+    <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
     <script>window.googleClientId = '<?php echo htmlspecialchars($googleClientId, ENT_QUOTES, 'UTF-8'); ?>';</script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
@@ -32,7 +32,7 @@ if ($login_mensaje !== null) {
         <div class="container">
             <div class="login-container">
                 <div class="login-logo">
-                    <img src="logos/LOGO PNG_Mesa de trabajo 1.png" alt="Instituto de Formaci&oacute;n de Operadores">
+                    <img src="logos/LOGO PNG_Mesa de trabajo 1.png" alt="Instituto de Formación de Operadores">
                 </div>
                 <?php if ($login_mensaje !== null) : ?>
                     <div class="alert alert-<?php echo htmlspecialchars($login_tipo); ?> text-center" role="alert">
@@ -41,15 +41,15 @@ if ($login_mensaje !== null) {
                 <?php endif; ?>
                 <form method="POST" action="admin/sesion.php" id="form-login">
                     <div class="mb-3">
-                        <label for="email" class="form-label">Correo electr&oacute;nico</label>
+                        <label for="email" class="form-label">Correo electrónico</label>
                         <input type="email" class="form-control" name="email" id="email" required>
                     </div>
                     <div class="mb-3">
-                        <label for="clave" class="form-label">Contrase&ntilde;a</label>
+                        <label for="clave" class="form-label">Contraseña</label>
                         <input type="password" class="form-control" name="clave" id="clave" required>
                     </div>
-                    <button type="submit" name="iniciar_sesion" class="btn btn-primary w-100">Iniciar sesi&oacute;n</button>
-                    <p class="text-center mt-3">&iquest;No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
+                    <button type="submit" name="iniciar_sesion" class="btn btn-primary w-100">Iniciar sesión</button>
+                    <p class="text-center mt-3">¿No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
                 </form>
                 <div class="text-center mt-3">
                     <span class="text-muted"> o </span>
@@ -62,56 +62,80 @@ if ($login_mensaje !== null) {
     <?php include("footer.php"); ?>
     <script src="/AdminLTE-3.2.0/plugins/jquery/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/AdminLTE-3.2.0/plugins/toastr/toastr.min.js"></script>
+    <script src="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.js"></script>
     <script>
         (function () {
             var form = document.getElementById('form-login');
             var emailInput = document.getElementById('email');
-            var configureToastr = function () {
-                if (typeof toastr === 'undefined') {
+
+            var showModal = function (type, message, title) {
+                var text = message === undefined || message === null ? '' : String(message);
+
+                if (typeof Swal === 'undefined') {
+                    alert(text);
                     return;
                 }
-                toastr.options = {
-                    closeButton: true,
-                    progressBar: true,
-                    newestOnTop: true,
-                    positionClass: 'toast-top-right',
-                    timeOut: 6000
-                };
+
+                var icon = 'info';
+                var defaultTitle = 'Aviso';
+
+                switch (type) {
+                    case 'success':
+                        icon = 'success';
+                        defaultTitle = 'Correo reenviado';
+                        break;
+                    case 'error':
+                    case 'danger':
+                        icon = 'error';
+                        defaultTitle = 'No pudimos completar la acción';
+                        break;
+                    case 'warning':
+                        icon = 'warning';
+                        defaultTitle = 'Atención';
+                        break;
+                }
+
+                Swal.fire({
+                    icon: icon,
+                    title: title || defaultTitle,
+                    text: text,
+                    confirmButtonText: 'Aceptar',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
             };
 
             document.addEventListener('click', function (event) {
-                var target = event.target;
-                if (!target.classList || !target.classList.contains('reenviar-verificacion')) {
+                var link = event.target.closest('.reenviar-verificacion');
+
+                if (!link) {
                     return;
                 }
+
                 event.preventDefault();
 
-                configureToastr();
-
-                if (target.dataset.loading === '1') {
+                if (link.dataset.loading === '1') {
                     return;
                 }
 
-                var email = (target.getAttribute('data-email') || '').trim();
+                var email = (link.getAttribute('data-email') || '').trim();
+
                 if (!email && emailInput) {
                     email = emailInput.value.trim();
                 }
 
                 if (!email) {
-                    if (typeof toastr !== 'undefined') {
-                        toastr.error('Ingresa tu correo para reenviar la verificacion.');
-                    } else {
-                        alert('Ingresa tu correo para reenviar la verificacion.');
-                    }
+                    showModal('error', 'Ingresa tu correo para reenviar la verificación.', 'Falta correo');
                     if (emailInput) {
                         emailInput.focus();
                     }
                     return;
                 }
 
-                target.dataset.loading = '1';
-                target.classList.add('disabled');
+                link.dataset.loading = '1';
+                link.classList.add('disabled');
 
                 fetch('reenviar_verificacion.php', {
                     method: 'POST',
@@ -126,28 +150,17 @@ if ($login_mensaje !== null) {
                     });
                 }).then(function (data) {
                     var message = (data && data.message) || 'No pudimos reenviar el correo.';
+
                     if (data && data.ok) {
-                        if (typeof toastr !== 'undefined') {
-                            toastr.success(message || 'Correo reenviado correctamente.');
-                        } else {
-                            alert(message || 'Correo reenviado correctamente.');
-                        }
+                        showModal('success', message, 'Revisa tu correo');
                     } else {
-                        if (typeof toastr !== 'undefined') {
-                            toastr.error(message);
-                        } else {
-                            alert(message);
-                        }
+                        showModal('error', message, 'No pudimos reenviar');
                     }
                 }).catch(function () {
-                    if (typeof toastr !== 'undefined') {
-                        toastr.error('No pudimos reenviar el correo. Intenta nuevamente.');
-                    } else {
-                        alert('No pudimos reenviar el correo. Intenta nuevamente.');
-                    }
+                    showModal('error', 'No pudimos reenviar el correo. Intenta nuevamente.', 'Error de red');
                 }).finally(function () {
-                    delete target.dataset.loading;
-                    target.classList.remove('disabled');
+                    delete link.dataset.loading;
+                    link.classList.remove('disabled');
                 });
             });
 
