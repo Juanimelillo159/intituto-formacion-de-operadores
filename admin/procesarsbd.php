@@ -535,7 +535,6 @@ try {
 
         $comprobanteNombreOriginal = null;
         $comprobanteMime = null;
-        $comprobanteTamano = null;
         $checkoutUploadRel = null;
 
         if ($metodoPago === 'transferencia') {
@@ -544,11 +543,7 @@ try {
                 throw new InvalidArgumentException('Debés adjuntar el comprobante de la transferencia.');
             }
             $checkoutUploadTmp = (string)$archivo['tmp_name'];
-            $comprobanteTamano = (int)$archivo['size'];
-            $maxBytes = 5 * 1024 * 1024;
-            if ($comprobanteTamano > $maxBytes) {
-                throw new InvalidArgumentException('El comprobante supera el tamaño máximo permitido (5 MB).');
-            }
+           
 
             $mimeDetectado = '';
             if (class_exists('finfo')) {
@@ -627,9 +622,9 @@ try {
 
         $pagoStmt = $con->prepare("
           INSERT INTO checkout_pagos (
-            id_inscripcion, metodo, estado, monto, moneda, comprobante_path, comprobante_nombre, comprobante_mime, comprobante_tamano, observaciones
+            id_inscripcion, metodo, estado, monto, moneda, comprobante_path, comprobante_nombre, comprobante_mime, observaciones
           ) VALUES (
-            :inscripcion, :metodo, 'pendiente', :monto, :moneda, :ruta, :nombre, :mime, :tamano, :obs
+            :inscripcion, :metodo, 'pendiente', :monto, :moneda, :ruta, :nombre, :mime, :obs
           )
         ");
         $pagoStmt->execute([
@@ -640,7 +635,6 @@ try {
             ':ruta' => $checkoutUploadRel,
             ':nombre' => $comprobanteNombreOriginal,
             ':mime' => $comprobanteMime,
-            ':tamano' => $comprobanteTamano,
             ':obs' => $observacionesPago !== '' ? $observacionesPago : null,
         ]);
 
