@@ -1,7 +1,8 @@
+<?php $base_path = $base_path ?? ''; ?>
 <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
     <div class="container">
-        <a class="navbar-brand" href="index.php">
-            <img src="logos/LOGO PNG-03.png" alt="Logo">
+        <a class="navbar-brand" href="<?php echo $base_path; ?>index.php">
+            <img src="<?php echo $base_path; ?>logos/LOGO PNG-03.png" alt="Logo">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
@@ -9,21 +10,21 @@
         <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link" href="index.php#quienes-somos">Nosotros</a>
+                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#quienes-somos">Nosotros</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="index.php#servicios-capacitacion">Servicios</a>
+                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#servicios-capacitacion">Servicios</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="index.php#cursos">Cursos</a>
+                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#cursos">Cursos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="index.php#contacto">Contáctanos</a>
+                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#contacto">Contáctanos</a>
                 </li>
                 <?php
                 if (isset($_SESSION["usuario"])) { ?>
                     <li class="nav-item">
-                        <a class="text-decoration-none" href="admin/admin.php">
+                        <a class="text-decoration-none" href="<?php echo $base_path; ?>admin/admin.php">
                             <button class="button-nav">
                                 panel adm
                                 <div class="arrow-wrapper">
@@ -34,7 +35,7 @@
                     </li>
                 <?php } else { ?>
                     <li class="nav-item">
-                        <a class="text-decoration-none" href="login.php">
+                        <a class="text-decoration-none" href="<?php echo $base_path; ?>login.php">
                             <button class="button-nav">
                                 iniciar sesion
                                 <div class="arrow-wrapper">
