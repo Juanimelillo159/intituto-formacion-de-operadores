@@ -34,6 +34,10 @@ $pv->execute([':c'=>$id_curso]);
 $precio_vigente = $pv->fetch(PDO::FETCH_ASSOC);
 
 function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
+
+$flash_success = $_SESSION['checkout_success'] ?? null;
+$flash_error   = $_SESSION['checkout_error'] ?? null;
+unset($_SESSION['checkout_success'], $_SESSION['checkout_error']);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -70,12 +74,37 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
             </div>
 
             <!-- UN SOLO FORM -->
-            <form id="checkoutForm" action="procesarsbd.php" method="POST" enctype="multipart/form-data" novalidate>
+            <form id="checkoutForm" action="../admin/procesarsbd.php" method="POST" enctype="multipart/form-data" novalidate>
               <input type="hidden" name="__accion" id="__accion" value="">
               <input type="hidden" name="crear_orden" value="1">
               <input type="hidden" name="id_curso" value="<?php echo (int)$id_curso; ?>">
 
               <div class="card-body p-0">
+                <?php if ($flash_success): ?>
+                  <div class="alert alert-success alert-dismissible fade show m-3" role="alert">
+                    <i class="fas fa-check-circle mr-1"></i>
+                    <strong>¡Inscripción enviada!</strong>
+                    <?php if (!empty($flash_success['orden'])): ?>
+                      Número de orden: #<?php echo str_pad((string)(int)$flash_success['orden'], 6, '0', STR_PAD_LEFT); ?>.
+                    <?php endif; ?>
+                    <br>
+                    Revisaremos tu solicitud y nos pondremos en contacto por correo.
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Cerrar">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                <?php endif; ?>
+                <?php if ($flash_error): ?>
+                  <div class="alert alert-danger alert-dismissible fade show m-3" role="alert">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    <strong>No pudimos procesar tu inscripción.</strong>
+                    <br>
+                    <?php echo h($flash_error); ?>
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Cerrar">
+                      <span aria-hidden="true">&times;</span>
+                    </button>
+                  </div>
+                <?php endif; ?>
                 <ul class="nav nav-tabs px-3 pt-3" role="tablist">
                   <li class="nav-item">
                     <a class="nav-link active" data-toggle="tab" href="#paso1" role="tab">
@@ -192,7 +221,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 
                     <div class="form-group">
                       <div class="custom-control custom-radio">
-                        <input type="radio" id="mp" name="metodo_pago" class="custom-control-input" value="mp">
+                        <input type="radio" id="mp" name="metodo_pago" class="custom-control-input" value="mercado_pago">
                         <label class="custom-control-label" for="mp">
                           Mercado Pago (próximamente) — mostrará botón de MP
                         </label>
@@ -215,7 +244,7 @@ function h($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
                       <div class="form-row">
                         <div class="form-group col-md-8">
                           <label for="comprobante" class="required-field">Archivo de comprobante (JPG/PNG/PDF, máx 5MB)</label>
-                          <input type="file" class="form-control-file" id="comprobante" name="comprobante">
+                          <input type="file" class="form-control-file" id="comprobante" name="comprobante" accept=".jpg,.jpeg,.png,.pdf">
                         </div>
                         <div class="form-group col-md-4">
                           <label for="obs_pago">Observaciones</label>
