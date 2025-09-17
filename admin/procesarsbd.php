@@ -3,6 +3,10 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../sbd.php';
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 /* ===================== LOG ===================== */
 function log_cursos(string $accion, array $data = [], ?Throwable $ex = null): void
 {
@@ -61,6 +65,12 @@ function parse_dt_local(string $v): string
 }
 
 /* =================== MAIN FLOW ================== */
+$checkoutUploadAbs = null;
+$checkoutUploadTmp = null;
+$checkoutUploadMoved = false;
+$checkoutIsCrearOrden = false;
+$checkoutCursoId = 0;
+
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new RuntimeException('Método no permitido');
@@ -74,6 +84,213 @@ try {
 
     // Fallback para acciones cuando el submit se hace por JS
     $accion = $_POST['__accion'] ?? '';
+
+    $checkoutIsCrearOrden = isset($_POST['crear_orden']) || ($accion === 'crear_orden');
+
+    if ($checkoutIsCrearOrden) {
+        $checkoutCursoId = (int)($_POST['id_curso'] ?? 0);
+        $nombreInscrito  = trim((string)($_POST['nombre_insc'] ?? ''));
+        $apellidoInscrito = trim((string)($_POST['apellido_insc'] ?? ''));
+        $emailInscrito   = trim((string)($_POST['email_insc'] ?? ''));
+        $telefonoInscrito = trim((string)($_POST['tel_insc'] ?? ''));
+        $dniInscrito     = trim((string)($_POST['dni_insc'] ?? ''));
+        $direccionInsc   = trim((string)($_POST['dir_insc'] ?? ''));
+        $ciudadInsc      = trim((string)($_POST['ciu_insc'] ?? ''));
+        $provinciaInsc   = trim((string)($_POST['prov_insc'] ?? ''));
+        $paisInsc        = trim((string)($_POST['pais_insc'] ?? ''));
+        if ($paisInsc === '') {
+            $paisInsc = 'Argentina';
+        }
+        $aceptaTyC = isset($_POST['acepta_tyc']) ? 1 : 0;
+        $metodoPago = (string)($_POST['metodo_pago'] ?? '');
+        if ($metodoPago === 'mp') {
+            $metodoPago = 'mercado_pago';
+        }
+        $obsPagoRaw = trim((string)($_POST['obs_pago'] ?? ''));
+        if (function_exists('mb_substr')) {
+            $observacionesPago = mb_substr($obsPagoRaw, 0, 250, 'UTF-8');
+        } else {
+            $observacionesPago = substr($obsPagoRaw, 0, 250);
+        }
+        $precioInput = isset($_POST['precio_checkout']) ? (float)$_POST['precio_checkout'] : 0.0;
+
+        if ($checkoutCursoId <= 0) {
+            throw new InvalidArgumentException('Curso inválido.');
+        }
+        if ($nombreInscrito === '' || $apellidoInscrito === '' || $emailInscrito === '' || $telefonoInscrito === '') {
+            throw new InvalidArgumentException('Completá los datos obligatorios del inscripto.');
+        }
+        if (!filter_var($emailInscrito, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('El correo electrónico no es válido.');
+        }
+        if ($aceptaTyC !== 1) {
+            throw new InvalidArgumentException('Debés aceptar los Términos y Condiciones.');
+        }
+        $metodosPermitidos = ['transferencia', 'mercado_pago'];
+        if (!in_array($metodoPago, $metodosPermitidos, true)) {
+            throw new InvalidArgumentException('Método de pago inválido.');
+        }
+
+        $cursoStmt = $con->prepare("SELECT id_curso, nombre_curso FROM cursos WHERE id_curso = :id LIMIT 1");
+        $cursoStmt->execute([':id' => $checkoutCursoId]);
+        $cursoRow = $cursoStmt->fetch();
+        if (!$cursoRow) {
+            throw new RuntimeException('El curso seleccionado no existe.');
+        }
+
+        $precioStmt = $con->prepare("
+          SELECT precio, moneda
+            FROM curso_precio_hist
+           WHERE id_curso = :c
+             AND vigente_desde <= NOW()
+             AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+        ORDER BY vigente_desde DESC
+           LIMIT 1
+        ");
+        $precioStmt->execute([':c' => $checkoutCursoId]);
+        $precioRow = $precioStmt->fetch();
+        $precioFinal = $precioRow ? (float)$precioRow['precio'] : (float)$precioInput;
+        $monedaPrecio = ($precioRow && !empty($precioRow['moneda'])) ? (string)$precioRow['moneda'] : 'ARS';
+        if ($precioFinal < 0) {
+            $precioFinal = 0.0;
+        }
+
+        $comprobanteNombreOriginal = null;
+        $comprobanteMime = null;
+        $comprobanteTamano = null;
+        $checkoutUploadRel = null;
+
+        if ($metodoPago === 'transferencia') {
+            $archivo = $_FILES['comprobante'] ?? null;
+            if (!is_array($archivo) || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                throw new InvalidArgumentException('Debés adjuntar el comprobante de la transferencia.');
+            }
+            $checkoutUploadTmp = (string)$archivo['tmp_name'];
+            $comprobanteTamano = (int)$archivo['size'];
+            $maxBytes = 5 * 1024 * 1024;
+            if ($comprobanteTamano > $maxBytes) {
+                throw new InvalidArgumentException('El comprobante supera el tamaño máximo permitido (5 MB).');
+            }
+
+            $mimeDetectado = '';
+            if (class_exists('finfo')) {
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                if ($finfo) {
+                    $mimeDetectado = (string)$finfo->file($checkoutUploadTmp);
+                }
+            }
+            if ($mimeDetectado === '' && function_exists('mime_content_type')) {
+                $mimeDetectado = (string)@mime_content_type($checkoutUploadTmp);
+            }
+            if ($mimeDetectado === '' && isset($archivo['type'])) {
+                $mimeDetectado = (string)$archivo['type'];
+            }
+
+            $mimePermitidos = [
+                'image/jpeg' => 'jpg',
+                'image/png' => 'png',
+                'application/pdf' => 'pdf',
+            ];
+            $extension = $mimePermitidos[$mimeDetectado] ?? null;
+            if ($extension === null) {
+                $extensionTmp = strtolower((string)pathinfo((string)$archivo['name'], PATHINFO_EXTENSION));
+                if ($extensionTmp === 'jpeg') {
+                    $extensionTmp = 'jpg';
+                }
+                if (in_array($extensionTmp, ['jpg', 'png', 'pdf'], true)) {
+                    $extension = $extensionTmp;
+                }
+            }
+            if ($extension === null) {
+                throw new InvalidArgumentException('Formato de comprobante inválido. Permitido: JPG, PNG o PDF.');
+            }
+
+            $uploadsBase = __DIR__ . '/../uploads';
+            $uploadsTarget = $uploadsBase . '/comprobantes';
+            if (!is_dir($uploadsTarget)) {
+                if (!mkdir($uploadsTarget, 0755, true) && !is_dir($uploadsTarget)) {
+                    throw new RuntimeException('No se pudo crear la carpeta para comprobantes.');
+                }
+            }
+
+            $nombreArchivo = 'comp_' . date('YmdHis') . '_' . bin2hex(random_bytes(8)) . '.' . $extension;
+            $checkoutUploadAbs = $uploadsTarget . '/' . $nombreArchivo;
+            $checkoutUploadRel = 'uploads/comprobantes/' . $nombreArchivo;
+            $comprobanteNombreOriginal = (string)$archivo['name'];
+            $comprobanteMime = $mimeDetectado !== '' ? $mimeDetectado : ($extension === 'pdf' ? 'application/pdf' : 'image/' . $extension);
+        }
+
+        $con->beginTransaction();
+
+        $inscripcionStmt = $con->prepare("
+          INSERT INTO checkout_inscripciones (
+            id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda
+          ) VALUES (
+            :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, :acepta, :precio, :moneda
+          )
+        ");
+        $inscripcionStmt->execute([
+            ':curso' => $checkoutCursoId,
+            ':nombre' => $nombreInscrito,
+            ':apellido' => $apellidoInscrito,
+            ':email' => $emailInscrito,
+            ':telefono' => $telefonoInscrito,
+            ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
+            ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
+            ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
+            ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
+            ':pais' => $paisInsc,
+            ':acepta' => $aceptaTyC,
+            ':precio' => $precioFinal,
+            ':moneda' => $monedaPrecio,
+        ]);
+
+        $idInscripcion = (int)$con->lastInsertId();
+
+        $pagoStmt = $con->prepare("
+          INSERT INTO checkout_pagos (
+            id_inscripcion, metodo, estado, monto, moneda, comprobante_path, comprobante_nombre, comprobante_mime, comprobante_tamano, observaciones
+          ) VALUES (
+            :inscripcion, :metodo, 'pendiente', :monto, :moneda, :ruta, :nombre, :mime, :tamano, :obs
+          )
+        ");
+        $pagoStmt->execute([
+            ':inscripcion' => $idInscripcion,
+            ':metodo' => $metodoPago,
+            ':monto' => $precioFinal,
+            ':moneda' => $monedaPrecio,
+            ':ruta' => $checkoutUploadRel,
+            ':nombre' => $comprobanteNombreOriginal,
+            ':mime' => $comprobanteMime,
+            ':tamano' => $comprobanteTamano,
+            ':obs' => $observacionesPago !== '' ? $observacionesPago : null,
+        ]);
+
+        if ($metodoPago === 'transferencia' && $checkoutUploadAbs !== null) {
+            if (!move_uploaded_file($checkoutUploadTmp, $checkoutUploadAbs)) {
+                throw new RuntimeException('No se pudo guardar el comprobante de la transferencia.');
+            }
+            $checkoutUploadMoved = true;
+        }
+
+        $con->commit();
+
+        $_SESSION['checkout_success'] = [
+            'orden' => $idInscripcion,
+            'metodo' => $metodoPago,
+        ];
+
+        log_cursos('checkout_crear_orden_ok', [
+            'orden' => $idInscripcion,
+            'id_curso' => $checkoutCursoId,
+            'metodo' => $metodoPago,
+            'monto' => $precioFinal,
+            'moneda' => $monedaPrecio,
+        ]);
+
+        header('Location: ../checkout/checkout.php?id_curso=' . $checkoutCursoId);
+        exit;
+    }
 
     $isAgregarPrecio = isset($_POST['agregar_precio']) || ($accion === 'agregar_precio');
     $isEditarCurso   = isset($_POST['editar_curso'])   || ($accion === 'editar_curso');
@@ -412,6 +629,26 @@ try {
     if (isset($con) && $con instanceof PDO && $con->inTransaction()) {
         $con->rollBack();
     }
+
+    if ($checkoutIsCrearOrden) {
+        if ($checkoutUploadMoved && $checkoutUploadAbs && is_file($checkoutUploadAbs)) {
+            @unlink($checkoutUploadAbs);
+        }
+
+        log_cursos('checkout_crear_orden_error', [
+            'id_curso' => $checkoutCursoId,
+            'post_keys' => array_keys($_POST ?? []),
+        ], $e);
+
+        $_SESSION['checkout_error'] = $e->getMessage();
+        $redirect = '../checkout/checkout.php';
+        if ($checkoutCursoId > 0) {
+            $redirect .= '?id_curso=' . $checkoutCursoId;
+        }
+        header('Location: ' . $redirect);
+        exit;
+    }
+
     log_cursos('error', ['post_keys' => array_keys($_POST ?? [])], $e);
     http_response_code(400);
     echo "Ocurrió un error al procesar la solicitud. Revisa el log para más detalles.";
