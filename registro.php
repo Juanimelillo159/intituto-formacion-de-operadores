@@ -22,7 +22,6 @@ if ($registro_mensaje !== null) {
     <link rel="icon" href="/logos/LOGO PNG-04.png" type="image/png">
     <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.css">
     <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
-    <script>window.googleClientId = '<?php echo htmlspecialchars($googleClientId, ENT_QUOTES, 'UTF-8'); ?>';</script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>

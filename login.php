@@ -3,36 +3,25 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 include "sbd.php";
-include "nav.php";
 
+$page_title = "Login | Instituto de Formación";
+$page_description = "Pagina de inicio de sesión del Instituto de Formación de Operadores";
 $login_mensaje = isset($_SESSION['login_mensaje']) ? $_SESSION['login_mensaje'] : null;
 $login_tipo = isset($_SESSION['login_tipo']) ? $_SESSION['login_tipo'] : 'info';
 $googleClientId = getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE';
 if ($login_mensaje !== null) {
     unset($_SESSION['login_mensaje'], $_SESSION['login_tipo']);
 }
-=======
-include("sbd.php");
 
-$page_title = "Login | Instituto de Formación";
-$page_description = "Pagina de inicio de sesión del Instituto de Formación de Operadores";
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar sesión</title>
-    <link rel="icon" href="/logos/LOGO PNG-04.png" type="image/png">
-    <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.css">
-    <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
-    <script>window.googleClientId = '<?php echo htmlspecialchars($googleClientId, ENT_QUOTES, 'UTF-8'); ?>';</script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-</head>
 
-<?php include("head.php") ?>
+<?php 
+$include_google_auth = true;
+include("head.php") ?>
 
 <body>
 <?php include("nav.php"); ?>

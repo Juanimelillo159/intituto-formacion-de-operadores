@@ -28,7 +28,6 @@ if ($registro_mensaje !== null) {
 <body>
   <?php include("nav.php") ?>
   <div class="content-wrapper">
-    <?php include("nav.php") ?>
     <?php if ($registro_mensaje !== null) : ?>
       <div class="container mt-3">
         <div class="alert alert-<?php echo htmlspecialchars($registro_tipo); ?> text-center" role="alert">
