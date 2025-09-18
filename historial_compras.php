@@ -23,7 +23,6 @@ $page_description = 'Compras realizadas con tu cuenta del Instituto.';
         <div class="alert alert-info" role="alert">
             Todavia no registramos compras en tu cuenta.
         </div>
-        <a class="btn btn-primary" href="index.php#cursos">Explorar cursos</a>
     </div>
 </main>
 

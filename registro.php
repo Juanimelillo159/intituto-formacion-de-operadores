@@ -32,8 +32,20 @@ include("head.php") ?>
                 <?php endif; ?>
                 <form method="POST" action="register.php" id="form-registro">
                     <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre</label>
+                        <input type="text" class="form-control" name="nombre" id="nombre" required autocomplete="given-name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="apellido" class="form-label">Apellido</label>
+                        <input type="text" class="form-control" name="apellido" id="apellido" required autocomplete="family-name">
+                    </div>
+                    <div class="mb-3">
+                        <label for="telefono" class="form-label">Numero de telefono</label>
+                        <input type="tel" class="form-control" name="telefono" id="telefono" required autocomplete="tel" inputmode="tel" pattern="[0-9+()\s-]{6,}" title="Ingresa un numero de telefono valido.">
+                    </div>
+                    <div class="mb-3">
                         <label for="email" class="form-label">Correo electronico</label>
-                        <input type="email" class="form-control" name="email" id="email" required>
+                        <input type="email" class="form-control" name="email" id="email" required autocomplete="email">
                     </div>
                     <div class="mb-3">
                         <label for="password" class="form-label">Contraseña</label>
@@ -70,6 +82,10 @@ include("head.php") ?>
             var password = document.getElementById('password');
             var confirm = document.getElementById('confirm_password');
             var submitButton = document.getElementById('btn-registrar');
+            var nombre = document.getElementById('nombre');
+            var apellido = document.getElementById('apellido');
+            var telefono = document.getElementById('telefono');
+            var emailInput = document.getElementById('email');
 
             var showModal = function(type, message, title) {
                 var text = message === undefined || message === null ? '' : String(message);
@@ -130,6 +146,17 @@ include("head.php") ?>
                 }
             };
 
+            var isEmpty = function(value) {
+                return value === null || value === undefined || value.trim() === '';
+            };
+
+            var getTrimmedValue = function(input) {
+                if (!input) {
+                    return '';
+                }
+                return input.value.trim();
+            };
+
             var validatePasswords = function() {
                 if (!password || !confirm) {
                     return;
@@ -161,11 +188,53 @@ include("head.php") ?>
                     return;
                 }
 
+                var requiredFields = [
+                    { element: nombre, message: 'Ingresa tu nombre.' },
+                    { element: apellido, message: 'Ingresa tu apellido.' },
+                    { element: telefono, message: 'Ingresa tu numero de telefono.' },
+                    { element: emailInput, message: 'Ingresa tu correo electronico.' }
+                ];
+
+                for (var i = 0; i < requiredFields.length; i++) {
+                    var field = requiredFields[i];
+                    if (!field.element) {
+                        continue;
+                    }
+                    if (isEmpty(field.element.value)) {
+                        showModal('error', field.message, 'Datos incompletos');
+                        field.element.focus();
+                        return;
+                    }
+                }
+
+                if (telefono) {
+                    var phoneValue = telefono.value.trim();
+                    var phonePattern = /^[0-9+()\s-]{6,}$/;
+                    if (!phonePattern.test(phoneValue)) {
+                        showModal('error', 'Ingresa un numero de telefono valido.', 'Datos incompletos');
+                        telefono.focus();
+                        return;
+                    }
+                }
+
                 if (submitButton) {
                     submitButton.disabled = true;
                 }
 
                 var formData = new FormData(form);
+
+                if (nombre) {
+                    formData.set('nombre', getTrimmedValue(nombre));
+                }
+                if (apellido) {
+                    formData.set('apellido', getTrimmedValue(apellido));
+                }
+                if (telefono) {
+                    formData.set('telefono', getTrimmedValue(telefono));
+                }
+                if (emailInput) {
+                    formData.set('email', getTrimmedValue(emailInput));
+                }
 
                 fetch(form.action, {
                     method: 'POST',
