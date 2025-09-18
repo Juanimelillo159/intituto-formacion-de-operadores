@@ -13,6 +13,7 @@ if (!isset($_SESSION['permiso']) || (int)$_SESSION['permiso'] !== 1) {
   exit;
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 
@@ -22,6 +23,7 @@ if (!isset($_SESSION['permiso']) || (int)$_SESSION['permiso'] !== 1) {
   <!-- Font Awesome -->
   <link rel="stylesheet" href="../admin/css/fontawesome-free/css/all.min.css">
   <!-- SweetAlert2 -->
+    <link rel="stylesheet" href="css/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css" />
   <link rel="stylesheet" href="../admin/css/bootstrap-4.min.css">
   <!-- Toastr -->
   <link rel="stylesheet" href="../admin/css/toastr.min.css">
@@ -48,8 +50,6 @@ if (!isset($_SESSION['permiso']) || (int)$_SESSION['permiso'] !== 1) {
   <link rel="stylesheet" href="../admin/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="../admin/css/responsive.bootstrap4.min.css">
   <link rel="stylesheet" href="../admin/css/buttons.bootstrap4.min.css">
-  <link rel="stylesheet" href="../style.css">
-  <link rel="icon" type="image/png" href="icono.png">
 </head>
 
 <body class="hold-transition sidebar-mini layout-fixed layout-navbar-fixed layout-footer-fixed">

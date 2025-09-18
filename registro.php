@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -15,15 +15,9 @@ if ($registro_mensaje !== null) {
 
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear cuenta</title>
-    <link rel="icon" href="/logos/LOGO PNG-04.png" type="image/png">
-    <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/toastr/toastr.min.css">
-    <script>window.googleClientId = '<?php echo htmlspecialchars($googleClientId, ENT_QUOTES, 'UTF-8'); ?>';</script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-</head>
+<?php $include_google_auth = true;
+include("head.php") ?>
+
 <body>
     <section class="content-wrapper">
         <div class="container">
@@ -69,41 +63,54 @@ if ($registro_mensaje !== null) {
 
     <script src="/AdminLTE-3.2.0/plugins/jquery/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/AdminLTE-3.2.0/plugins/toastr/toastr.min.js"></script>
+    <script src="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.js"></script>
     <script>
-        (function () {
+        (function() {
             var form = document.getElementById('form-registro');
             var password = document.getElementById('password');
             var confirm = document.getElementById('confirm_password');
             var submitButton = document.getElementById('btn-registrar');
 
-            var setToastOptions = function () {
-                if (typeof toastr === 'undefined') {
+            var showModal = function(type, message, title) {
+                var text = message === undefined || message === null ? '' : String(message);
+
+                if (typeof Swal === 'undefined') {
+                    alert(text);
                     return;
                 }
-                toastr.options = {
-                    closeButton: true,
-                    progressBar: true,
-                    newestOnTop: true,
-                    positionClass: 'toast-top-right',
-                    timeOut: 6000
-                };
+
+                var icon = 'info';
+                var defaultTitle = 'Aviso';
+
+                switch (type) {
+                    case 'success':
+                        icon = 'success';
+                        defaultTitle = 'Cuenta creada';
+                        break;
+                    case 'error':
+                    case 'danger':
+                        icon = 'error';
+                        defaultTitle = 'Hubo un problema';
+                        break;
+                    case 'warning':
+                        icon = 'warning';
+                        defaultTitle = 'Atencion';
+                        break;
+                }
+
+                Swal.fire({
+                    icon: icon,
+                    title: title || defaultTitle,
+                    text: text,
+                    confirmButtonText: 'Aceptar',
+                    customClass: {
+                        confirmButton: 'btn btn-primary'
+                    },
+                    buttonsStyling: false
+                });
             };
 
-            var showToast = function (type, message) {
-                if (typeof toastr === 'undefined') {
-                    alert(message);
-                    return;
-                }
-                setToastOptions();
-                if (type === 'success') {
-                    toastr.success(message);
-                    return;
-                }
-                toastr.error(message);
-            };
-
-            var validatePasswords = function () {
+            var validatePasswords = function() {
                 if (!password || !confirm) {
                     return;
                 }
@@ -125,11 +132,12 @@ if ($registro_mensaje !== null) {
                 return;
             }
 
-            form.addEventListener('submit', function (event) {
+            form.addEventListener('submit', function(event) {
                 event.preventDefault();
                 validatePasswords();
+
                 if (confirm && confirm.validationMessage) {
-                    showToast('error', confirm.validationMessage);
+                    showModal('error', confirm.validationMessage, 'Datos incompletos');
                     return;
                 }
 
@@ -142,24 +150,28 @@ if ($registro_mensaje !== null) {
                 fetch(form.action, {
                     method: 'POST',
                     body: formData
-                }).then(function (response) {
-                    return response.json().catch(function () {
+                }).then(function(response) {
+                    return response.json().catch(function() {
                         throw new Error('Respuesta inesperada del servidor.');
-                    }).then(function (data) {
-                        return { ok: response.ok, body: data };
+                    }).then(function(data) {
+                        return {
+                            ok: response.ok,
+                            body: data
+                        };
                     });
-                }).then(function (result) {
+                }).then(function(result) {
                     var data = result.body || {};
+
                     if (result.ok && data.ok) {
                         form.reset();
-                        showToast('success', data.message || 'Revisa tu correo para activar tu cuenta.');
+                        showModal('success', data.message || 'Revisa tu correo para activar tu cuenta.');
                     } else {
                         var message = data.message || 'No pudimos procesar el registro.';
-                        showToast('error', message);
+                        showModal('error', message, 'No se pudo registrar');
                     }
-                }).catch(function (error) {
-                    showToast('error', error.message || 'Ocurrio un error al enviar la solicitud.');
-                }).finally(function () {
+                }).catch(function(error) {
+                    showModal('error', error.message || 'Ocurrio un error al enviar la solicitud.', 'Error de red');
+                }).finally(function() {
                     if (submitButton) {
                         submitButton.disabled = false;
                     }
@@ -167,7 +179,10 @@ if ($registro_mensaje !== null) {
             });
         })();
     </script>
-    <script>window.googleAuthEndpoint = 'admin/google_auth.php';</script>
+    <script>
+        window.googleAuthEndpoint = 'admin/google_auth.php';
+    </script>
     <script src="assets/js/google-auth.js"></script>
 </body>
+
 </html>

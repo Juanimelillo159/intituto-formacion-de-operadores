@@ -13,6 +13,7 @@ function renderMessage(string $title, string $message, bool $ok): void
     $svg = $ok
         ? '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="44" height="44"><circle cx="12" cy="12" r="12" fill="#16a34a"/><path d="M17.5 9l-6.22 6.24L6.5 10.5" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         : '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="44" height="44"><circle cx="12" cy="12" r="12" fill="#dc2626"/><path d="M15 9l-6 6M9 9l6 6" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    $logoUrl = APP_URL . '/logos/LOGO PNG_Mesa de trabajo 1.png';
     echo <<<HTML
     <!DOCTYPE html>
     <html lang="es">
@@ -21,7 +22,9 @@ function renderMessage(string $title, string $message, bool $ok): void
         <title>{$title}</title>
         <style>
             body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg,#0d6efd 0%,#1d4ed8 100%); margin:0; padding:0; min-height:100vh; display:flex; align-items:center; justify-content:center; color:#0f172a; }
-            .card { background:#ffffff; border-radius:18px; padding:44px 36px; width:100%; max-width:480px; box-shadow:0 25px 45px rgba(14, 23, 61, 0.25); text-align:center; }
+            .card { background:#ffffff; border-radius:18px; padding:44px 36px; width:100%; max-width:500px; box-shadow:0 25px 45px rgba(14, 23, 61, 0.25); text-align:center; }
+            .logo { display:flex; justify-content:center; margin-bottom:18px; }
+            .logo img { max-width:240px; height:auto; }
             .icon { width:88px; height:88px; margin:0 auto 18px; display:flex; align-items:center; justify-content:center; }
             h1 { margin:0 0 16px; font-size:28px; color:#0f172a; }
             p { margin:0 0 20px; font-size:16px; line-height:1.6; color:#475569; }
@@ -32,6 +35,7 @@ function renderMessage(string $title, string $message, bool $ok): void
     </head>
     <body>
         <div class="card">
+            <div class="logo"><img src="{$logoUrl}" alt="Instituto de Operadores"></div>
             <div class="icon">{$svg}</div>
             <h1>{$title}</h1>
             <p>{$message}</p>
