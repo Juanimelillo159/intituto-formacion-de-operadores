@@ -2,9 +2,8 @@
 // procesarsbd.php (sin sesiones)
 declare(strict_types=1);
 
-use MercadoPago\Item;
-use MercadoPago\Preference;
-use MercadoPago\SDK;
+use MercadoPago\Client\Preference\PreferenceClient;
+use MercadoPago\MercadoPagoConfig;
 use PHPMailer\PHPMailer\Exception as PHPMailerException;
 use PHPMailer\PHPMailer\PHPMailer;
 
@@ -171,41 +170,40 @@ function crear_preferencia_mercadopago(array $config, array $curso, array $inscr
         throw new RuntimeException('Falta configurar la URL base de la aplicación en config/config.php.');
     }
 
-    SDK::setAccessToken($accessToken);
-
-    $preference = new Preference();
-
-    $item = new Item();
-    $item->title = (string)($curso['nombre_curso'] ?? 'Curso');
-    $item->quantity = 1;
-    $item->unit_price = (float)($pago['monto'] ?? 0);
-    $item->currency_id = strtoupper((string)($pago['moneda'] ?? 'ARS'));
-    $preference->items = [$item];
-
-    $preference->payer = [
-        'name' => (string)($inscripcion['nombre'] ?? ''),
-        'surname' => (string)($inscripcion['apellido'] ?? ''),
-        'email' => (string)($inscripcion['email'] ?? ''),
-    ];
+    MercadoPagoConfig::setAccessToken($accessToken);
 
     $externalReference = sprintf('checkout:%d:%d', $idInscripcion, $idPago);
-    $preference->external_reference = $externalReference;
-    $preference->notification_url = $baseUrl . '/checkout/mp_notificacion.php';
-    $preference->back_urls = [
-        'success' => $baseUrl . '/checkout/gracias.php',
-        'pending' => $baseUrl . '/checkout/retorno.php?status=pending',
-        'failure' => $baseUrl . '/checkout/retorno.php?status=failure',
-    ];
-    $preference->auto_return = 'approved';
-    $preference->statement_descriptor = 'IF Operadores';
-    $preference->metadata = [
-        'id_inscripcion' => $idInscripcion,
-        'id_pago' => $idPago,
-        'curso' => (string)($curso['nombre_curso'] ?? ''),
-        'email' => (string)($inscripcion['email'] ?? ''),
+    $preferenceRequest = [
+        'items' => [[
+            'title' => (string)($curso['nombre_curso'] ?? 'Curso'),
+            'quantity' => 1,
+            'unit_price' => (float)($pago['monto'] ?? 0),
+            'currency_id' => strtoupper((string)($pago['moneda'] ?? 'ARS')),
+        ]],
+        'payer' => [
+            'name' => (string)($inscripcion['nombre'] ?? ''),
+            'surname' => (string)($inscripcion['apellido'] ?? ''),
+            'email' => (string)($inscripcion['email'] ?? ''),
+        ],
+        'external_reference' => $externalReference,
+        'notification_url' => $baseUrl . '/checkout/mp_notificacion.php',
+        'back_urls' => [
+            'success' => $baseUrl . '/checkout/gracias.php',
+            'pending' => $baseUrl . '/checkout/retorno.php?status=pending',
+            'failure' => $baseUrl . '/checkout/retorno.php?status=failure',
+        ],
+        'auto_return' => 'approved',
+        'statement_descriptor' => 'IF Operadores',
+        'metadata' => [
+            'id_inscripcion' => $idInscripcion,
+            'id_pago' => $idPago,
+            'curso' => (string)($curso['nombre_curso'] ?? ''),
+            'email' => (string)($inscripcion['email'] ?? ''),
+        ],
     ];
 
-    $preference->save();
+    $preferenceClient = new PreferenceClient();
+    $preference = $preferenceClient->create($preferenceRequest);
 
     return [
         'preference_id' => (string)$preference->id,

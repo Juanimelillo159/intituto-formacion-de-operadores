@@ -1,8 +1,9 @@
 <?php
 declare(strict_types=1);
 
-use MercadoPago\Payment;
-use MercadoPago\SDK;
+use MercadoPago\Client\Payment\PaymentClient;
+use MercadoPago\Exceptions\MPApiException;
+use MercadoPago\MercadoPagoConfig;
 
 function mp_log(string $accion, array $data = [], ?Throwable $ex = null): void
 {
@@ -45,7 +46,7 @@ function mp_configure_sdk(array $config): void
     if ($token === '') {
         throw new RuntimeException('Configurá el access token de Mercado Pago en config/config.php.');
     }
-    SDK::setAccessToken($token);
+    MercadoPagoConfig::setAccessToken($token);
 }
 
 function mp_parse_external_reference(?string $external): ?array
@@ -183,7 +184,21 @@ function mp_sync_payment(PDO $con, array $config, string $paymentId): ?array
 {
     mp_configure_sdk($config);
 
-    $payment = Payment::find_by_id($paymentId);
+    if (!preg_match('/^\d+$/', $paymentId)) {
+        return null;
+    }
+
+    $paymentClient = new PaymentClient();
+
+    try {
+        $payment = $paymentClient->get((int)$paymentId);
+    } catch (MPApiException $e) {
+        if ($e->getStatusCode() === 404) {
+            return null;
+        }
+        throw $e;
+    }
+
     if (!$payment) {
         return null;
     }
