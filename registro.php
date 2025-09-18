@@ -15,15 +15,9 @@ if ($registro_mensaje !== null) {
 
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear cuenta</title>
-    <link rel="icon" href="/logos/LOGO PNG-04.png" type="image/png">
-    <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.css">
-    <link rel="stylesheet" href="/AdminLTE-3.2.0/plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-</head>
+<?php $include_google_auth = true;
+include("head.php") ?>
+
 <body>
     <section class="content-wrapper">
         <div class="container">
@@ -71,13 +65,13 @@ if ($registro_mensaje !== null) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.js"></script>
     <script>
-        (function () {
+        (function() {
             var form = document.getElementById('form-registro');
             var password = document.getElementById('password');
             var confirm = document.getElementById('confirm_password');
             var submitButton = document.getElementById('btn-registrar');
 
-            var showModal = function (type, message, title) {
+            var showModal = function(type, message, title) {
                 var text = message === undefined || message === null ? '' : String(message);
 
                 if (typeof Swal === 'undefined') {
@@ -116,7 +110,7 @@ if ($registro_mensaje !== null) {
                 });
             };
 
-            var validatePasswords = function () {
+            var validatePasswords = function() {
                 if (!password || !confirm) {
                     return;
                 }
@@ -138,7 +132,7 @@ if ($registro_mensaje !== null) {
                 return;
             }
 
-            form.addEventListener('submit', function (event) {
+            form.addEventListener('submit', function(event) {
                 event.preventDefault();
                 validatePasswords();
 
@@ -156,13 +150,16 @@ if ($registro_mensaje !== null) {
                 fetch(form.action, {
                     method: 'POST',
                     body: formData
-                }).then(function (response) {
-                    return response.json().catch(function () {
+                }).then(function(response) {
+                    return response.json().catch(function() {
                         throw new Error('Respuesta inesperada del servidor.');
-                    }).then(function (data) {
-                        return { ok: response.ok, body: data };
+                    }).then(function(data) {
+                        return {
+                            ok: response.ok,
+                            body: data
+                        };
                     });
-                }).then(function (result) {
+                }).then(function(result) {
                     var data = result.body || {};
 
                     if (result.ok && data.ok) {
@@ -172,9 +169,9 @@ if ($registro_mensaje !== null) {
                         var message = data.message || 'No pudimos procesar el registro.';
                         showModal('error', message, 'No se pudo registrar');
                     }
-                }).catch(function (error) {
+                }).catch(function(error) {
                     showModal('error', error.message || 'Ocurrio un error al enviar la solicitud.', 'Error de red');
-                }).finally(function () {
+                }).finally(function() {
                     if (submitButton) {
                         submitButton.disabled = false;
                     }
@@ -182,7 +179,10 @@ if ($registro_mensaje !== null) {
             });
         })();
     </script>
-    <script>window.googleAuthEndpoint = 'admin/google_auth.php';</script>
+    <script>
+        window.googleAuthEndpoint = 'admin/google_auth.php';
+    </script>
     <script src="assets/js/google-auth.js"></script>
 </body>
+
 </html>

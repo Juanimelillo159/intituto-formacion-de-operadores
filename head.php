@@ -8,6 +8,10 @@
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
+    <link rel="stylesheet" href="admin/css/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
+
+    <link rel="stylesheet" href="admin/css/sweetalert2/sweetalert2.min.css">
+
     <!-- Tus estilos -->
     <link rel="stylesheet" href="assets/styles/style.css">
     <?= isset($page_styles) ? $page_styles : '' ?>
