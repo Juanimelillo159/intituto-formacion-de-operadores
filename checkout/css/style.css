@@ -330,6 +330,34 @@
     margin-top: 22px;
 }
 
+.payment-details .mp-benefits {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: rgba(39, 73, 109, 0.85);
+    font-size: 0.95rem;
+    display: grid;
+    gap: 0.35rem;
+}
+
+.payment-details .mp-amount {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(21, 101, 216, 0.08);
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    color: #1b2a4e;
+}
+
+.payment-details .mp-amount span {
+    font-size: 0.9rem;
+    opacity: 0.75;
+}
+
+.payment-details .mp-amount strong {
+    font-size: 1.25rem;
+}
+
 .bank-data {
     background: rgba(21, 101, 216, 0.06);
     border-radius: 14px;
@@ -372,6 +400,95 @@
     color: #6c7a8b;
 }
 
+.thankyou-main {
+    padding: 120px 0 160px;
+}
+
+.thankyou-card {
+    background: #ffffff;
+    border-radius: 28px;
+    padding: 48px 56px;
+    box-shadow: 0 40px 90px rgba(15, 23, 42, 0.12);
+}
+
+.thankyou-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.thankyou-header h1 {
+    font-size: 2rem;
+    margin-top: 18px;
+    color: #1b2a4e;
+}
+
+.thankyou-header p {
+    color: #617d98;
+    margin: 0 auto;
+    max-width: 540px;
+}
+
+.status-badge {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+}
+
+.status-success {
+    background: rgba(34, 197, 94, 0.15);
+    color: #15803d;
+}
+
+.status-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #b91c1c;
+}
+
+.status-warning {
+    background: rgba(250, 204, 21, 0.18);
+    color: #92400e;
+}
+
+.thankyou-summary {
+    background: rgba(21, 101, 216, 0.06);
+    border-radius: 20px;
+    padding: 26px 28px;
+    display: grid;
+    gap: 16px;
+}
+
+.thankyou-summary .summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    color: #27496d;
+    font-weight: 600;
+}
+
+.thankyou-summary .summary-row span {
+    font-weight: 500;
+    color: #617d98;
+}
+
+.thankyou-summary .summary-row strong {
+    font-size: 1rem;
+    color: #1b2a4e;
+}
+
+.thankyou-actions {
+    margin-top: 36px;
+    text-align: center;
+}
+
+.thankyou-actions .btn {
+    min-width: 220px;
+}
+
 @media (max-width: 991.98px) {
     .checkout-header {
         padding: 28px;
@@ -387,6 +504,10 @@
 
     .checkout-step {
         flex: 1 1 100%;
+    }
+
+    .thankyou-card {
+        padding: 40px;
     }
 }
 
@@ -414,5 +535,27 @@
 
     .terms-check {
         flex-direction: column;
+    }
+
+    .thankyou-main {
+        padding: 80px 0 120px;
+    }
+
+    .thankyou-card {
+        padding: 32px 24px;
+    }
+
+    .thankyou-summary {
+        padding: 20px;
+    }
+
+    .thankyou-header h1 {
+        font-size: 1.6rem;
+    }
+
+    .status-badge {
+        width: 64px;
+        height: 64px;
+        font-size: 1.6rem;
     }
 }

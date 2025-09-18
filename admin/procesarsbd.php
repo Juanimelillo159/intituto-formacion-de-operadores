@@ -1,7 +1,24 @@
 <?php
 // procesarsbd.php (sin sesiones)
 declare(strict_types=1);
+
+use MercadoPago\Client\Preference\PreferenceClient;
+use MercadoPago\MercadoPagoConfig;
+
+require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../sbd.php';
+
+$config = [];
+$configPath = __DIR__ . '/../config/config.php';
+if (is_file($configPath)) {
+    $configData = require $configPath;
+    if (is_array($configData)) {
+        $config = $configData;
+    }
+}
+
+$mpConfig = $config['mercadopago'] ?? [];
+$mpAvailable = checkout_mp_is_configured($mpConfig);
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
@@ -62,6 +79,41 @@ function parse_dt_local(string $v): string
     $dt = DateTime::createFromFormat('Y-m-d H:i:s', $v);
     if (!$dt) throw new InvalidArgumentException('Fecha inválida');
     return $dt->format('Y-m-d H:i:s');
+}
+
+function checkout_append_query_params(string $url, array $params = []): string
+{
+    if ($url === '' || empty($params)) {
+        return $url;
+    }
+    $separator = strpos($url, '?') !== false ? '&' : '?';
+    return $url . $separator . http_build_query($params);
+}
+
+function checkout_mp_is_configured(array $mpConfig): bool
+{
+    $token = trim((string)($mpConfig['access_token'] ?? ''));
+    $publicKey = trim((string)($mpConfig['public_key'] ?? ''));
+    if ($token === '' || $publicKey === '') {
+        return false;
+    }
+    if (stripos($token, 'TU_ACCESS_TOKEN') !== false || stripos($publicKey, 'TU_PUBLIC_KEY') !== false) {
+        return false;
+    }
+    return true;
+}
+
+function checkout_merge_metadata(?string $existingJson, array $newData): string
+{
+    $existing = [];
+    if ($existingJson) {
+        $decoded = json_decode($existingJson, true);
+        if (is_array($decoded)) {
+            $existing = $decoded;
+        }
+    }
+    $merged = array_replace_recursive($existing, $newData);
+    return json_encode($merged, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 }
 
 /* =================== MAIN FLOW ================== */
@@ -154,6 +206,11 @@ try {
         if ($precioFinal < 0) {
             $precioFinal = 0.0;
         }
+        $precioFinal = round($precioFinal, 2);
+
+        if ($metodoPago === 'mercado_pago' && $precioFinal <= 0) {
+            throw new RuntimeException('El curso seleccionado no tiene un precio disponible para pagos con Mercado Pago.');
+        }
 
         $comprobanteNombreOriginal = null;
         $comprobanteMime = null;
@@ -218,6 +275,14 @@ try {
             $checkoutUploadRel = 'uploads/comprobantes/' . $nombreArchivo;
             $comprobanteNombreOriginal = (string)$archivo['name'];
             $comprobanteMime = $mimeDetectado !== '' ? $mimeDetectado : ($extension === 'pdf' ? 'application/pdf' : 'image/' . $extension);
+        } else {
+            if (!$mpAvailable) {
+                throw new RuntimeException('Mercado Pago no está configurado. Actualizá las credenciales en config/config.php.');
+            }
+        }
+
+        if ($metodoPago === 'mercado_pago' && $observacionesPago === '') {
+            $observacionesPago = 'Pago con Mercado Pago';
         }
 
         $con->beginTransaction();
@@ -249,14 +314,17 @@ try {
 
         $pagoStmt = $con->prepare("
           INSERT INTO checkout_pagos (
-            id_inscripcion, metodo, estado, monto, moneda, comprobante_path, comprobante_nombre, comprobante_mime, comprobante_tamano, observaciones
+            id_inscripcion, metodo, estado, monto, moneda, comprobante_path, comprobante_nombre, comprobante_mime, comprobante_tamano, observaciones,
+            mp_preference_id, mp_payment_id, mp_payment_status, mp_payment_status_detail, mp_payer_email, mp_metadata
           ) VALUES (
-            :inscripcion, :metodo, 'pendiente', :monto, :moneda, :ruta, :nombre, :mime, :tamano, :obs
+            :inscripcion, :metodo, :estado, :monto, :moneda, :ruta, :nombre, :mime, :tamano, :obs,
+            :mp_pref, :mp_payment_id, :mp_status, :mp_status_detail, :mp_payer, :mp_metadata
           )
         ");
         $pagoStmt->execute([
             ':inscripcion' => $idInscripcion,
             ':metodo' => $metodoPago,
+            ':estado' => 'pendiente',
             ':monto' => $precioFinal,
             ':moneda' => $monedaPrecio,
             ':ruta' => $checkoutUploadRel,
@@ -264,31 +332,158 @@ try {
             ':mime' => $comprobanteMime,
             ':tamano' => $comprobanteTamano,
             ':obs' => $observacionesPago !== '' ? $observacionesPago : null,
+            ':mp_pref' => null,
+            ':mp_payment_id' => null,
+            ':mp_status' => null,
+            ':mp_status_detail' => null,
+            ':mp_payer' => null,
+            ':mp_metadata' => null,
         ]);
 
-        if ($metodoPago === 'transferencia' && $checkoutUploadAbs !== null) {
-            if (!move_uploaded_file($checkoutUploadTmp, $checkoutUploadAbs)) {
+        $idPago = (int)$con->lastInsertId();
+
+        if ($metodoPago === 'transferencia') {
+            if ($checkoutUploadAbs !== null && !move_uploaded_file($checkoutUploadTmp, $checkoutUploadAbs)) {
                 throw new RuntimeException('No se pudo guardar el comprobante de la transferencia.');
             }
             $checkoutUploadMoved = true;
+
+            $con->commit();
+
+            $_SESSION['checkout_success'] = [
+                'orden' => $idInscripcion,
+                'metodo' => $metodoPago,
+            ];
+
+            log_cursos('checkout_crear_orden_ok', [
+                'orden' => $idInscripcion,
+                'pago' => $idPago,
+                'id_curso' => $checkoutCursoId,
+                'metodo' => $metodoPago,
+                'monto' => $precioFinal,
+                'moneda' => $monedaPrecio,
+            ]);
+
+            header('Location: ../checkout/checkout.php?id_curso=' . $checkoutCursoId);
+            exit;
         }
+
+        $mpAccessToken = trim((string)($mpConfig['access_token'] ?? ''));
+        MercadoPagoConfig::setAccessToken($mpAccessToken);
+        $preferenceClient = new PreferenceClient();
+
+        $externalReference = 'pago-' . $idPago;
+        $returnParams = [
+            'orden' => $idInscripcion,
+            'pago' => $idPago,
+        ];
+
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $defaultBase = $scheme . '://' . $host . '/checkout/gracias.php';
+
+        $successBase = trim((string)($mpConfig['success_url'] ?? ''));
+        if ($successBase === '') {
+            $successBase = $defaultBase . '?status=approved';
+        }
+        $failureBase = trim((string)($mpConfig['failure_url'] ?? ''));
+        if ($failureBase === '') {
+            $failureBase = $defaultBase . '?status=failure';
+        }
+        $pendingBase = trim((string)($mpConfig['pending_url'] ?? ''));
+        if ($pendingBase === '') {
+            $pendingBase = $defaultBase . '?status=pending';
+        }
+
+        $successUrl = checkout_append_query_params($successBase, $returnParams);
+        $failureUrl = checkout_append_query_params($failureBase, $returnParams);
+        $pendingUrl = checkout_append_query_params($pendingBase, $returnParams);
+
+        $telefonoLimpio = preg_replace('/[^0-9+]/', '', $telefonoInscrito);
+        if ($telefonoLimpio !== '') {
+            $telefonoLimpio = substr($telefonoLimpio, -15);
+        }
+
+        $itemTitle = $cursoRow['nombre_curso'] ?? 'Curso';
+        $preferenceRequest = [
+            'items' => [[
+                'id' => 'CURSO-' . $checkoutCursoId,
+                'title' => $itemTitle,
+                'description' => 'Inscripción al curso ' . $itemTitle,
+                'quantity' => 1,
+                'unit_price' => round($precioFinal, 2),
+                'currency_id' => strtoupper($monedaPrecio),
+            ]],
+            'payer' => [
+                'name' => $nombreInscrito,
+                'surname' => $apellidoInscrito,
+                'email' => $emailInscrito,
+            ],
+            'external_reference' => $externalReference,
+            'back_urls' => [
+                'success' => $successUrl,
+                'failure' => $failureUrl,
+                'pending' => $pendingUrl,
+            ],
+            'auto_return' => 'approved',
+            'metadata' => [
+                'checkout_pago_id' => $idPago,
+                'checkout_inscripcion_id' => $idInscripcion,
+                'curso_id' => $checkoutCursoId,
+                'email' => $emailInscrito,
+            ],
+        ];
+
+        if ($telefonoLimpio !== '') {
+            $preferenceRequest['payer']['phone'] = ['number' => $telefonoLimpio];
+        }
+
+        $notificationUrl = trim((string)($mpConfig['notification_url'] ?? ''));
+        if ($notificationUrl !== '' && stripos($notificationUrl, 'tu-dominio.com') === false) {
+            $preferenceRequest['notification_url'] = $notificationUrl;
+        }
+
+        $preference = $preferenceClient->create($preferenceRequest);
+        $preferenceId = $preference->id ?? null;
+        $initPoint = $preference->init_point ?? ($preference->sandbox_init_point ?? '');
+
+        if ($initPoint === '') {
+            throw new RuntimeException('No se pudo generar el enlace de pago de Mercado Pago.');
+        }
+
+        $preferenceMetadata = [
+            'preference' => [
+                'id' => $preferenceId,
+                'init_point' => $preference->init_point ?? null,
+                'sandbox_init_point' => $preference->sandbox_init_point ?? null,
+                'external_reference' => $externalReference,
+                'back_urls' => [
+                    'success' => $successUrl,
+                    'failure' => $failureUrl,
+                    'pending' => $pendingUrl,
+                ],
+            ],
+        ];
+
+        $updatePago = $con->prepare("UPDATE checkout_pagos SET mp_preference_id = :pref, mp_metadata = :metadata WHERE id_pago = :id");
+        $updatePago->execute([
+            ':pref' => $preferenceId,
+            ':metadata' => checkout_merge_metadata(null, $preferenceMetadata),
+            ':id' => $idPago,
+        ]);
 
         $con->commit();
 
-        $_SESSION['checkout_success'] = [
+        log_cursos('checkout_crear_orden_mp', [
             'orden' => $idInscripcion,
-            'metodo' => $metodoPago,
-        ];
-
-        log_cursos('checkout_crear_orden_ok', [
-            'orden' => $idInscripcion,
+            'pago' => $idPago,
             'id_curso' => $checkoutCursoId,
-            'metodo' => $metodoPago,
             'monto' => $precioFinal,
             'moneda' => $monedaPrecio,
+            'preference_id' => $preferenceId,
         ]);
 
-        header('Location: ../checkout/checkout.php?id_curso=' . $checkoutCursoId);
+        header('Location: ' . $initPoint);
         exit;
     }
 

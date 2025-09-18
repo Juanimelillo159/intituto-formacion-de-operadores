@@ -2,6 +2,23 @@
 session_start();
 require_once '../sbd.php';
 
+$config = [];
+$configPath = __DIR__ . '/../config/config.php';
+if (is_file($configPath)) {
+    $configData = require $configPath;
+    if (is_array($configData)) {
+        $config = $configData;
+    }
+}
+
+$mpConfig = $config['mercadopago'] ?? [];
+$mpPublicKey = trim((string)($mpConfig['public_key'] ?? ''));
+$mpAccessToken = trim((string)($mpConfig['access_token'] ?? ''));
+$mpAvailable = $mpPublicKey !== ''
+    && $mpAccessToken !== ''
+    && stripos($mpPublicKey, 'TU_PUBLIC_KEY') === false
+    && stripos($mpAccessToken, 'TU_ACCESS_TOKEN') === false;
+
 $page_title = "Checkout | Instituto de Formación";
 $page_description = "Completá tu inscripción en tres pasos.";
 
@@ -254,7 +271,7 @@ include '../head.php';
                                                 <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago">
                                                 <div class="payment-info">
                                                     <strong>Mercado Pago</strong>
-                                                    <span>Próximamente disponible. Te avisaremos cuando esté habilitado.</span>
+                                                    <span>Pagá con tarjetas, dinero en cuenta o transferencia directa.</span>
                                                 </div>
                                             </label>
 
@@ -280,9 +297,29 @@ include '../head.php';
                                                 </div>
                                             </div>
 
-                                            <div class="payment-details hidden" id="mpDetails">
+                                            <div class="payment-details hidden" id="mpDetails" data-mp-configured="<?php echo $mpAvailable ? '1' : '0'; ?>">
                                                 <div class="summary-card">
-                                                    <p class="mb-0 text-muted">Pronto podrás completar el pago con Mercado Pago directamente desde esta pantalla.</p>
+                                                    <?php if ($mpAvailable): ?>
+                                                        <p class="mb-3">Al confirmar tu inscripción te redirigiremos a Mercado Pago para finalizar el pago de manera segura.</p>
+                                                        <ul class="mp-benefits">
+                                                            <li>Usá tarjetas de crédito, débito o dinero disponible en tu cuenta.</li>
+                                                            <li>Recibirás la confirmación del pago y tu comprobante por correo electrónico.</li>
+                                                        </ul>
+                                                    <?php else: ?>
+                                                        <div class="alert alert-warning d-flex align-items-start gap-2 mb-0" role="alert">
+                                                            <i class="fas fa-circle-info mt-1"></i>
+                                                            <div>
+                                                                <strong>Configurar Mercado Pago</strong>
+                                                                <div class="small">Cargá tus credenciales en <code>config/config.php</code> para habilitar este medio de pago.</div>
+                                                            </div>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <?php if ($precio_vigente): ?>
+                                                        <div class="mp-amount mt-3">
+                                                            <span>Total a pagar</span>
+                                                            <strong><?php echo strtoupper($precio_vigente['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_vigente['precio'], 2, ',', '.'); ?></strong>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
@@ -392,6 +429,14 @@ include '../head.php';
                         goToStep(3);
                         showAlert('error', 'Seleccioná un método de pago', 'Elegí una forma de pago para continuar.');
                         return false;
+                    }
+                    if (mp) {
+                        const mpConfigured = mpDetails && mpDetails.dataset.mpConfigured === '1';
+                        if (!mpConfigured) {
+                            goToStep(3);
+                            showAlert('warning', 'Configurar Mercado Pago', 'Actualizá las credenciales en <code>config/config.php</code> para habilitar este medio de pago.');
+                            return false;
+                        }
                     }
                     if (transfer) {
                         const fileInput = document.getElementById('comprobante');
