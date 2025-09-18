@@ -1,4 +1,7 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include 'sbd.php';
 
 $page_title = "Inicio | Instituto de Formación";
@@ -7,6 +10,12 @@ $page_description = "Pagina principal del Instituto de Formación de Operadores"
 $sql_carrusel = $con->prepare("SELECT * FROM banner");
 $sql_carrusel->execute();
 $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
+
+$registro_mensaje = isset($_SESSION['registro_mensaje']) ? $_SESSION['registro_mensaje'] : null;
+$registro_tipo = isset($_SESSION['registro_tipo']) ? $_SESSION['registro_tipo'] : 'info';
+if ($registro_mensaje !== null) {
+    unset($_SESSION['registro_mensaje'], $_SESSION['registro_tipo']);
+}
 ?>
 
 
@@ -19,6 +28,14 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
 <body>
   <?php include("nav.php") ?>
   <div class="content-wrapper">
+    <?php include("nav.php") ?>
+    <?php if ($registro_mensaje !== null) : ?>
+      <div class="container mt-3">
+        <div class="alert alert-<?php echo htmlspecialchars($registro_tipo); ?> text-center" role="alert">
+          <?php echo htmlspecialchars($registro_mensaje); ?>
+        </div>
+      </div>
+    <?php endif; ?>
     <header class="hero-section py-5">
       <div class="container h-100">
         <div class="row h-100 align-items-center">
@@ -95,7 +112,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
             <img src="assets/imagenes/equipos de izaje/1.jpg" alt="Equipos de izaje" class="img-fluid rounded">
           </div>
           <div class="col-md-6">
-            <p class="service-subtitle ">Formacion en:</p>
+            <p class="service-subtitle ">Formación en:</p>
             <h2 class="service-title text-primary ">Equipos de izaje</h2>
             <ul class="list-unstyled service-list">
               <li class="d-flex justify-content-between align-items-center">
@@ -128,7 +145,7 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
             <img src="assets/imagenes/maquinaria vial/2.jpg" alt="Maquinaria Vial" class="img-fluid rounded">
           </div>
           <div class="col-md-6 order-md-1">
-            <p class="service-subtitle ">Formacion en:</p>
+            <p class="service-subtitle ">Formación en:</p>
             <h2 class="service-title text-primary">Maquinaria Vial</h2>
             <ul class="list-unstyled service-list">
               <li class="d-flex justify-content-between align-items-center">
@@ -218,3 +235,4 @@ $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
 </body>
 
 </html>
+
