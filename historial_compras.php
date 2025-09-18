@@ -14,10 +14,10 @@ $page_description = 'Compras realizadas con tu cuenta del Instituto.';
 <!DOCTYPE html>
 <html lang="es">
 <?php include 'head.php'; ?>
-<body>
+<body class="d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
-<main class="content-wrapper py-5">
+<main class="content-wrapper py-5 flex-grow-1">
     <div class="container">
         <h1 class="mb-4">Historial de compras</h1>
         <div class="alert alert-info" role="alert">

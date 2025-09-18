@@ -14,10 +14,10 @@ $page_description = 'Cursos disponibles para tu cuenta.';
 <!DOCTYPE html>
 <html lang="es">
 <?php include 'head.php'; ?>
-<body>
+<body class="d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
-<main class="content-wrapper py-5">
+<main class="content-wrapper py-5 flex-grow-1">
     <div class="container">
         <h1 class="mb-4">Mis cursos</h1>
         <p class="lead text-muted">Todavia no hay cursos para mostrar. Cuando te inscribas en uno, va a aparecer aca.</p>
