@@ -36,11 +36,11 @@ include("head.php") ?>
                         <input type="email" class="form-control" name="email" id="email" required>
                     </div>
                     <div class="mb-3">
-                        <label for="password" class="form-label">Contrasena</label>
+                        <label for="password" class="form-label">Contraseña</label>
                         <input type="password" class="form-control" name="password" id="password" required>
                     </div>
                     <div class="mb-3">
-                        <label for="confirm_password" class="form-label">Repetir contrasena</label>
+                        <label for="confirm_password" class="form-label">Repetir contraseña</label>
                         <input type="password" class="form-control" name="confirm_password" id="confirm_password" required>
                     </div>
                     <div class="form-check mb-3">
@@ -98,16 +98,36 @@ include("head.php") ?>
                         break;
                 }
 
-                Swal.fire({
+                var confirmText = 'Aceptar';
+                var redirectOnConfirm = null;
+
+                if (icon === 'success') {
+                    confirmText = 'Iniciar Sesion';
+                    redirectOnConfirm = function() {
+                        window.location.href = 'login.php';
+                    };
+                }
+
+                var modalOptions = {
                     icon: icon,
                     title: title || defaultTitle,
                     text: text,
-                    confirmButtonText: 'Aceptar',
+                    confirmButtonText: confirmText,
                     customClass: {
                         confirmButton: 'btn btn-primary'
                     },
                     buttonsStyling: false
-                });
+                };
+
+                var modal = Swal.fire(modalOptions);
+
+                if (redirectOnConfirm) {
+                    modal.then(function(result) {
+                        if (result.isConfirmed) {
+                            redirectOnConfirm();
+                        }
+                    });
+                }
             };
 
             var validatePasswords = function() {
