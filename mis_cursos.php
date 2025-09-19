@@ -3,7 +3,16 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['usuario'])) {
+require_once __DIR__ . '/config.php';
+
+if (!isset($_SESSION['id_usuario']) && !isset($_SESSION['usuario'])) {
+    header('Location: login.php');
+    exit;
+}
+
+$userId = (int)($_SESSION['id_usuario'] ?? $_SESSION['usuario'] ?? 0);
+
+if ($userId <= 0) {
     header('Location: login.php');
     exit;
 }
@@ -16,6 +25,106 @@ if ($misCursosAlert !== null) {
 $page_title = 'Mis cursos | Instituto de Formacion';
 $page_description = 'Cursos disponibles para tu cuenta.';
 $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.css">';
+
+$statusLabels = [
+    'inscripto' => 'Inscripto',
+    'en_curso' => 'En curso',
+    'completado' => 'Completado',
+    'vencido' => 'Vencido',
+    'cancelado' => 'Cancelado',
+];
+
+$statusClasses = [
+    'inscripto' => 'bg-primary',
+    'en_curso' => 'bg-info text-dark',
+    'completado' => 'bg-success',
+    'vencido' => 'bg-warning text-dark',
+    'cancelado' => 'bg-danger',
+];
+
+$cursosComprados = [];
+$errorMessage = null;
+
+try {
+    $pdo = getPdo();
+    $stmt = $pdo->prepare(
+        'SELECT
+            c.id_compra,
+            c.pagado_en,
+            c.moneda,
+            ci.id_item,
+            ci.cantidad,
+            ci.precio_unitario,
+            ci.titulo_snapshot,
+            cursos.nombre_curso,
+            modalidades.nombre_modalidad,
+            i.id_inscripcion,
+            i.estado AS inscripcion_estado,
+            i.progreso AS inscripcion_progreso
+        FROM compras c
+        INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
+        INNER JOIN cursos ON cursos.id_curso = ci.id_curso
+        LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad
+        LEFT JOIN inscripciones i ON i.id_item_compra = ci.id_item AND i.id_usuario = c.id_usuario
+        WHERE c.id_usuario = :usuario
+          AND c.estado = :estado
+        ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC'
+    );
+    $stmt->bindValue(':usuario', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':estado', 'pagada', PDO::PARAM_STR);
+    $stmt->execute();
+
+    $items = [];
+
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $itemId = (int)$row['id_item'];
+
+        if (!isset($items[$itemId])) {
+            $formattedDate = null;
+            if (!empty($row['pagado_en'])) {
+                try {
+                    $formattedDate = (new DateTimeImmutable($row['pagado_en']))->format('d/m/Y H:i');
+                } catch (Throwable $exception) {
+                    $formattedDate = $row['pagado_en'];
+                }
+            }
+
+            $items[$itemId] = [
+                'id_item' => $itemId,
+                'nombre_curso' => $row['nombre_curso'] ?: $row['titulo_snapshot'],
+                'nombre_modalidad' => $row['nombre_modalidad'],
+                'pagado_en' => $row['pagado_en'],
+                'pagado_en_formatted' => $formattedDate,
+                'moneda' => $row['moneda'],
+                'precio_unitario' => (float)$row['precio_unitario'],
+                'cantidad' => (int)$row['cantidad'],
+                'inscripcion' => null,
+            ];
+        }
+
+        if ($items[$itemId]['inscripcion'] === null && !empty($row['inscripcion_estado'])) {
+            $stateKey = strtolower((string)$row['inscripcion_estado']);
+            $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', (string)$row['inscripcion_estado']));
+            $stateClass = $statusClasses[$stateKey] ?? 'bg-secondary';
+
+            $progress = null;
+            if ($row['inscripcion_progreso'] !== null) {
+                $progress = max(0, min(100, (int)$row['inscripcion_progreso']));
+            }
+
+            $items[$itemId]['inscripcion'] = [
+                'id_inscripcion' => (int)$row['id_inscripcion'],
+                'estado' => $stateLabel,
+                'clase' => $stateClass,
+                'progreso' => $progress,
+            ];
+        }
+    }
+
+    $cursosComprados = array_values($items);
+} catch (Throwable $exception) {
+    $errorMessage = 'No pudimos cargar tus cursos en este momento.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -40,10 +149,49 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-xl-8">
-                <div class="config-card shadow text-center">
-                    <p class="mb-4">Todavia no hay cursos para mostrar en tu cuenta.</p>
-                    <a class="btn btn-gradient" href="index.php#cursos">Explorar cursos disponibles</a>
-                </div>
+                <?php if ($errorMessage !== null): ?>
+                    <div class="config-card shadow text-center">
+                        <p class="mb-0"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></p>
+                    </div>
+                <?php elseif (empty($cursosComprados)): ?>
+                    <div class="config-card shadow text-center">
+                        <p class="mb-4">Todav&iacute;a no ten&eacute;s cursos adquiridos.</p>
+                        <a class="btn btn-gradient" href="index.php#cursos">Explorar cursos disponibles</a>
+                    </div>
+                <?php else: ?>
+                    <?php foreach ($cursosComprados as $curso): ?>
+                        <?php $inscripcion = $curso['inscripcion']; ?>
+                        <div class="config-card shadow mb-4 text-start">
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                                <div>
+                                    <h2 class="h5 mb-1"><?php echo htmlspecialchars($curso['nombre_curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></h2>
+                                    <?php if (!empty($curso['nombre_modalidad'])): ?>
+                                        <div class="text-muted small">Modalidad: <?php echo htmlspecialchars($curso['nombre_modalidad'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($curso['cantidad'] > 1): ?>
+                                        <div class="text-muted small">Cantidad: <?php echo (int)$curso['cantidad']; ?></div>
+                                    <?php endif; ?>
+                                    <div class="text-muted small">Comprado el <?php echo htmlspecialchars($curso['pagado_en_formatted'] ?? 'Sin fecha', ENT_QUOTES, 'UTF-8'); ?></div>
+                                </div>
+                                <div class="text-md-end">
+                                    <?php if ($inscripcion !== null): ?>
+                                        <span class="badge <?php echo htmlspecialchars($inscripcion['clase'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inscripcion['estado'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <?php if ($inscripcion['progreso'] !== null): ?>
+                                            <div class="text-muted small mt-2">Progreso: <?php echo (int)$inscripcion['progreso']; ?>%</div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="badge bg-success">Acceso disponible</span>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php if ($inscripcion !== null && $inscripcion['progreso'] !== null): ?>
+                                <div class="progress mt-3" style="height: 6px;">
+                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?php echo (int)$inscripcion['progreso']; ?>%;" aria-valuenow="<?php echo (int)$inscripcion['progreso']; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -108,5 +256,5 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
     </script>
 <?php endif; ?>
 </body>
-</html>
 
+</html>
