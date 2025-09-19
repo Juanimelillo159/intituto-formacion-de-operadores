@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,18 +10,36 @@ if (!isset($_SESSION['usuario'])) {
 
 $page_title = 'Historial de compras | Instituto de Formacion';
 $page_description = 'Compras realizadas con tu cuenta del Instituto.';
+$page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.css">';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <?php include 'head.php'; ?>
-<body class="d-flex flex-column min-vh-100">
+<body class="config-page d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
-<main class="content-wrapper py-5 flex-grow-1">
-    <div class="container text-center">
-        <h1 class="mb-4">Historial de compras</h1>
-        <div class="alert alert-info" role="alert">
-            Todavia no registramos compras en tu cuenta.
+<header class="config-hero">
+    <div class="container">
+        <a href="index.php" class="config-back"><i class="fas fa-arrow-left me-2"></i>Volver al inicio</a>
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="config-hero-card shadow-lg w-100">
+                    <h1>Historial de compras</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<main class="config-main flex-grow-1 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="config-card shadow text-center">
+                    <p class="mb-4">Todavia no registramos compras en tu cuenta.</p>
+                    <a class="btn btn-gradient" href="index.php#cursos">Explorar cursos disponibles</a>
+                </div>
+            </div>
         </div>
     </div>
 </main>

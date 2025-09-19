@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -15,20 +15,37 @@ if ($misCursosAlert !== null) {
 
 $page_title = 'Mis cursos | Instituto de Formacion';
 $page_description = 'Cursos disponibles para tu cuenta.';
+$page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.css">';
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <?php include 'head.php'; ?>
-<body class="d-flex flex-column min-vh-100">
+<body class="config-page d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
-<main class="content-wrapper py-5 flex-grow-1">
-    <div class="container text-center">
-        <h1 class="mb-4">Mis cursos</h1>
-        <div class="alert alert-info" role="alert">
-            Todavia no hay cursos para mostrar. Cuando te inscribas en uno, va a aparecer aca.
+<header class="config-hero">
+    <div class="container">
+        <a href="index.php" class="config-back"><i class="fas fa-arrow-left me-2"></i>Volver al inicio</a>
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="config-hero-card shadow-lg w-100">
+                    <h1>Mis cursos</h1>
+                </div>
+            </div>
         </div>
-        <a class="btn btn-primary" href="index.php#cursos">Explorar cursos</a>
+    </div>
+</header>
+
+<main class="config-main flex-grow-1 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="config-card shadow text-center">
+                    <p class="mb-4">Todavia no hay cursos para mostrar en tu cuenta.</p>
+                    <a class="btn btn-gradient" href="index.php#cursos">Explorar cursos disponibles</a>
+                </div>
+            </div>
+        </div>
     </div>
 </main>
 
