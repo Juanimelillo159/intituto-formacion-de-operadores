@@ -144,7 +144,7 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
         <a href="javascript:history.back();" class="config-back"><i class="fas fa-arrow-left me-2"></i>Volver</a>
         <div class="row justify-content-center">
             <div class="col-xl-8">
-                <div class="config-hero-card shadow-lg w-100">
+                <div class="config-hero-card shadow-lg w-100 text-center">
                     <h1>Panel de configuración</h1>
                 </div>
             </div>
@@ -243,5 +243,6 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
 

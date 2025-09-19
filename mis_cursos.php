@@ -28,7 +28,7 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
         <a href="index.php" class="config-back"><i class="fas fa-arrow-left me-2"></i>Volver al inicio</a>
         <div class="row justify-content-center">
             <div class="col-xl-8">
-                <div class="config-hero-card shadow-lg w-100">
+                <div class="config-hero-card shadow-lg w-100 text-center">
                     <h1>Mis cursos</h1>
                 </div>
             </div>
@@ -109,3 +109,4 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
 <?php endif; ?>
 </body>
 </html>
+
