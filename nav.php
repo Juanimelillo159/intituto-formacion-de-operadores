@@ -43,6 +43,7 @@ if (session_status() === PHP_SESSION_NONE) {
                             <?php } ?>
                             <li><a class="dropdown-item" href="mis_cursos.php">Mis cursos</a></li>
                             <li><a class="dropdown-item" href="historial_compras.php">Historial de compras</a></li>
+                            <li><a class="dropdown-item" href="configuracion.php">Panel de configuracion</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="admin/cerrar_sesion.php">Cerrar sesion</a></li>
                         </ul>
@@ -63,3 +64,4 @@ if (session_status() === PHP_SESSION_NONE) {
         </div>
     </div>
 </nav>
+

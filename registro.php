@@ -273,5 +273,4 @@ include("head.php") ?>
     </script>
     <script src="assets/js/google-auth.js"></script>
 </body>
-
 </html>
