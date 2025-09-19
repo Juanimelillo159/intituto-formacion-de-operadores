@@ -50,7 +50,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['iniciar_sesion'])) {
         $_SESSION['email'] = $usuario['email'];
         $_SESSION['permiso'] = $usuario['id_permiso'];
 
-        header('Location: ../index.php');
+        $_SESSION['mis_cursos_alert'] = [
+            'icon' => 'success',
+            'title' => 'Sesion iniciada',
+            'message' => 'Sesion iniciada con exito. Bienvenido de nuevo.'
+        ];
+
+        header('Location: ../mis_cursos.php');
         exit;
     } catch (PDOException $e) {
         establecerMensajeLogin('Ocurrio un error al iniciar sesion.', 'danger');

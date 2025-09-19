@@ -47,7 +47,10 @@ include("head.php") ?>
                         <input type="password" class="form-control" name="clave" id="clave" required>
                     </div>
                     <button type="submit" name="iniciar_sesion" class="btn btn-primary w-100">Iniciar sesiÃ³n</button>
-                    <p class="text-center mt-3">Â¿No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
+                    <div class="text-center mt-2">
+                        <a href="recuperar.php">¿Olvidaste tu contraseña?</a>
+                    </div>
+                    <p class="text-center mt-3">¿No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
                 </form>
                 <div class="text-center mt-3">
                     <span class="text-muted"> o </span>
@@ -177,3 +180,4 @@ include("head.php") ?>
 </body>
 
 </html>
+
