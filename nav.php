@@ -46,6 +46,7 @@ if (session_status() === PHP_SESSION_NONE) {
                             <li><a class="dropdown-item" href="configuracion.php">Panel de configuracion</a></li>
                             <?php if ($permiso === 3) { ?>
                                 <li><a class="dropdown-item" href="trabajadores.php">Trabajadores</a></li>
+                                <li><a class="dropdown-item" href="inscripciones.php">Inscripciones</a></li>
                             <?php } ?>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="admin/cerrar_sesion.php">Cerrar sesion</a></li>
