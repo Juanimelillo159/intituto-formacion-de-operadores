@@ -17,6 +17,10 @@ if ($userId <= 0) {
     exit;
 }
 
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = $page > 0 ? $page : 1;
+$perPage = 5;
+
 $misCursosAlert = $_SESSION['mis_cursos_alert'] ?? null;
 if ($misCursosAlert !== null) {
     unset($_SESSION['mis_cursos_alert']);
@@ -125,6 +129,15 @@ try {
 } catch (Throwable $exception) {
     $errorMessage = 'No pudimos cargar tus cursos en este momento.';
 }
+
+$totalCursos = count($cursosComprados);
+$totalPages = (int)ceil($totalCursos / $perPage);
+if ($totalPages > 0 && $page > $totalPages) {
+    $page = $totalPages;
+}
+$offset = ($page - 1) * $perPage;
+$paginatedCursos = $totalCursos > 0 ? array_slice($cursosComprados, $offset, $perPage) : [];
+$scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'mis_cursos.php'));
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -159,7 +172,7 @@ try {
                         <a class="btn btn-gradient" href="index.php#cursos">Explorar cursos disponibles</a>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($cursosComprados as $curso): ?>
+                    <?php foreach ($paginatedCursos as $curso): ?>
                         <?php $inscripcion = $curso['inscripcion']; ?>
                         <div class="config-card shadow mb-4 text-start">
                             <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
@@ -191,6 +204,52 @@ try {
                             <?php endif; ?>
                         </div>
                     <?php endforeach; ?>
+
+                    <?php if ($totalPages > 1): ?>
+                        <nav aria-label="Paginaci&oacute;n de mis cursos" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                <?php
+                                $params = $_GET;
+                                $prevDisabled = $page <= 1;
+                                $prevParams = $params;
+                                $prevParams['page'] = max(1, $page - 1);
+                                $prevUrl = $scriptName . '?' . http_build_query($prevParams);
+                                ?>
+                                <li class="page-item<?php echo $prevDisabled ? ' disabled' : ''; ?>">
+                                    <?php if ($prevDisabled): ?>
+                                        <span class="page-link">Anterior</span>
+                                    <?php else: ?>
+                                        <a class="page-link" href="<?php echo htmlspecialchars($prevUrl, ENT_QUOTES, 'UTF-8'); ?>">Anterior</a>
+                                    <?php endif; ?>
+                                </li>
+
+                                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                                    <?php
+                                    $pageParams = $params;
+                                    $pageParams['page'] = $i;
+                                    $pageUrl = $scriptName . '?' . http_build_query($pageParams);
+                                    ?>
+                                    <li class="page-item<?php echo $i === $page ? ' active' : ''; ?>">
+                                        <a class="page-link" href="<?php echo htmlspecialchars($pageUrl, ENT_QUOTES, 'UTF-8'); ?>"><?php echo $i; ?></a>
+                                    </li>
+                                <?php endfor; ?>
+
+                                <?php
+                                $nextDisabled = $page >= $totalPages;
+                                $nextParams = $params;
+                                $nextParams['page'] = min($totalPages, $page + 1);
+                                $nextUrl = $scriptName . '?' . http_build_query($nextParams);
+                                ?>
+                                <li class="page-item<?php echo $nextDisabled ? ' disabled' : ''; ?>">
+                                    <?php if ($nextDisabled): ?>
+                                        <span class="page-link">Siguiente</span>
+                                    <?php else: ?>
+                                        <a class="page-link" href="<?php echo htmlspecialchars($nextUrl, ENT_QUOTES, 'UTF-8'); ?>">Siguiente</a>
+                                    <?php endif; ?>
+                                </li>
+                            </ul>
+                        </nav>
+                    <?php endif; ?>
                 <?php endif; ?>
             </div>
         </div>
