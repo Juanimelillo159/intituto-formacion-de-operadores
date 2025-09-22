@@ -14,10 +14,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $email = trim((string)($_POST['email'] ?? ''));
 $password = (string)($_POST['password'] ?? '');
+$nombre = trim((string)($_POST['nombre'] ?? ''));
+$apellido = trim((string)($_POST['apellido'] ?? ''));
+$telefono = trim((string)($_POST['telefono'] ?? ''));
 
-if ($email === '' || $password === '') {
+if ($email === '' || $password === '' || $nombre === '' || $apellido === '' || $telefono === '') {
     http_response_code(400);
-    echo json_encode(['ok' => false, 'message' => 'Email y contrasena son obligatorios.']);
+    echo json_encode(['ok' => false, 'message' => 'Email, contrasena, nombre, apellido y telefono son obligatorios.']);
     exit;
 }
 
@@ -30,6 +33,12 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 if (strlen($password) < 8) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'message' => 'La contrasena debe tener al menos 8 caracteres.']);
+    exit;
+}
+
+if (!preg_match('/^[0-9+()\s-]{6,}$/', $telefono)) {
+    http_response_code(400);
+    echo json_encode(['ok' => false, 'message' => 'El numero de telefono no es valido.']);
     exit;
 }
 
@@ -54,8 +63,8 @@ try {
         }
 
         $userId = (int)$existing['id_usuario'];
-        $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ?, id_permiso = 2 WHERE id_usuario = ?');
-        $updateToken->execute([$token, $expiresAt, $userId]);
+        $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ?, id_permiso = 2, nombre = ?, apellido = ?, telefono = ? WHERE id_usuario = ?');
+        $updateToken->execute([$token, $expiresAt, $nombre, $apellido, $telefono, $userId]);
 
         $pdo->commit();
 
@@ -75,12 +84,12 @@ try {
 
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-    $insert = $pdo->prepare('INSERT INTO usuarios (email, clave, id_estado, id_permiso, verificado) VALUES (?, ?, 1, 2, 0)');
-    $insert->execute([$email, $passwordHash]);
+    $insert = $pdo->prepare('INSERT INTO usuarios (email, clave, id_estado, id_permiso, verificado, nombre, apellido, telefono) VALUES (?, ?, 1, 2, 0, ?, ?, ?)');
+    $insert->execute([$email, $passwordHash, $nombre, $apellido, $telefono]);
     $userId = (int)$pdo->lastInsertId();
 
-    $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ?, id_permiso = 2 WHERE id_usuario = ?');
-    $updateToken->execute([$token, $expiresAt, $userId]);
+    $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ?, id_permiso = 2, nombre = ?, apellido = ?, telefono = ? WHERE id_usuario = ?');
+    $updateToken->execute([$token, $expiresAt, $nombre, $apellido, $telefono, $userId]);
 
     $pdo->commit();
 } catch (Throwable $exception) {

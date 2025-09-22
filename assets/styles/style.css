@@ -617,3 +617,40 @@ section[id] {
 .gap-12 {
     gap: 12px;
 }
+/* User menu dropdown */
+.navbar .user-menu-toggle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: #fff;
+    font-size: 1.2rem;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.navbar .user-menu-toggle:hover,
+.navbar .user-menu-toggle:focus {
+    background-color: #009280;
+    color: #fff;
+}
+
+.navbar .user-menu-toggle::after {
+    display: none;
+}
+
+.user-menu-dropdown {
+    min-width: 220px;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+}
+
+.user-menu-dropdown .dropdown-item {
+    font-weight: 500;
+    color: var(--color-dark);
+}
+
+.user-menu-dropdown .dropdown-item:hover {
+    background-color: rgba(0, 189, 163, 0.1);
+    color: var(--color-dark);
+}
+
