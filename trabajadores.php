@@ -21,9 +21,9 @@ if ($currentPermiso !== 3) {
     <!DOCTYPE html>
     <html lang="es">
     <?php include 'head.php'; ?>
-    <body>
+    <body class="config-page d-flex flex-column min-vh-100">
     <?php include 'nav.php'; ?>
-    <main class="py-5 bg-light">
+    <main class="config-main flex-grow-1 py-5">
         <div class="container">
             <div class="alert alert-danger" role="alert">
                 No tienes permiso para acceder al panel de trabajadores.
@@ -92,19 +92,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $targetId = (int)$user['id_usuario'];
                     $alreadyWorker = (int)$user['id_permiso'] === $workerPermiso;
 
+                    $relationQuery = $pdo->prepare('SELECT 1 FROM empresa_trabajadores WHERE id_empresa = ? AND id_trabajador = ? LIMIT 1');
+                    $relationQuery->execute([$currentUserId, $targetId]);
+                    $relationExists = (bool)$relationQuery->fetchColumn();
+
+                    $pdo->beginTransaction();
+
                     $update = $pdo->prepare('UPDATE usuarios SET nombre = ?, apellido = ?, id_permiso = ? WHERE id_usuario = ?');
                     $update->execute([$nombre, $apellido, $workerPermiso, $targetId]);
 
-                    $response['type'] = $alreadyWorker ? 'info' : 'success';
-                    $response['message'] = $alreadyWorker
-                        ? 'El usuario ya estaba asignado como trabajador. Se actualizaron sus datos.'
-                        : 'Trabajador asignado correctamente.';
+                    if (!$relationExists) {
+                        $link = $pdo->prepare('INSERT INTO empresa_trabajadores (id_empresa, id_trabajador, asignado_por, asignado_en) VALUES (?, ?, ?, NOW())');
+                        $link->execute([$currentUserId, $targetId, $currentUserId]);
+                    }
+
+                    $pdo->commit();
+
+                    if ($relationExists) {
+                        $response['type'] = 'info';
+                        $response['message'] = 'El trabajador ya estaba asignado a tu empresa. Se actualizaron sus datos.';
+                    } else {
+                        $response['type'] = $alreadyWorker ? 'info' : 'success';
+                        $response['message'] = $alreadyWorker
+                            ? 'El trabajador ya tenia acceso. Actualizamos la relacion con tu empresa.'
+                            : 'Trabajador asignado correctamente.';
+                    }
 
                     $assignValues = ['nombre' => '', 'apellido' => '', 'email' => ''];
                     $nextTab = 'worker_' . $targetId;
                 }
             } catch (Throwable $exception) {
-                $response['message'] = 'No pudimos actualizar la informacion. Intenta nuevamente.';
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                $response['message'] = 'No pudimos actualizar la informacion. Detalle: ' . $exception->getMessage();
             }
         }
 
@@ -137,16 +158,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $response['message'] = 'No puedes modificar el perfil de un administrador.';
                 } elseif ((int)$user['id_permiso'] === $managerPermiso && $targetProfile !== $managerPermiso) {
                     $response['message'] = 'No puedes modificar el perfil de un gestor.';
+                    $nextTab = 'assign';
                 } elseif ($userId === $currentUserId && $targetProfile !== $managerPermiso) {
                     $response['message'] = 'No puedes quitar tu propio perfil de trabajador.';
-                    $nextTab = 'worker_' . $userId;
+                    $nextTab = 'assign';
                 } elseif ((int)$user['id_permiso'] === $targetProfile) {
                     $response['type'] = 'info';
                     $response['message'] = 'El usuario ya tiene ese perfil asignado.';
                     $nextTab = 'worker_' . $userId;
                 } else {
+                    $pdo->beginTransaction();
+
                     $update = $pdo->prepare('UPDATE usuarios SET id_permiso = ? WHERE id_usuario = ?');
                     $update->execute([$targetProfile, $userId]);
+
+                    if ($targetProfile === 2) {
+                        $unlink = $pdo->prepare('DELETE FROM empresa_trabajadores WHERE id_empresa = ? AND id_trabajador = ?');
+                        $unlink->execute([$currentUserId, $userId]);
+                        $nextTab = 'assign';
+                    }
+
+                    $pdo->commit();
 
                     $fullName = trim((string)($user['nombre'] ?? '') . ' ' . (string)($user['apellido'] ?? ''));
                     if ($fullName === '') {
@@ -156,9 +188,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $perfilNombre = $profileLabels[$targetProfile] ?? ('Perfil ' . $targetProfile);
                     $response['type'] = 'success';
                     $response['message'] = sprintf('Se actualizo el perfil de %s a %s.', $fullName, $perfilNombre);
-                    $nextTab = $targetProfile === $workerPermiso ? 'worker_' . $userId : 'assign';
                 }
             } catch (Throwable $exception) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
                 $response['message'] = 'No pudimos actualizar el perfil. Intenta nuevamente.';
             }
         } else {
@@ -181,11 +215,19 @@ $workers = [];
 $loadError = null;
 
 try {
-    $stmt = $pdo->prepare('SELECT id_usuario, email, nombre, apellido, telefono FROM usuarios WHERE id_permiso = ? ORDER BY nombre ASC, apellido ASC, email ASC');
-    $stmt->execute([$workerPermiso]);
+    $sqlWorkers = <<<SQL
+SELECT u.id_usuario, u.email, u.nombre, u.apellido, u.telefono
+FROM empresa_trabajadores et
+INNER JOIN usuarios u ON u.id_usuario = et.id_trabajador
+WHERE et.id_empresa = ? AND u.id_permiso = ?
+ORDER BY u.nombre ASC, u.apellido ASC, u.email ASC
+SQL;
+    $stmt = $pdo->prepare($sqlWorkers);
+    $stmt->execute([$currentUserId, $workerPermiso]);
     $workers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $exception) {
-    $loadError = 'No pudimos cargar la lista de trabajadores.';
+    error_log('trabajadores.php workers query: ' . $exception->getMessage());
+    $loadError = 'No pudimos cargar la lista de trabajadores. Detalle: ' . $exception->getMessage();
 }
 
 $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
@@ -195,10 +237,10 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
 
 <?php include 'head.php'; ?>
 
-<body>
+<body class="config-page d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
-<main class="py-5 bg-light">
+    <main class="config-main flex-grow-1 py-5">
     <div class="container">
         <div class="mb-4">
             <h1 class="h3 mb-1">Gestion de trabajadores</h1>
