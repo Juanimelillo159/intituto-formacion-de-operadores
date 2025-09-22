@@ -48,9 +48,9 @@ include("head.php") ?>
                     </div>
                     <button type="submit" name="iniciar_sesion" class="btn btn-primary w-100">Iniciar sesiÃ³n</button>
                     <div class="text-center mt-2">
-                        <a href="recuperar.php">¿Olvidaste tu contraseña?</a>
+                        <a href="recuperar.php">Olvidaste tu contraseÃ±a?</a>
                     </div>
-                    <p class="text-center mt-3">¿No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
+                    <p class="text-center mt-3">No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
                 </form>
                 <div class="text-center mt-3">
                     <span class="text-muted"> o </span>
