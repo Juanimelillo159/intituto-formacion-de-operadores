@@ -59,6 +59,75 @@ if (!function_exists('checkout_env')) {
     }
 }
 
+if (!function_exists('checkout_mp_config')) {
+    /**
+     * Carga las credenciales configuradas para Mercado Pago.
+     *
+     * @return array{public_key: ?string, access_token: ?string, integrator_id: ?string}
+     */
+    function checkout_mp_config(): array
+    {
+        static $config = null;
+        if ($config !== null) {
+            return $config;
+        }
+
+        $defaults = [
+            'public_key' => null,
+            'access_token' => null,
+            'integrator_id' => null,
+        ];
+
+        $config = $defaults;
+        $file = __DIR__ . '/mp_config.php';
+
+        if (is_file($file) && is_readable($file)) {
+            try {
+                $loaded = require $file;
+                if (is_array($loaded)) {
+                    foreach ($defaults as $key => $_) {
+                        if (!array_key_exists($key, $loaded)) {
+                            continue;
+                        }
+                        $value = $loaded[$key];
+                        if (is_string($value)) {
+                            $value = trim($value);
+                            $config[$key] = $value !== '' ? $value : null;
+                        } elseif ($value !== null) {
+                            $config[$key] = $value;
+                        }
+                    }
+                } else {
+                    checkout_log_event('checkout_mp_config_error', ['reason' => 'invalid_config']);
+                }
+            } catch (Throwable $exception) {
+                checkout_log_event('checkout_mp_config_error', ['reason' => $exception->getMessage()], $exception);
+            }
+        }
+
+        return $config;
+    }
+}
+
+if (!function_exists('checkout_get_mp_public_key')) {
+    /**
+     * Obtiene la public key configurada para Mercado Pago.
+     */
+    function checkout_get_mp_public_key(): ?string
+    {
+        $config = checkout_mp_config();
+        $publicKey = $config['public_key'] ?? null;
+        if (!$publicKey) {
+            $publicKey = checkout_env('MP_PUBLIC_KEY') ?? checkout_env('MERCADOPAGO_PUBLIC_KEY');
+        }
+        if ($publicKey === null) {
+            return null;
+        }
+        $trimmed = trim((string) $publicKey);
+        return $trimmed !== '' ? $trimmed : null;
+    }
+}
+
 if (!function_exists('checkout_get_base_url')) {
     /**
      * Determina la URL base de la aplicación para construir callbacks.
@@ -83,12 +152,19 @@ if (!function_exists('checkout_configure_mp')) {
      */
     function checkout_configure_mp(): void
     {
-        $token = checkout_env('MP_ACCESS_TOKEN') ?? checkout_env('MERCADOPAGO_ACCESS_TOKEN');
+        $config = checkout_mp_config();
+        $token = $config['access_token'] ?? null;
+        if (!$token) {
+            $token = checkout_env('MP_ACCESS_TOKEN') ?? checkout_env('MERCADOPAGO_ACCESS_TOKEN');
+        }
         if (!$token) {
             throw new RuntimeException('No se configuró el token de acceso de Mercado Pago. Definí MP_ACCESS_TOKEN.');
         }
         MercadoPagoConfig::setAccessToken($token);
-        $integratorId = checkout_env('MP_INTEGRATOR_ID');
+        $integratorId = $config['integrator_id'] ?? null;
+        if (!$integratorId) {
+            $integratorId = checkout_env('MP_INTEGRATOR_ID') ?? checkout_env('MERCADOPAGO_INTEGRATOR_ID');
+        }
         if ($integratorId) {
             MercadoPagoConfig::setIntegratorId($integratorId);
         }
