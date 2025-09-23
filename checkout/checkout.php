@@ -251,10 +251,14 @@ include '../head.php';
                                                 </div>
                                             </label>
                                             <label class="payment-option mt-3">
-                                                <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago">
+                                                <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago" <?php echo $precio_vigente ? '' : 'disabled'; ?>>
                                                 <div class="payment-info">
                                                     <strong>Mercado Pago</strong>
-                                                    <span>Próximamente disponible. Te avisaremos cuando esté habilitado.</span>
+                                                    <?php if ($precio_vigente): ?>
+                                                        <span>Pagá de forma segura con tarjetas, efectivo o saldo en Mercado Pago.</span>
+                                                    <?php else: ?>
+                                                        <span>Disponible cuando haya un precio vigente para esta capacitación.</span>
+                                                    <?php endif; ?>
                                                 </div>
                                             </label>
 
@@ -282,7 +286,16 @@ include '../head.php';
 
                                             <div class="payment-details hidden" id="mpDetails">
                                                 <div class="summary-card">
-                                                    <p class="mb-0 text-muted">Pronto podrás completar el pago con Mercado Pago directamente desde esta pantalla.</p>
+                                                    <h6 class="mb-3">Pagar con Mercado Pago</h6>
+                                                    <p class="mb-2">Al confirmar, crearemos tu orden y te redirigiremos a Mercado Pago para completar el pago en un entorno seguro.</p>
+                                                    <?php if ($precio_vigente): ?>
+                                                        <?php $mpMontoTexto = sprintf('%s %s', strtoupper($precio_vigente['moneda'] ?? 'ARS'), number_format((float) $precio_vigente['precio'], 2, ',', '.')); ?>
+                                                        <p class="mb-2 fw-semibold">Monto a abonar: <?php echo $mpMontoTexto; ?></p>
+                                                    <?php endif; ?>
+                                                    <ul class="mb-0 small text-muted list-unstyled">
+                                                        <li class="mb-1"><i class="fas fa-lock me-2"></i>Usá tu cuenta de Mercado Pago o tus medios de pago habituales.</li>
+                                                        <li><i class="fas fa-envelope me-2"></i>Te enviaremos un correo con la confirmación apenas se acredite.</li>
+                                                    </ul>
                                                 </div>
                                             </div>
                                         </div>
@@ -293,7 +306,7 @@ include '../head.php';
                                                 Volver
                                             </button>
                                             <button type="button" class="btn btn-gradient btn-rounded" id="btnConfirmar">
-                                                Confirmar inscripción
+                                                <span class="btn-label">Confirmar inscripción</span>
                                                 <i class="fas fa-paper-plane ms-2"></i>
                                             </button>
                                         </div>
@@ -323,7 +336,10 @@ include '../head.php';
                 return;
             }
 
+            const mpAvailable = <?php echo $precio_vigente ? 'true' : 'false'; ?>;
+            const mpEndpoint = '../checkout/mercadopago_init.php';
             let currentStep = 1;
+            let mpProcessing = false;
 
             const goToStep = (target) => {
                 currentStep = target;
@@ -393,6 +409,11 @@ include '../head.php';
                         showAlert('error', 'Seleccioná un método de pago', 'Elegí una forma de pago para continuar.');
                         return false;
                     }
+                    if (mp && !mpAvailable) {
+                        goToStep(3);
+                        showAlert('warning', 'Mercado Pago no disponible', 'Este curso todavía no tiene un precio vigente para pagar online.');
+                        return false;
+                    }
                     if (transfer) {
                         const fileInput = document.getElementById('comprobante');
                         const file = fileInput.files[0];
@@ -445,6 +466,34 @@ include '../head.php';
             const transferRadio = document.getElementById('metodo_transfer');
             const transferDetails = document.getElementById('transferDetails');
             const mpDetails = document.getElementById('mpDetails');
+            const form = document.getElementById('checkoutForm');
+            const confirmButton = document.getElementById('btnConfirmar');
+            let confirmLabel = confirmButton.querySelector('.btn-label');
+            let confirmIcon = confirmButton.querySelector('i');
+            const confirmDefault = {
+                label: 'Confirmar inscripción',
+                icon: 'fas fa-paper-plane ms-2'
+            };
+            const confirmDefaultMarkup = confirmButton.innerHTML;
+
+            const refreshConfirmElements = () => {
+                confirmLabel = confirmButton.querySelector('.btn-label');
+                confirmIcon = confirmButton.querySelector('i');
+            };
+
+            const updateConfirmButton = () => {
+                refreshConfirmElements();
+                if (!confirmLabel || !confirmIcon) {
+                    return;
+                }
+                if (mpRadio.checked) {
+                    confirmLabel.textContent = 'Ir a Mercado Pago';
+                    confirmIcon.className = 'fas fa-credit-card ms-2';
+                } else {
+                    confirmLabel.textContent = confirmDefault.label;
+                    confirmIcon.className = confirmDefault.icon;
+                }
+            };
 
             const togglePaymentDetails = () => {
                 if (transferRadio.checked) {
@@ -454,25 +503,68 @@ include '../head.php';
                     mpDetails.classList.remove('hidden');
                     transferDetails.classList.add('hidden');
                 }
+                updateConfirmButton();
             };
 
             mpRadio.addEventListener('change', togglePaymentDetails);
             transferRadio.addEventListener('change', togglePaymentDetails);
             togglePaymentDetails();
 
-            const form = document.getElementById('checkoutForm');
-            const confirmButton = document.getElementById('btnConfirmar');
+            const setConfirmLoading = (isLoading) => {
+                if (isLoading) {
+                    confirmButton.disabled = true;
+                    confirmButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Redirigiendo a Mercado Pago...';
+                } else {
+                    confirmButton.disabled = false;
+                    confirmButton.innerHTML = confirmDefaultMarkup;
+                    updateConfirmButton();
+                }
+            };
+
+            const iniciarMercadoPago = async () => {
+                if (mpProcessing) {
+                    return;
+                }
+                mpProcessing = true;
+                setConfirmLoading(true);
+                try {
+                    const formData = new FormData(form);
+                    formData.set('metodo_pago', 'mercado_pago');
+                    formData.set('__accion', 'crear_orden');
+                    const response = await fetch(mpEndpoint, {
+                        method: 'POST',
+                        body: formData,
+                    });
+                    const data = await response.json().catch(() => null);
+                    if (!response.ok || !data || !data.success || !data.init_point) {
+                        const message = data && data.message ? data.message : 'No se pudo iniciar el pago en Mercado Pago.';
+                        throw new Error(message);
+                    }
+                    window.location.href = data.init_point;
+                } catch (error) {
+                    mpProcessing = false;
+                    setConfirmLoading(false);
+                    showAlert('error', 'No se pudo iniciar el pago', error && error.message ? error.message : 'Intentá nuevamente en unos minutos.');
+                }
+            };
 
             confirmButton.addEventListener('click', () => {
                 if (!validateStep(2) || !validateStep(3)) {
                     return;
                 }
+                const mpSelected = mpRadio.checked;
+                const title = mpSelected ? 'Ir a Mercado Pago' : 'Confirmar inscripción';
+                const text = mpSelected
+                    ? 'Vamos a generar tu orden y redirigirte a Mercado Pago para que completes el pago.'
+                    : '¿Deseás enviar la inscripción con los datos cargados?';
+                const confirmText = mpSelected ? 'Sí, continuar' : 'Sí, enviar';
+
                 Swal.fire({
                     icon: 'question',
-                    title: 'Confirmar inscripción',
-                    text: '¿Deseás enviar la inscripción con los datos cargados?',
+                    title,
+                    text,
                     showCancelButton: true,
-                    confirmButtonText: 'Sí, enviar',
+                    confirmButtonText: confirmText,
                     cancelButtonText: 'Cancelar',
                     customClass: {
                         confirmButton: 'btn btn-gradient btn-rounded me-2',
@@ -481,7 +573,12 @@ include '../head.php';
                     buttonsStyling: false,
                     reverseButtons: true
                 }).then(result => {
-                    if (result.isConfirmed) {
+                    if (!result.isConfirmed) {
+                        return;
+                    }
+                    if (mpSelected) {
+                        iniciarMercadoPago();
+                    } else {
                         document.getElementById('__accion').value = 'crear_orden';
                         form.submit();
                     }
