@@ -172,6 +172,11 @@
       padding: 14px 24px;
       border-radius: 50px;
       font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      text-decoration: none;
       width: 100%;
       margin-top: 22px;
       transition: .3s;

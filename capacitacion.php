@@ -176,7 +176,7 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                             </div>
                         </div>
 
-                        <button class="enroll-button" onclick="inscribirse()"><i class="fas fa-user-plus me-2"></i>Inscribirse Ahora</button>
+                        <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo isset($curso['id_curso']) ? (int)$curso['id_curso'] : 0; ?>"><i class="fas fa-user-plus me-2"></i>Inscribirse Ahora</a>
                     </div>
                 </div>
             </div>
@@ -188,9 +188,6 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function inscribirse() {
-            alert('Funcionalidad de inscripción - Conectar con tu sistema.');
-        }
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.content-wrapper, .details-card').forEach((el, i) => {
                 el.style.opacity = '0';

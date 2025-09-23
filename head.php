@@ -1,3 +1,4 @@
+<?php $asset_base_path = $asset_base_path ?? ''; ?>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,17 +9,15 @@
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-    <link rel="stylesheet" href="admin/css/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
 
-    <link rel="stylesheet" href="admin/css/sweetalert2/sweetalert2.min.css">
+    <link rel="stylesheet" href="<?php echo $asset_base_path; ?>assets/styles/style.css">
 
-    <!-- Tus estilos -->
-    <link rel="stylesheet" href="assets/styles/style.css">
     <?= isset($page_styles) ? $page_styles : '' ?>
 
     <!-- Iconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
 
     <!-- Condicional: solo carga si se pide -->
     <?php if (!empty($include_google_auth)): ?>
@@ -30,4 +29,5 @@
 
     <!-- Favicon -->
     <link rel="shortcut icon" href="assets/iconos/icono.png" type="image/png">
+
 </head>
