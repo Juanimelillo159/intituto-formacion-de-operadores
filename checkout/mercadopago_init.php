@@ -6,6 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../sbd.php';
 require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/mp_config.php';
 require_once __DIR__ . '/mercadopago_common.php';
 
 use MercadoPago\Client\Preference\PreferenceClient;
@@ -129,29 +130,12 @@ try {
 
     $preferenceRequest = [
         'items' => [[
-            'id' => (string) $curso['id_curso'],
             'title' => $curso['nombre_curso'],
+            'description' => 'Inscripción al curso ' . $curso['nombre_curso'],
             'quantity' => 1,
             'unit_price' => round($precioFinal, 2),
             'currency_id' => strtoupper($moneda),
-            'description' => 'Inscripción al curso ' . $curso['nombre_curso'],
         ]],
-        'payer' => [
-            'name' => $nombre,
-            'surname' => $apellido,
-            'email' => $email,
-            'phone' => [
-                'number' => $telefono,
-            ],
-            'identification' => [
-                'type' => 'DNI',
-                'number' => $dni !== '' ? $dni : null,
-            ],
-            'address' => [
-                'street_name' => $direccion !== '' ? $direccion : null,
-                'zip_code' => null,
-            ],
-        ],
         'back_urls' => [
             'success' => $baseUrl . '/checkout/gracias.php',
             'pending' => $baseUrl . '/checkout/gracias.php',
@@ -163,8 +147,13 @@ try {
             'id_pago' => $pagoId,
             'id_inscripcion' => $inscripcionId,
             'id_curso' => $cursoId,
+            'email' => $email,
         ],
     ];
+
+    if ($email !== '') {
+        $preferenceRequest['payer'] = ['email' => $email];
+    }
 
     $notificationUrl = checkout_env('MP_NOTIFICATION_URL');
     if (!$notificationUrl) {
@@ -178,8 +167,33 @@ try {
         $preference = $preferenceClient->create($preferenceRequest);
     } catch (MPApiException $mpException) {
         $con->rollBack();
+        $apiMessage = $mpException->getMessage();
+        $apiResponse = method_exists($mpException, 'getApiResponse') ? $mpException->getApiResponse() : null;
+        if ($apiResponse) {
+            $details = [];
+            if (method_exists($apiResponse, 'getStatusCode')) {
+                $statusCode = $apiResponse->getStatusCode();
+                if ($statusCode) {
+                    $details[] = 'HTTP ' . $statusCode;
+                }
+            }
+            if (method_exists($apiResponse, 'getContent')) {
+                $body = $apiResponse->getContent();
+                if (is_string($body) && $body !== '') {
+                    $details[] = $body;
+                } elseif (is_array($body) && !empty($body)) {
+                    $encoded = json_encode($body, JSON_UNESCAPED_UNICODE);
+                    if ($encoded !== false) {
+                        $details[] = $encoded;
+                    }
+                }
+            }
+            if ($details) {
+                $apiMessage = 'Mercado Pago API error: ' . implode(' - ', $details);
+            }
+        }
         checkout_log_event('checkout_mp_preference_error', ['curso' => $cursoId, 'inscripcion' => $inscripcionId], $mpException);
-        throw new RuntimeException('No pudimos iniciar el pago con Mercado Pago. Intentá nuevamente en unos minutos.');
+        throw new RuntimeException($apiMessage ?: 'No pudimos iniciar el pago con Mercado Pago.');
     }
 
     $preferenceId = (string) ($preference->id ?? '');
@@ -199,6 +213,7 @@ try {
             'external_reference' => $externalReference,
             'created_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
         ],
+        'request' => $preferenceRequest,
     ];
 
     $mpStmt = $con->prepare(
