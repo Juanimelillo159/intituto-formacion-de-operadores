@@ -1,0 +1,126 @@
+﻿.config-page {
+    background: linear-gradient(135deg, #0d6efd 0%, #1b3785 35%, #0d6efd 100%);
+    color: #0f172a;
+}
+
+.config-hero {
+    padding: 3rem 0 1rem;
+    color: #ffffff;
+}
+
+.config-back {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    font-weight: 600;
+    color: rgba(255,255,255,.85);
+    text-decoration: none;
+    margin-bottom: 1.5rem;
+    transition: transform .2s ease, color .2s ease;
+}
+
+.config-back:hover {
+    color: #ffffff;
+    transform: translateX(-4px);
+}
+
+.config-hero-card {
+    margin: 0 auto;
+    max-width: 100%;
+    background: rgba(15, 23, 42, 0.35);
+    border-radius: 1.5rem;
+    padding: 2.5rem;
+    backdrop-filter: blur(6px);
+}
+
+.config-hero-card h1 {
+    font-size: clamp(1.8rem, 3vw, 2.4rem);
+    margin: 0;
+    text-align: center;
+    color: #ffffff;
+}
+
+.config-main {
+    margin-top: -2.5rem;
+}
+
+.config-card {
+    background: #ffffff;
+    border-radius: 1.5rem;
+    padding: 2.5rem 2.25rem;
+    border: none;
+}
+
+.config-tabs {
+    background: #f1f5f9;
+    border-radius: 999px;
+    padding: .35rem;
+    gap: .35rem;
+}
+
+.config-tabs .nav-link {
+    border-radius: 999px;
+    color: #0f172a;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .55rem 1.25rem;
+    transition: all .2s ease;
+}
+
+.config-tabs .nav-link.active {
+    background: #0d6efd;
+    color: #ffffff;
+    box-shadow: 0 12px 25px rgba(13,110,253,0.25);
+}
+
+.config-form .form-label {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+.config-form .form-control {
+    border-radius: .9rem;
+    border: 1px solid #d6dbe6;
+    padding: .65rem .95rem;
+    transition: border .2s ease, box-shadow .2s ease;
+}
+
+.config-form .form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 .25rem rgba(13,110,253,0.15);
+}
+
+.config-email-box .form-control[readonly] {
+    background: #f8fafc;
+    cursor: not-allowed;
+    color: #475569;
+}
+
+.btn-gradient {
+    background: linear-gradient(135deg, #0d6efd, #4338ca);
+    border: none;
+    color: #ffffff;
+    padding: .65rem 1.75rem;
+    border-radius: 999px;
+    font-weight: 600;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.btn-gradient:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 25px rgba(67,56,202,0.25);
+}
+
+@media (max-width: 767.98px) {
+    .config-card {
+        padding: 1.75rem 1.35rem;
+    }
+
+    .config-tabs {
+        flex-direction: column;
+        border-radius: 1rem;
+        padding: .5rem;
+    }
+}
