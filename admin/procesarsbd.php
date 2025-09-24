@@ -70,6 +70,7 @@ $checkoutUploadTmp = null;
 $checkoutUploadMoved = false;
 $checkoutIsCrearOrden = false;
 $checkoutCursoId = 0;
+$checkoutTipo = 'curso';
 
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -106,6 +107,16 @@ try {
         if ($metodoPago === 'mp') {
             $metodoPago = 'mercado_pago';
         }
+        $tipoCheckoutRaw = strtolower(trim((string)($_POST['tipo_checkout'] ?? ($_POST['tipo'] ?? ''))));
+        if ($tipoCheckoutRaw === 'capacitaciones') {
+            $tipoCheckoutRaw = 'capacitacion';
+        } elseif ($tipoCheckoutRaw === 'certificaciones') {
+            $tipoCheckoutRaw = 'certificacion';
+        }
+        if (!in_array($tipoCheckoutRaw, ['curso', 'capacitacion', 'certificacion'], true)) {
+            $tipoCheckoutRaw = 'curso';
+        }
+        $checkoutTipo = $tipoCheckoutRaw;
         $obsPagoRaw = trim((string)($_POST['obs_pago'] ?? ''));
         if (function_exists('mb_substr')) {
             $observacionesPago = mb_substr($obsPagoRaw, 0, 250, 'UTF-8');
@@ -278,6 +289,8 @@ try {
         $_SESSION['checkout_success'] = [
             'orden' => $idInscripcion,
             'metodo' => $metodoPago,
+            'tipo' => $checkoutTipo,
+            'id_curso' => $checkoutCursoId,
         ];
 
         log_cursos('checkout_crear_orden_ok', [
@@ -288,7 +301,16 @@ try {
             'moneda' => $monedaPrecio,
         ]);
 
-        header('Location: ../checkout/checkout.php?id_curso=' . $checkoutCursoId);
+        $redirectQuery = [
+            'orden' => $idInscripcion,
+            'metodo' => $metodoPago,
+        ];
+        if ($checkoutTipo !== 'curso') {
+            $redirectQuery['tipo'] = $checkoutTipo;
+        }
+        $redirectUrl = '../checkout/gracias.php?' . http_build_query($redirectQuery);
+
+        header('Location: ' . $redirectUrl);
         exit;
     }
 
@@ -642,8 +664,15 @@ try {
 
         $_SESSION['checkout_error'] = $e->getMessage();
         $redirect = '../checkout/checkout.php';
+        $params = [];
         if ($checkoutCursoId > 0) {
-            $redirect .= '?id_curso=' . $checkoutCursoId;
+            $params['id_curso'] = $checkoutCursoId;
+        }
+        if ($checkoutTipo !== 'curso') {
+            $params['tipo'] = $checkoutTipo;
+        }
+        if (!empty($params)) {
+            $redirect .= '?' . http_build_query($params);
         }
         header('Location: ' . $redirect);
         exit;
