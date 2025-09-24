@@ -16,6 +16,10 @@ $responseCode = 200;
 $response = ['success' => false, 'message' => ''];
 
 try {
+    if (!isset($_SESSION['id_usuario']) && !isset($_SESSION['usuario'])) {
+        $responseCode = 401;
+        throw new RuntimeException('Debés iniciar sesión para continuar.');
+    }
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new RuntimeException('Método no permitido.');
     }
@@ -247,7 +251,9 @@ try {
     $response['preference_id'] = $preferenceId;
     $response['orden'] = $inscripcionId;
 } catch (Throwable $exception) {
-    $responseCode = $exception instanceof InvalidArgumentException ? 400 : 500;
+    if ($responseCode === 200) {
+        $responseCode = $exception instanceof InvalidArgumentException ? 400 : 500;
+    }
     $response['message'] = $exception->getMessage();
     checkout_log_event('checkout_mp_preference_fail', ['error' => $exception->getMessage()], $exception);
 }
