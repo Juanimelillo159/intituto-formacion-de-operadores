@@ -1,19 +1,29 @@
 <?php
 if (!isset($base_path)) {
-    $scriptDir = trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
-    if ($scriptDir === '') {
-        $base_path = '';
+    $documentRoot = isset($_SERVER['DOCUMENT_ROOT'])
+        ? rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/')
+        : '';
+
+    $currentDir = str_replace('\\', '/', realpath(__DIR__));
+
+    if ($documentRoot !== '' && strpos($currentDir, $documentRoot) === 0) {
+        $relativeProjectPath = trim(substr($currentDir, strlen($documentRoot)), '/');
     } else {
-        $depth = substr_count($scriptDir, '/') + 1;
-        $base_path = str_repeat('../', $depth);
+        $relativeProjectPath = isset($_SERVER['SCRIPT_NAME'])
+            ? trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/')
+            : '';
     }
+
+    $base_path = $relativeProjectPath === '' ? '' : '/' . $relativeProjectPath;
 }
+
+$normalized_base = rtrim($base_path, '/');
 ?>
 <footer class="bg-black text-white py-5">
     <div class="container">
         <div class="row">
             <div class="col-md-4 mb-4 mb-md-0">
-                <img src="<?php echo $base_path; ?>logos/LOGO PNG-07.png" alt="Logo Instituto de Formación de Operadores" class="footer-logo mb-3">
+                <img src="<?php echo $normalized_base; ?>/logos/LOGO PNG-07.png" alt="Logo Instituto de Formación de Operadores" class="footer-logo mb-3">
                 <p>&copy; 2023 Instituto de Formación de Operadores. Todos los derechos reservados.</p>
             </div>
             <div class="col-md-4 mb-4 mb-md-0">

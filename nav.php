@@ -5,20 +5,30 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 if (!isset($base_path)) {
-    $scriptDir = trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
-    if ($scriptDir === '') {
-        $base_path = '';
+    $documentRoot = isset($_SERVER['DOCUMENT_ROOT'])
+        ? rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/')
+        : '';
+
+    $currentDir = str_replace('\\', '/', realpath(__DIR__));
+
+    if ($documentRoot !== '' && strpos($currentDir, $documentRoot) === 0) {
+        $relativeProjectPath = trim(substr($currentDir, strlen($documentRoot)), '/');
     } else {
-        $depth = substr_count($scriptDir, '/') + 1;
-        $base_path = str_repeat('../', $depth);
+        $relativeProjectPath = isset($_SERVER['SCRIPT_NAME'])
+            ? trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/')
+            : '';
     }
+
+    $base_path = $relativeProjectPath === '' ? '' : '/' . $relativeProjectPath;
 }
+
+$normalized_base = rtrim($base_path, '/');
 ?>
 
 <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
     <div class="container">
-        <a class="navbar-brand" href="<?php echo $base_path; ?>index.php">
-            <img src="<?php echo $base_path; ?>logos/LOGO PNG-03.png" alt="Logo">
+        <a class="navbar-brand" href="<?php echo $normalized_base; ?>/index.php">
+            <img src="<?php echo $normalized_base; ?>/logos/LOGO PNG-03.png" alt="Logo">
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
             <span class="navbar-toggler-icon"></span>
@@ -26,16 +36,16 @@ if (!isset($base_path)) {
         <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
             <ul class="navbar-nav">
                 <li class="nav-item">
-                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#quienes-somos">Nosotros</a>
+                    <a class="nav-link" href="<?php echo $normalized_base; ?>/index.php#quienes-somos">Nosotros</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#servicios-capacitacion">Servicios</a>
+                    <a class="nav-link" href="<?php echo $normalized_base; ?>/index.php#servicios-capacitacion">Servicios</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#cursos">Cursos</a>
+                    <a class="nav-link" href="<?php echo $normalized_base; ?>/index.php#cursos">Cursos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#contacto">Contactanos</a>
+                    <a class="nav-link" href="<?php echo $normalized_base; ?>/index.php#contacto">Contactanos</a>
                 </li>
                 <?php
                 $permiso = isset($_SESSION["permiso"]) ? (int)$_SESSION["permiso"] : null;
@@ -48,19 +58,19 @@ if (!isset($base_path)) {
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end user-menu-dropdown" aria-labelledby="userMenu">
                             <?php if ($permiso === 1) { ?>
-                                <li><a class="dropdown-item" href="admin/admin.php">Panel administrador</a></li>
+                                <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/admin/admin.php">Panel administrador</a></li>
                                 <li><hr class="dropdown-divider"></li>
                             <?php } ?>
-                            <li><a class="dropdown-item" href="mis_cursos.php">Mis cursos</a></li>
-                            <li><a class="dropdown-item" href="historial_compras.php">Historial de compras</a></li>
-                            <li><a class="dropdown-item" href="configuracion.php">Panel de configuracion</a></li>
+                            <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/mis_cursos.php">Mis cursos</a></li>
+                            <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/historial_compras.php">Historial de compras</a></li>
+                            <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/configuracion.php">Panel de configuracion</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="admin/cerrar_sesion.php">Cerrar sesion</a></li>
+                            <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/admin/cerrar_sesion.php">Cerrar sesion</a></li>
                         </ul>
                     </li>
                 <?php } else { ?>
                     <li class="nav-item">
-                        <a class="text-decoration-none" href="<?php echo $base_path; ?>login.php">
+                        <a class="text-decoration-none" href="<?php echo $normalized_base; ?>/login.php">
                             <button class="button-nav">
                                 iniciar sesion
                                 <div class="arrow-wrapper">
