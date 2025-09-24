@@ -4,7 +4,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-
+if (!isset($base_path)) {
+    $scriptDir = trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+    if ($scriptDir === '') {
+        $base_path = '';
+    } else {
+        $depth = substr_count($scriptDir, '/') + 1;
+        $base_path = str_repeat('../', $depth);
+    }
+}
 ?>
 
 <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
@@ -27,8 +35,7 @@ if (session_status() === PHP_SESSION_NONE) {
                     <a class="nav-link" href="<?php echo $base_path; ?>index.php#cursos">Cursos</a>
                 </li>
                 <li class="nav-item">
-
-                    <a class="nav-link" href="index.php#contacto">Contactanos</a>
+                    <a class="nav-link" href="<?php echo $base_path; ?>index.php#contacto">Contactanos</a>
                 </li>
                 <?php
                 $permiso = isset($_SESSION["permiso"]) ? (int)$_SESSION["permiso"] : null;

@@ -1,4 +1,14 @@
-<?php $base_path = $base_path ?? ''; ?>
+<?php
+if (!isset($base_path)) {
+    $scriptDir = trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+    if ($scriptDir === '') {
+        $base_path = '';
+    } else {
+        $depth = substr_count($scriptDir, '/') + 1;
+        $base_path = str_repeat('../', $depth);
+    }
+}
+?>
 <footer class="bg-black text-white py-5">
     <div class="container">
         <div class="row">

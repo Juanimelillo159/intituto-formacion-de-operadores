@@ -1,4 +1,14 @@
-<?php $asset_base_path = $asset_base_path ?? ''; ?>
+<?php
+if (!isset($asset_base_path)) {
+    $scriptDir = trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
+    if ($scriptDir === '') {
+        $asset_base_path = '';
+    } else {
+        $depth = substr_count($scriptDir, '/') + 1;
+        $asset_base_path = str_repeat('../', $depth);
+    }
+}
+?>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
