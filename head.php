@@ -1,4 +1,25 @@
-<?php $asset_base_path = $asset_base_path ?? ''; ?>
+<?php
+if (!isset($asset_base_path)) {
+    $documentRoot = isset($_SERVER['DOCUMENT_ROOT'])
+        ? rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/')
+        : '';
+
+    $currentDir = str_replace('\\', '/', realpath(__DIR__));
+
+    if ($documentRoot !== '' && strpos($currentDir, $documentRoot) === 0) {
+        $relativeProjectPath = trim(substr($currentDir, strlen($documentRoot)), '/');
+    } else {
+        $relativeProjectPath = isset($_SERVER['SCRIPT_NAME'])
+            ? trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/')
+            : '';
+    }
+
+    $calculatedBase = $relativeProjectPath === '' ? '' : '/' . $relativeProjectPath;
+    $asset_base_path = $calculatedBase;
+}
+
+$normalized_asset_base = rtrim($asset_base_path, '/');
+?>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +31,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
 
-    <link rel="stylesheet" href="<?php echo $asset_base_path; ?>assets/styles/style.css">
+    <link rel="stylesheet" href="<?php echo $normalized_asset_base; ?>/assets/styles/style.css">
 
     <?= isset($page_styles) ? $page_styles : '' ?>
 
@@ -28,6 +49,6 @@
     <?php endif; ?>
 
     <!-- Favicon -->
-    <link rel="shortcut icon" href="assets/iconos/icono.png" type="image/png">
+    <link rel="shortcut icon" href="<?php echo $normalized_asset_base; ?>/assets/iconos/icono.png" type="image/png">
 
 </head>
