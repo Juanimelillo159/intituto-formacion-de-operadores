@@ -18,62 +18,142 @@ $message = null;
 $error = null;
 $orderData = null;
 
-try {
-    if (!isset($con) || !($con instanceof PDO)) {
-        throw new RuntimeException('No se pudo conectar con la base de datos.');
-    }
-    $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$manualFlash = $_SESSION['checkout_success'] ?? null;
+if ($manualFlash !== null) {
+    unset($_SESSION['checkout_success']);
+}
 
-    $preferenceId = isset($_GET['preference_id']) ? (string) $_GET['preference_id'] : null;
-    $paymentId = isset($_GET['payment_id']) ? (string) $_GET['payment_id'] : null;
-    if (!$paymentId && isset($_GET['collection_id'])) {
-        $paymentId = (string) $_GET['collection_id'];
-    }
-    $externalRef = isset($_GET['external_reference']) ? (string) $_GET['external_reference'] : null;
+$tipoParam = strtolower(trim((string)($_GET['tipo'] ?? ($manualFlash['tipo'] ?? ''))));
+if ($tipoParam === 'capacitaciones') {
+    $tipoParam = 'capacitacion';
+} elseif ($tipoParam === 'certificaciones') {
+    $tipoParam = 'certificacion';
+}
+if (!in_array($tipoParam, ['curso', 'capacitacion', 'certificacion'], true)) {
+    $tipoParam = 'curso';
+}
 
-    if (!$preferenceId && !$paymentId && !$externalRef) {
-        throw new RuntimeException('No recibimos la información del pago.');
-    }
+$backHref = $base_path . 'index.php#cursos';
+$backText = 'Volver a los cursos';
+if ($tipoParam === 'capacitacion') {
+    $backHref = $base_path . 'index.php#servicios-capacitacion';
+    $backText = 'Volver a las capacitaciones';
+} elseif ($tipoParam === 'certificacion') {
+    $backText = 'Volver a las certificaciones';
+}
 
-    $mpRow = checkout_fetch_mp_order($con, [
-        'preference_id' => $preferenceId,
-        'payment_id' => $paymentId,
-        'external_reference' => $externalRef,
-    ]);
+$preferenceId = isset($_GET['preference_id']) ? (string) $_GET['preference_id'] : null;
+$paymentId = isset($_GET['payment_id']) ? (string) $_GET['payment_id'] : null;
+if (!$paymentId && isset($_GET['collection_id'])) {
+    $paymentId = (string) $_GET['collection_id'];
+}
+$externalRef = isset($_GET['external_reference']) ? (string) $_GET['external_reference'] : null;
 
-    if (!$mpRow) {
-        throw new RuntimeException('No encontramos la orden asociada al pago.');
-    }
+$manualOrderId = isset($_GET['orden']) ? (int) $_GET['orden'] : (int)($manualFlash['orden'] ?? 0);
+$manualMetodo = isset($_GET['metodo']) ? (string) $_GET['metodo'] : (string)($manualFlash['metodo'] ?? '');
+$manualMetodo = strtolower(trim($manualMetodo));
 
-    $paymentData = null;
+$mpParamsProvided = ($preferenceId || $paymentId || $externalRef);
+
+if (!$mpParamsProvided && $manualOrderId > 0) {
     try {
-        $paymentLookupId = $paymentId ?: ($mpRow['payment_id'] ?? null);
-        if ($paymentLookupId) {
-            $paymentData = checkout_fetch_payment_from_mp((string) $paymentLookupId);
+        if (!isset($con) || !($con instanceof PDO)) {
+            throw new RuntimeException('No se pudo conectar con la base de datos.');
         }
-    } catch (Throwable $apiError) {
-        checkout_log_event('checkout_mp_return_payment_error', ['payment_id' => $paymentId], $apiError);
-    }
+        $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $sync = checkout_sync_mp_payment($con, $mpRow, $paymentData, 'return', true);
-    $orderData = $sync['row'];
-    $estadoPago = $sync['estado_pago'];
-    $mpStatus = $sync['mp_status'];
+        $st = $con->prepare(
+            'SELECT i.id_inscripcion, i.nombre, i.apellido, i.email, i.telefono, i.precio_total, i.moneda,
+                    c.nombre_curso, p.metodo, p.estado
+               FROM checkout_inscripciones i
+          LEFT JOIN checkout_pagos p ON p.id_inscripcion = i.id_inscripcion
+          LEFT JOIN cursos c ON c.id_curso = i.id_curso
+              WHERE i.id_inscripcion = :id
+           ORDER BY p.id_pago DESC
+              LIMIT 1'
+        );
+        $st->execute([':id' => $manualOrderId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            throw new RuntimeException('No encontramos la inscripción generada.');
+        }
 
-    if ($estadoPago === 'pagado') {
-        $message = '¡Pago acreditado! Reservamos tu lugar en el curso.';
-    } elseif ($estadoPago === 'pendiente') {
-        $message = 'Tu pago está en proceso. Te avisaremos por correo en cuanto tengamos la confirmación.';
-    } elseif ($estadoPago === 'rechazado') {
-        $error = 'El pago fue rechazado. Intentalo nuevamente o comunicate con nosotros para ayudarte.';
-    } elseif ($estadoPago === 'cancelado') {
-        $error = 'El pago se canceló antes de completarse.';
-    } else {
-        $message = 'Recibimos la actualización del estado de tu pago.';
+        $orderData = [
+            'id_inscripcion' => (int) $row['id_inscripcion'],
+            'nombre_curso' => $row['nombre_curso'] ?? '',
+            'nombre' => $row['nombre'] ?? '',
+            'apellido' => $row['apellido'] ?? '',
+            'email' => $row['email'] ?? '',
+            'telefono' => $row['telefono'] ?? '',
+            'monto' => isset($row['precio_total']) ? (float) $row['precio_total'] : 0.0,
+            'moneda' => $row['moneda'] ?? 'ARS',
+            'payment_type' => $row['metodo'] ?? $manualMetodo,
+            'payment_id' => null,
+        ];
+
+        $estadoPago = isset($row['estado']) && $row['estado'] !== '' ? (string) $row['estado'] : 'pendiente';
+
+        if ($manualMetodo === 'transferencia') {
+            $message = '¡Gracias! Recibimos tu comprobante y en breve nos pondremos en contacto.';
+        } elseif ($manualMetodo === 'mercado_pago') {
+            $message = '¡Gracias! Registramos tu solicitud de pago. Te avisaremos apenas tengamos novedades.';
+        } else {
+            $message = '¡Gracias! Registramos tu inscripción y continuaremos el proceso junto a vos.';
+        }
+    } catch (Throwable $exception) {
+        $error = $exception->getMessage();
     }
-} catch (Throwable $exception) {
-    $error = $exception->getMessage();
-    checkout_log_event('checkout_mp_return_error', ['error' => $exception->getMessage()], $exception);
+} else {
+    try {
+        if (!isset($con) || !($con instanceof PDO)) {
+            throw new RuntimeException('No se pudo conectar con la base de datos.');
+        }
+        $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+        if (!$preferenceId && !$paymentId && !$externalRef) {
+            throw new RuntimeException('No recibimos la información del pago.');
+        }
+
+        $mpRow = checkout_fetch_mp_order($con, [
+            'preference_id' => $preferenceId,
+            'payment_id' => $paymentId,
+            'external_reference' => $externalRef,
+        ]);
+
+        if (!$mpRow) {
+            throw new RuntimeException('No encontramos la orden asociada al pago.');
+        }
+
+        $paymentData = null;
+        try {
+            $paymentLookupId = $paymentId ?: ($mpRow['payment_id'] ?? null);
+            if ($paymentLookupId) {
+                $paymentData = checkout_fetch_payment_from_mp((string) $paymentLookupId);
+            }
+        } catch (Throwable $apiError) {
+            checkout_log_event('checkout_mp_return_payment_error', ['payment_id' => $paymentId], $apiError);
+        }
+
+        $sync = checkout_sync_mp_payment($con, $mpRow, $paymentData, 'return', true);
+        $orderData = $sync['row'];
+        $estadoPago = $sync['estado_pago'];
+        $mpStatus = $sync['mp_status'];
+
+        if ($estadoPago === 'pagado') {
+            $message = '¡Pago acreditado! Reservamos tu lugar y te contactaremos a la brevedad.';
+        } elseif ($estadoPago === 'pendiente') {
+            $message = 'Tu pago está en proceso. Te avisaremos por correo en cuanto tengamos la confirmación.';
+        } elseif ($estadoPago === 'rechazado') {
+            $error = 'El pago fue rechazado. Intentalo nuevamente o comunicate con nosotros para ayudarte.';
+        } elseif ($estadoPago === 'cancelado') {
+            $error = 'El pago se canceló antes de completarse.';
+        } else {
+            $message = 'Recibimos la actualización del estado de tu pago.';
+        }
+    } catch (Throwable $exception) {
+        $error = $exception->getMessage();
+        checkout_log_event('checkout_mp_return_error', ['error' => $exception->getMessage()], $exception);
+    }
 }
 
 function checkout_estado_label(?string $estado): string
@@ -175,8 +255,8 @@ function checkout_estado_label(?string $estado): string
                             <?php endif; ?>
 
                             <div class="checkout-footer text-center">
-                                <a class="btn btn-gradient btn-rounded" href="<?php echo $base_path; ?>index.php#cursos">
-                                    Volver a los cursos
+                                <a class="btn btn-gradient btn-rounded" href="<?php echo htmlspecialchars($backHref, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <?php echo htmlspecialchars($backText, ENT_QUOTES, 'UTF-8'); ?>
                                     <i class="fas fa-arrow-right ms-2"></i>
                                 </a>
                             </div>

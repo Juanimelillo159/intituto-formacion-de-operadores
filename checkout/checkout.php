@@ -2,10 +2,42 @@
 session_start();
 require_once '../sbd.php';
 
+if (!isset($_SESSION['id_usuario']) && !isset($_SESSION['usuario'])) {
+    $_SESSION['login_mensaje'] = 'Debés iniciar sesión para completar tu inscripción.';
+    $_SESSION['login_tipo'] = 'warning';
+    header('Location: ../login.php');
+    exit;
+}
+
 $page_title = "Checkout | Instituto de Formación";
 $page_description = "Completá tu inscripción en tres pasos.";
 
 $id_curso = isset($_GET['id_curso']) ? (int)$_GET['id_curso'] : 0;
+if ($id_curso <= 0 && isset($_GET['id_capacitacion'])) {
+    $id_curso = (int)$_GET['id_capacitacion'];
+}
+if ($id_curso <= 0 && isset($_GET['id_certificacion'])) {
+    $id_curso = (int)$_GET['id_certificacion'];
+}
+
+$tipo_checkout = isset($_GET['tipo']) ? strtolower(trim((string)$_GET['tipo'])) : '';
+if ($tipo_checkout === '' && isset($_GET['id_capacitacion'])) {
+    $tipo_checkout = 'capacitacion';
+} elseif ($tipo_checkout === '' && isset($_GET['id_certificacion'])) {
+    $tipo_checkout = 'certificacion';
+}
+if (!in_array($tipo_checkout, ['curso', 'capacitacion', 'certificacion'], true)) {
+    $tipo_checkout = 'curso';
+}
+
+$back_link_anchor = '#cursos';
+$back_link_text = 'Volver al listado de cursos';
+if ($tipo_checkout === 'capacitacion') {
+    $back_link_anchor = '#servicios-capacitacion';
+    $back_link_text = 'Volver al listado de capacitaciones';
+} elseif ($tipo_checkout === 'certificacion') {
+    $back_link_text = 'Volver al listado de certificaciones';
+}
 
 $st = $con->prepare("SELECT * FROM cursos WHERE id_curso = :id");
 $st->execute([':id' => $id_curso]);
@@ -49,9 +81,9 @@ include '../head.php';
     <main class="checkout-main">
         <div class="container">
             <div class="mb-4">
-                <a class="back-link" href="<?php echo $base_path; ?>index.php#cursos">
+                <a class="back-link" href="<?php echo htmlspecialchars($base_path . 'index.php' . $back_link_anchor, ENT_QUOTES, 'UTF-8'); ?>">
                     <i class="fas fa-arrow-left"></i>
-                    Volver al listado de cursos
+                    <?php echo htmlspecialchars($back_link_text, ENT_QUOTES, 'UTF-8'); ?>
                 </a>
             </div>
 
@@ -132,6 +164,7 @@ include '../head.php';
                                     <input type="hidden" name="crear_orden" value="1">
                                     <input type="hidden" name="id_curso" value="<?php echo (int)$id_curso; ?>">
                                     <input type="hidden" name="precio_checkout" value="<?php echo $precio_vigente ? (float)$precio_vigente['precio'] : 0; ?>">
+                                    <input type="hidden" name="tipo_checkout" value="<?php echo htmlspecialchars($tipo_checkout, ENT_QUOTES, 'UTF-8'); ?>">
 
                                     <div class="step-panel active" data-step="1">
                                         <div class="row g-4 align-items-stretch">
