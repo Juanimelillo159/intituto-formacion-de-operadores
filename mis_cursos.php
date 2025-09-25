@@ -394,8 +394,8 @@ $configActive = 'mis_cursos';
                 <?php include 'config_sidebar.php'; ?>
             </div>
 
-            <!-- Contenido de cursos CENTRADO como el header -->
-            <div class="col-12 col-xl-8 mx-auto">
+            <!-- Contenido de cursos -->
+            <div class="col-12 col-xl-10 mx-auto mis-cursos-content">
                 <?php if ($misCursosFeedback !== null): ?>
                 <?php $feedbackType = in_array($misCursosFeedback['type'] ?? '', $allowedFeedbackTypes, true) ? $misCursosFeedback['type'] : 'info'; ?>
                 <div class="alert alert-<?php echo htmlspecialchars($feedbackType, ENT_QUOTES, 'UTF-8'); ?>" role="alert">
@@ -413,161 +413,185 @@ $configActive = 'mis_cursos';
                         <a class="btn btn-gradient" href="index.php#cursos">Explorar cursos disponibles</a>
                     </div>
                 <?php else: ?>
-                    <?php foreach ($cursosComprados as $curso): ?>
-                        <?php $inscripcion = $curso['inscripcion']; ?>
-                        <div class="config-card shadow mb-4 text-start">
-                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
-                                <div>
-                                    <h2 class="h5 mb-1"><?php echo htmlspecialchars($curso['nombre_curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></h2>
-                                    <?php if (!empty($curso['nombre_modalidad'])): ?>
-                                        <div class="text-muted small">Modalidad: <?php echo htmlspecialchars($curso['nombre_modalidad'], ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div class="mis-cursos-grid row row-cols-1 row-cols-md-2 g-4">
+                        <?php foreach ($cursosComprados as $curso): ?>
+                            <?php
+                            $inscripcion = $curso['inscripcion'];
+                            $precioUnitario = isset($curso['precio_unitario']) ? (float)$curso['precio_unitario'] : null;
+                            $moneda = (string)($curso['moneda'] ?? '');
+                            $precioLabel = null;
+                            if ($precioUnitario !== null) {
+                                $formattedPrice = number_format($precioUnitario, 2, ',', '.');
+                                $precioLabel = $moneda !== '' ? $moneda . ' ' . $formattedPrice : $formattedPrice;
+                            }
+                            ?>
+                            <div class="col-12 col-md-6">
+                                <div class="config-card course-card shadow text-start h-100">
+                                    <div class="course-card__header">
+                                        <div class="course-card__headline d-flex align-items-start justify-content-between gap-3 flex-wrap">
+                                            <div class="course-card__info">
+                                                <h2 class="h5 mb-1"><?php echo htmlspecialchars($curso['nombre_curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></h2>
+                                                <?php if (!empty($curso['nombre_modalidad'])): ?>
+                                                    <div class="text-muted small">Modalidad: <?php echo htmlspecialchars($curso['nombre_modalidad'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="course-card__status text-md-end ms-md-auto">
+                                                <?php if ($inscripcion !== null): ?>
+                                                    <span class="badge <?php echo htmlspecialchars($inscripcion['clase'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inscripcion['estado'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                    <?php if ($inscripcion['progreso'] !== null): ?>
+                                                        <div class="text-muted small mt-2">Progreso: <?php echo (int)$inscripcion['progreso']; ?>%</div>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="badge bg-success">Acceso disponible</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <div class="course-card__chips d-flex flex-wrap gap-2">
+                                            <span class="course-chip">
+                                                Comprado el <?php echo htmlspecialchars($curso['pagado_en_formatted'] ?? 'Sin fecha', ENT_QUOTES, 'UTF-8'); ?>
+                                            </span>
+                                            <?php if ($precioLabel !== null): ?>
+                                                <span class="course-chip course-chip--accent"><?php echo htmlspecialchars($precioLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <?php endif; ?>
+                                            <?php if ($isHrManager): ?>
+                                                <span class="course-chip">Total: <?php echo (int)$curso['cantidad']; ?></span>
+                                                <span class="course-chip">Asignados: <?php echo isset($curso['asignados']) ? (int)$curso['asignados'] : 0; ?></span>
+                                                <span class="course-chip">Disponibles: <?php echo isset($curso['disponibles']) ? (int)$curso['disponibles'] : max(0, (int)$curso['cantidad']); ?></span>
+                                            <?php elseif ($curso['cantidad'] > 1): ?>
+                                                <span class="course-chip">Cantidad: <?php echo (int)$curso['cantidad']; ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <?php if ($inscripcion !== null && $inscripcion['progreso'] !== null): ?>
+                                        <div class="course-card__progress progress mt-3">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: <?php echo (int)$inscripcion['progreso']; ?>%;" aria-valuenow="<?php echo (int)$inscripcion['progreso']; ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
                                     <?php endif; ?>
+
                                     <?php if ($isHrManager): ?>
-                                        <div class="text-muted small">Total adquiridos: <?php echo (int)$curso['cantidad']; ?></div>
-                                        <div class="text-muted small">Asignados: <?php echo isset($curso['asignados']) ? (int)$curso['asignados'] : 0; ?></div>
-                                        <div class="text-muted small">Disponibles: <?php echo isset($curso['disponibles']) ? (int)$curso['disponibles'] : max(0, (int)$curso['cantidad']); ?></div>
-                                    <?php elseif ($curso['cantidad'] > 1): ?>
-                                        <div class="text-muted small">Cantidad: <?php echo (int)$curso['cantidad']; ?></div>
-                                    <?php endif; ?>
-                                    <div class="text-muted small">Comprado el <?php echo htmlspecialchars($curso['pagado_en_formatted'] ?? 'Sin fecha', ENT_QUOTES, 'UTF-8'); ?></div>
-                                </div>
-                                <div class="text-md-end">
-                                    <?php if ($inscripcion !== null): ?>
-                                        <span class="badge <?php echo htmlspecialchars($inscripcion['clase'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($inscripcion['estado'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                        <?php if ($inscripcion['progreso'] !== null): ?>
-                                            <div class="text-muted small mt-2">Progreso: <?php echo (int)$inscripcion['progreso']; ?>%</div>
+                                        <?php
+                                        $assignedWorkers = $curso['asignaciones'] ?? [];
+                                        $assignedWorkerIds = [];
+                                        foreach ($assignedWorkers as $assignmentData) {
+                                            $assignedWorkerIds[] = (int)($assignmentData['id_usuario'] ?? 0);
+                                        }
+                                        $availableWorkers = [];
+                                        foreach ($workersOptions as $workerOption) {
+                                            $workerOptionId = (int)($workerOption['id_usuario'] ?? 0);
+                                            if ($workerOptionId > 0 && !in_array($workerOptionId, $assignedWorkerIds, true)) {
+                                                $availableWorkers[] = $workerOption;
+                                            }
+                                        }
+                                        $panelId = 'assign-panel-' . (int)$curso['id_item'];
+                                        $selectAllId = 'assign-select-all-' . (int)$curso['id_item'];
+                                        $formId = 'assign-form-' . (int)$curso['id_item'];
+                                        $availableSlots = isset($curso['disponibles']) ? (int)$curso['disponibles'] : max(0, (int)$curso['cantidad']);
+                                        $maxSelectable = min($availableSlots, count($availableWorkers));
+                                        ?>
+                                        <div class="course-card__section mt-4">
+                                            <h3 class="course-card__section-title h6 mb-3">Trabajadores asignados</h3>
+                                            <?php if (empty($assignedWorkers)): ?>
+                                                <p class="text-muted small mb-0">Todav&iacute;a no asignaste este curso.</p>
+                                            <?php else: ?>
+                                                <ul class="assigned-workers list-unstyled mb-0">
+                                                    <?php foreach ($assignedWorkers as $assignment): ?>
+                                                        <?php
+                                                        $fullName = trim((string)($assignment['nombre'] ?? '') . ' ' . (string)($assignment['apellido'] ?? ''));
+                                                        if ($fullName === '') {
+                                                            $fullName = (string)($assignment['email'] ?? 'Trabajador');
+                                                        }
+                                                        ?>
+                                                        <li class="assigned-workers__item">
+                                                            <div class="assigned-workers__header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                                                <span class="fw-semibold"><?php echo htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                                <span class="badge <?php echo htmlspecialchars($assignment['clase'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($assignment['estado'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            </div>
+                                                            <?php if (!empty($assignment['email'])): ?>
+                                                                <span class="text-muted small d-block"><?php echo htmlspecialchars((string)$assignment['email'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            <?php endif; ?>
+                                                            <?php if ($assignment['progreso'] !== null): ?>
+                                                                <span class="text-muted small">Progreso: <?php echo (int)$assignment['progreso']; ?>%</span>
+                                                            <?php endif; ?>
+                                                        </li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="course-card__section mt-3">
+                                            <button class="btn btn-outline-primary btn-sm<?php echo ($availableSlots <= 0 || empty($availableWorkers)) ? ' disabled' : ''; ?>" type="button" <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>data-bs-toggle="collapse" data-bs-target="#<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>" aria-expanded="false" aria-controls="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>>
+                                                Asignar trabajadores
+                                            </button>
+                                            <?php if ($availableSlots <= 0): ?>
+                                                <p class="text-danger small mb-0 mt-2">No quedan cupos disponibles para asignar.</p>
+                                            <?php elseif (empty($workersOptions)): ?>
+                                                <p class="text-muted small mb-0 mt-2">Todav&iacute;a no sumaste trabajadores a tu empresa.</p>
+                                            <?php elseif (empty($availableWorkers)): ?>
+                                                <p class="text-muted small mb-0 mt-2">Todos tus trabajadores ya tienen este curso asignado.</p>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>
+                                            <div class="collapse mt-3" id="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                <div class="assign-panel shadow-sm">
+                                                    <form method="POST" class="assign-workers-form" id="<?php echo htmlspecialchars($formId, ENT_QUOTES, 'UTF-8'); ?>" data-available="<?php echo (int)$availableSlots; ?>">
+                                                        <input type="hidden" name="action" value="assign_workers">
+                                                        <input type="hidden" name="item_id" value="<?php echo (int)$curso['id_item']; ?>">
+                                                        <div class="assign-panel__stats d-flex flex-wrap gap-3 align-items-center small text-muted mb-3">
+                                                            <span>Cupos disponibles: <strong data-remaining-count><?php echo (int)$availableSlots; ?></strong></span>
+                                                            <span>Seleccionados: <strong data-selected-count>0</strong></span>
+                                                        </div>
+                                                        <div class="form-check form-check-sm mb-2">
+                                                            <input class="form-check-input assign-select-all" type="checkbox" id="<?php echo htmlspecialchars($selectAllId, ENT_QUOTES, 'UTF-8'); ?>" data-max-select="<?php echo (int)$maxSelectable; ?>">
+                                                            <label class="form-check-label small" for="<?php echo htmlspecialchars($selectAllId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                Seleccionar todos (hasta <?php echo (int)$maxSelectable; ?>)
+                                                            </label>
+                                                        </div>
+                                                        <div class="assign-workers-list border rounded bg-white p-2" style="max-height: 220px; overflow: auto;">
+                                                            <?php foreach ($availableWorkers as $worker): ?>
+                                                                <?php
+                                                                $workerId = (int)($worker['id_usuario'] ?? 0);
+                                                                if ($workerId <= 0) {
+                                                                    continue;
+                                                                }
+                                                                $workerName = trim((string)($worker['nombre'] ?? '') . ' ' . (string)($worker['apellido'] ?? ''));
+                                                                if ($workerName === '') {
+                                                                    $workerName = (string)($worker['email'] ?? 'Trabajador');
+                                                                }
+                                                                $workerEmail = (string)($worker['email'] ?? '');
+                                                                $workerLabel = $workerName;
+                                                                if ($workerEmail !== '' && $workerName !== $workerEmail) {
+                                                                    $workerLabel .= ' (' . $workerEmail . ')';
+                                                                }
+                                                                $inputId = 'assign-worker-' . (int)$curso['id_item'] . '-' . $workerId;
+                                                                ?>
+                                                                <div class="form-check form-check-sm mb-2">
+                                                                    <input class="form-check-input assign-worker-checkbox" type="checkbox" name="worker_ids[]" value="<?php echo $workerId; ?>" id="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                    <label class="form-check-label small" for="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                        <?php echo htmlspecialchars($workerLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                                                    </label>
+                                                                </div>
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                        <p class="text-muted small mt-3 mb-3">Vas a crear una inscripci&oacute;n por cada trabajador seleccionado. Esta acci&oacute;n no se puede revertir.</p>
+                                                        <div class="d-flex flex-wrap gap-2">
+                                                            <button type="submit" class="btn btn-primary btn-sm" data-assign-submit disabled>
+                                                                Asignar
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                Cancelar
+                                                            </button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
                                         <?php endif; ?>
-                                    <?php else: ?>
-                                        <span class="badge bg-success">Acceso disponible</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
-
-                            <?php if ($inscripcion !== null && $inscripcion['progreso'] !== null): ?>
-                                <div class="progress mt-3" style="height: 6px;">
-                                    <div class="progress-bar bg-success" role="progressbar" style="width: <?php echo (int)$inscripcion['progreso']; ?>%;" aria-valuenow="<?php echo (int)$inscripcion['progreso']; ?>" aria-valuemin="0" aria-valuemax="100"></div>
-                                </div>
-                            <?php endif; ?>
-
-                            <?php if ($isHrManager): ?>
-                                <?php
-                                $assignedWorkers = $curso['asignaciones'] ?? [];
-                                $assignedWorkerIds = [];
-                                foreach ($assignedWorkers as $assignmentData) {
-                                    $assignedWorkerIds[] = (int)($assignmentData['id_usuario'] ?? 0);
-                                }
-                                $availableWorkers = [];
-                                foreach ($workersOptions as $workerOption) {
-                                    $workerOptionId = (int)($workerOption['id_usuario'] ?? 0);
-                                    if ($workerOptionId > 0 && !in_array($workerOptionId, $assignedWorkerIds, true)) {
-                                        $availableWorkers[] = $workerOption;
-                                    }
-                                }
-                                $panelId = 'assign-panel-' . (int)$curso['id_item'];
-                                $selectAllId = 'assign-select-all-' . (int)$curso['id_item'];
-                                $formId = 'assign-form-' . (int)$curso['id_item'];
-                                $availableSlots = isset($curso['disponibles']) ? (int)$curso['disponibles'] : max(0, (int)$curso['cantidad']);
-                                $maxSelectable = min($availableSlots, count($availableWorkers));
-                                ?>
-                                <div class="mt-4">
-                                    <h3 class="h6 mb-3">Trabajadores asignados</h3>
-                                    <?php if (empty($assignedWorkers)): ?>
-                                        <p class="text-muted small mb-3">Todav&iacute;a no asignaste este curso.</p>
-                                    <?php else: ?>
-                                        <ul class="list-unstyled small mb-3">
-                                            <?php foreach ($assignedWorkers as $assignment): ?>
-                                                <?php
-                                                $fullName = trim((string)($assignment['nombre'] ?? '') . ' ' . (string)($assignment['apellido'] ?? ''));
-                                                if ($fullName === '') {
-                                                    $fullName = (string)($assignment['email'] ?? 'Trabajador');
-                                                }
-                                                ?>
-                                                <li class="mb-2">
-                                                    <span class="fw-semibold"><?php echo htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'); ?></span>
-                                                    <?php if (!empty($assignment['email'])): ?>
-                                                        <span class="text-muted d-block d-sm-inline ms-sm-2"><?php echo htmlspecialchars((string)$assignment['email'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                    <?php endif; ?>
-                                                    <span class="badge <?php echo htmlspecialchars($assignment['clase'], ENT_QUOTES, 'UTF-8'); ?> ms-sm-2"><?php echo htmlspecialchars($assignment['estado'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                    <?php if ($assignment['progreso'] !== null): ?>
-                                                        <span class="text-muted ms-2">Progreso: <?php echo (int)$assignment['progreso']; ?>%</span>
-                                                    <?php endif; ?>
-                                                </li>
-                                            <?php endforeach; ?>
-                                        </ul>
-                                    <?php endif; ?>
-                                </div>
-
-                                <div class="mt-3">
-                                    <button class="btn btn-outline-primary btn-sm<?php echo ($availableSlots <= 0 || empty($availableWorkers)) ? ' disabled' : ''; ?>" type="button" <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>data-bs-toggle="collapse" data-bs-target="#<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>" aria-expanded="false" aria-controls="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>>
-                                        Asignar trabajadores
-                                    </button>
-                                    <?php if ($availableSlots <= 0): ?>
-                                        <p class="text-danger small mb-0 mt-2">No quedan cupos disponibles para asignar.</p>
-                                    <?php elseif (empty($workersOptions)): ?>
-                                        <p class="text-muted small mb-0 mt-2">Todav&iacute;a no sumaste trabajadores a tu empresa.</p>
-                                    <?php elseif (empty($availableWorkers)): ?>
-                                        <p class="text-muted small mb-0 mt-2">Todos tus trabajadores ya tienen este curso asignado.</p>
-                                    <?php endif; ?>
-                                </div>
-
-                                <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>
-                                    <div class="collapse mt-3" id="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <div class="bg-light border rounded p-3">
-                                            <form method="POST" class="assign-workers-form" id="<?php echo htmlspecialchars($formId, ENT_QUOTES, 'UTF-8'); ?>" data-available="<?php echo (int)$availableSlots; ?>">
-                                                <input type="hidden" name="action" value="assign_workers">
-                                                <input type="hidden" name="item_id" value="<?php echo (int)$curso['id_item']; ?>">
-                                                <div class="d-flex flex-wrap gap-3 align-items-center small text-muted mb-3">
-                                                    <span>Cupos disponibles: <strong data-remaining-count><?php echo (int)$availableSlots; ?></strong></span>
-                                                    <span>Seleccionados: <strong data-selected-count>0</strong></span>
-                                                </div>
-                                                <div class="form-check form-check-sm mb-2">
-                                                    <input class="form-check-input assign-select-all" type="checkbox" id="<?php echo htmlspecialchars($selectAllId, ENT_QUOTES, 'UTF-8'); ?>" data-max-select="<?php echo (int)$maxSelectable; ?>">
-                                                    <label class="form-check-label small" for="<?php echo htmlspecialchars($selectAllId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                        Seleccionar todos (hasta <?php echo (int)$maxSelectable; ?>)
-                                                    </label>
-                                                </div>
-                                                <div class="assign-workers-list border rounded bg-white p-2" style="max-height: 220px; overflow: auto;">
-                                                    <?php foreach ($availableWorkers as $worker): ?>
-                                                        <?php
-                                                        $workerId = (int)($worker['id_usuario'] ?? 0);
-                                                        if ($workerId <= 0) {
-                                                            continue;
-                                                        }
-                                                        $workerName = trim((string)($worker['nombre'] ?? '') . ' ' . (string)($worker['apellido'] ?? ''));
-                                                        if ($workerName === '') {
-                                                            $workerName = (string)($worker['email'] ?? 'Trabajador');
-                                                        }
-                                                        $workerEmail = (string)($worker['email'] ?? '');
-                                                        $workerLabel = $workerName;
-                                                        if ($workerEmail !== '' && $workerName !== $workerEmail) {
-                                                            $workerLabel .= ' (' . $workerEmail . ')';
-                                                        }
-                                                        $inputId = 'assign-worker-' . (int)$curso['id_item'] . '-' . $workerId;
-                                                        ?>
-                                                        <div class="form-check form-check-sm mb-2">
-                                                            <input class="form-check-input assign-worker-checkbox" type="checkbox" name="worker_ids[]" value="<?php echo $workerId; ?>" id="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                            <label class="form-check-label small" for="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                <?php echo htmlspecialchars($workerLabel, ENT_QUOTES, 'UTF-8'); ?>
-                                                            </label>
-                                                        </div>
-                                                    <?php endforeach; ?>
-                                                </div>
-                                                <p class="text-muted small mt-3 mb-3">Vas a crear una inscripci&oacute;n por cada trabajador seleccionado. Esta acci&oacute;n no se puede revertir.</p>
-                                                <div class="d-flex flex-wrap gap-2">
-                                                    <button type="submit" class="btn btn-primary btn-sm" data-assign-submit disabled>
-                                                        Asignar
-                                                    </button>
-                                                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                        Cancelar
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                                    </div>
-                                <?php endif; ?>
-                            <?php endif; ?>
-                        </div>
-                    <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </div>
                 <?php endif; ?>
             </div>
 
