@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -67,80 +67,96 @@ SQL;
 <body class="config-page d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
+<header class="config-hero">
+    <div class="container">
+        <a href="mis_cursos.php" class="config-back"><i class="fas fa-arrow-left me-2"></i>Volver a mis cursos</a>
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="config-hero-card shadow-lg w-100 text-center">
+                    <h1>Inscripciones</h1>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
 <main class="config-main flex-grow-1 py-5">
     <div class="container">
-        <div class="mb-4">
-            <h1 class="h3 mb-1">Inscripciones para trabajadores</h1>
-            <p class="text-muted mb-0">Selecciona la cantidad de capacitaciones y certificaciones que necesitas comprar para tu equipo. Pr&oacute;ximamente podr&aacute;s generar el pedido desde aqu&iacute;.</p>
-        </div>
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
+                <div class="mb-4">
+                    <p class="text-white-50 mb-0">Selecciona la cantidad de capacitaciones y certificaciones que necesitas comprar para tu equipo. Pr&oacute;ximamente podr&aacute;s generar el pedido desde aqu&iacute;.</p>
+                </div>
 
-        <?php if ($coursesError !== null): ?>
-            <div class="alert alert-danger" role="alert">
-                <?php echo htmlspecialchars($coursesError, ENT_QUOTES, 'UTF-8'); ?>
-            </div>
-        <?php elseif (empty($courses)): ?>
-            <div class="config-card shadow text-center">
-                <p class="mb-0">Por el momento no hay cursos disponibles.</p>
-            </div>
-        <?php else: ?>
-            <div class="row g-4">
-                <?php foreach ($courses as $course): ?>
-                    <?php
-                        $courseId = (int)($course['id_curso'] ?? 0);
-                        $courseName = $course['nombre_curso'] ?? 'Curso';
-                        $courseDesc = (string)($course['descripcion_curso'] ?? '');
-                        if (function_exists('mb_strlen')) {
-                            $courseDescShort = mb_strlen($courseDesc, 'UTF-8') > 200
-                                ? mb_substr($courseDesc, 0, 200, 'UTF-8') . '...'
-                                : $courseDesc;
-                        } else {
-                            $courseDescShort = strlen($courseDesc) > 200
-                                ? substr($courseDesc, 0, 200) . '...'
-                                : $courseDesc;
-                        }
-                        $courseDuration = $course['duracion'] ?? '';
-                        $courseCategory = $course['categoria'] ?? '';
-                    ?>
-                    <div class="col-12 col-lg-6">
-                        <div class="config-card shadow mb-4 text-start h-100 d-flex flex-column">
-                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
-                                <div class="flex-grow-1">
-                                    <h2 class="h5 mb-1"><?php echo htmlspecialchars($courseName, ENT_QUOTES, 'UTF-8'); ?></h2>
-                                    <div class="text-muted small mb-2">
-                                        <?php if ($courseDuration !== ''): ?>
-                                            <span class="me-3"><i class="bi bi-clock me-1"></i><?php echo htmlspecialchars((string)$courseDuration, ENT_QUOTES, 'UTF-8'); ?></span>
-                                        <?php endif; ?>
-                                        <?php if ($courseCategory !== ''): ?>
-                                            <span><i class="bi bi-journal me-1"></i><?php echo htmlspecialchars((string)$courseCategory, ENT_QUOTES, 'UTF-8'); ?></span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <p class="text-muted small mb-0"><?php echo htmlspecialchars($courseDescShort, ENT_QUOTES, 'UTF-8'); ?></p>
-                                </div>
-                                <div class="d-flex flex-column flex-md-row gap-3 align-items-stretch" style="min-width: 320px;">
-                                    <div class="d-flex flex-column flex-fill">
-                                        <span class="text-muted text-uppercase fw-semibold small">Capacitacion</span>
-                                        <input type="number" class="form-control mt-1" min="0" step="1" value="0" name="cap_<?php echo $courseId; ?>">
-                                        <a class="btn btn-primary btn-pill d-inline-flex align-items-center mt-2 text-nowrap" href="capacitacion.php?id_curso=<?php echo urlencode((string)$courseId); ?>">
-                                                <i class="bi bi-activity me-2"></i>Capacitacion
-                                            </a>
-                                    </div>
-                                    <div class="d-flex flex-column flex-fill">
-                                        <span class="text-muted text-uppercase fw-semibold small">Certificacion</span>
-                                        <input type="number" class="form-control mt-1" min="0" step="1" value="0" name="cert_<?php echo $courseId; ?>">
-                                        <a class="btn btn-secondary btn-pill d-inline-flex align-items-center mt-2 text-nowrap" href="certificacion.php?id_curso=<?php echo urlencode((string)$courseId); ?>">
-                                                <i class="bi bi-award me-2"></i>Certificacion
-                                            </a>
+                <?php if ($coursesError !== null): ?>
+                    <div class="alert alert-danger" role="alert">
+                        <?php echo htmlspecialchars($coursesError, ENT_QUOTES, 'UTF-8'); ?>
+                    </div>
+                <?php elseif (empty($courses)): ?>
+                    <div class="config-card shadow text-center">
+                        <p class="mb-0">Por el momento no hay cursos disponibles.</p>
+                    </div>
+                <?php else: ?>
+                    <div class="row g-4">
+                        <?php foreach ($courses as $course): ?>
+                            <?php
+                                $courseId = (int)($course['id_curso'] ?? 0);
+                                $courseName = $course['nombre_curso'] ?? 'Curso';
+                                $courseDesc = (string)($course['descripcion_curso'] ?? '');
+                                if (function_exists('mb_strlen')) {
+                                    $courseDescShort = mb_strlen($courseDesc, 'UTF-8') > 200
+                                        ? mb_substr($courseDesc, 0, 200, 'UTF-8') . '...'
+                                        : $courseDesc;
+                                } else {
+                                    $courseDescShort = strlen($courseDesc) > 200
+                                        ? substr($courseDesc, 0, 200) . '...'
+                                        : $courseDesc;
+                                }
+                                $courseDuration = $course['duracion'] ?? '';
+                                $courseCategory = $course['categoria'] ?? '';
+                            ?>
+                            <div class="col-12 col-lg-6">
+                                <div class="config-card shadow mb-4 text-start h-100 d-flex flex-column">
+                                    <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+                                        <div class="flex-grow-1">
+                                            <h2 class="h5 mb-1"><?php echo htmlspecialchars($courseName, ENT_QUOTES, 'UTF-8'); ?></h2>
+                                            <div class="text-muted small mb-2">
+                                                <?php if ($courseDuration !== ''): ?>
+                                                    <span class="me-3"><i class="bi bi-clock me-1"></i><?php echo htmlspecialchars((string)$courseDuration, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                <?php endif; ?>
+                                                <?php if ($courseCategory !== ''): ?>
+                                                    <span><i class="bi bi-journal me-1"></i><?php echo htmlspecialchars((string)$courseCategory, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                            <p class="text-muted small mb-0"><?php echo htmlspecialchars($courseDescShort, ENT_QUOTES, 'UTF-8'); ?></p>
+                                        </div>
+                                        <div class="d-flex flex-column flex-md-row gap-3 align-items-stretch" style="min-width: 320px;">
+                                            <div class="d-flex flex-column flex-fill">
+                                                <span class="text-muted text-uppercase fw-semibold small">Capacitaciones</span>
+                                                <input type="number" class="form-control mt-1" min="0" step="1" value="0" name="cap_<?php echo $courseId; ?>">
+                                                <a class="btn btn-primary btn-pill d-inline-flex align-items-center mt-2 text-nowrap" href="capacitacion.php?id_curso=<?php echo urlencode((string)$courseId); ?>">
+                                                    <i class="bi bi-activity me-2"></i>Capacitaci&oacute;n
+                                                </a>
+                                            </div>
+                                            <div class="d-flex flex-column flex-fill">
+                                                <span class="text-muted text-uppercase fw-semibold small">Certificaciones</span>
+                                                <input type="number" class="form-control mt-1" min="0" step="1" value="0" name="cert_<?php echo $courseId; ?>">
+                                                <a class="btn btn-secondary btn-pill d-inline-flex align-items-center mt-2 text-nowrap" href="certificacion.php?id_curso=<?php echo urlencode((string)$courseId); ?>">
+                                                    <i class="bi bi-award me-2"></i>Certificaci&oacute;n
+                                                </a>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        <?php endforeach; ?>
                     </div>
-                <?php endforeach; ?>
+                    <div class="text-center mt-4">
+                        <button type="button" class="btn btn-primary" disabled>Ir al checkout (pr&oacute;ximamente)</button>
+                    </div>
+                <?php endif; ?>
             </div>
-            <div class="text-center mt-4">
-                <button type="button" class="btn btn-primary" disabled>Ir al checkout (pr&oacute;ximamente)</button>
-            </div>
-        <?php endif; ?>
+        </div>
     </div>
 </main>
 

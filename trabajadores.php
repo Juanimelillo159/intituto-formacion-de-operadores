@@ -24,7 +24,9 @@ if ($currentPermiso !== 3) {
     <body class="config-page d-flex flex-column min-vh-100">
     <?php include 'nav.php'; ?>
     <main class="config-main flex-grow-1 py-5">
-        <div class="container">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
             <div class="alert alert-danger" role="alert">
                 No tienes permiso para acceder al panel de trabajadores.
             </div>
@@ -38,6 +40,10 @@ if ($currentPermiso !== 3) {
     <?php
     exit;
 }
+
+$page_title = 'Gestion de trabajadores | Instituto de Formacion';
+$page_description = 'Panel para asignar y administrar trabajadores.';
+$page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.css">';
 
 $pdo = getPdo();
 $managerPermiso = 3;
@@ -240,12 +246,24 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
 <body class="config-page d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
-    <main class="config-main flex-grow-1 py-5">
+<header class="config-hero">
     <div class="container">
-        <div class="mb-4">
-            <h1 class="h3 mb-1">Gestion de trabajadores</h1>
-            <p class="text-muted mb-0">Asigna trabajadores usando su correo y administra los perfiles existentes. Los cambios son inmediatos.</p>
+        <a href="mis_cursos.php" class="config-back"><i class="fas fa-arrow-left me-2"></i>Volver a mis cursos</a>
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="config-hero-card shadow-lg w-100 text-center">
+                    <h1>Gesti&oacute;n de trabajadores</h1>
+                </div>
+            </div>
         </div>
+    </div>
+</header>
+
+<main class="config-main flex-grow-1 py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-12 col-xl-10">
+
 
         <?php if ($feedback !== null): ?>
             <?php $alertType = in_array($feedback['type'], $allowedAlertTypes, true) ? $feedback['type'] : 'info'; ?>
@@ -385,3 +403,4 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
