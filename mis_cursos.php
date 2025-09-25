@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -352,7 +352,7 @@ try {
             'SELECT u.id_usuario, u.nombre, u.apellido, u.email
              FROM empresa_trabajadores et
              INNER JOIN usuarios u ON u.id_usuario = et.id_trabajador
-             WHERE et.id_empresa = ?
+             WHERE et.id_empresa = ? AND u.id_permiso = 4
              ORDER BY u.nombre ASC, u.apellido ASC, u.email ASC'
         );
         $stmtWorkers->execute([$userId]);

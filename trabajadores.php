@@ -102,30 +102,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $relationQuery->execute([$currentUserId, $targetId]);
                     $relationExists = (bool)$relationQuery->fetchColumn();
 
-                    $pdo->beginTransaction();
+                    $ownershipCheck = $pdo->prepare('SELECT COUNT(*) FROM empresa_trabajadores WHERE id_trabajador = ? AND id_empresa <> ?');
+                    $ownershipCheck->execute([$targetId, $currentUserId]);
+                    $assignedElsewhere = ((int)$ownershipCheck->fetchColumn()) > 0;
 
-                    $update = $pdo->prepare('UPDATE usuarios SET nombre = ?, apellido = ?, id_permiso = ? WHERE id_usuario = ?');
-                    $update->execute([$nombre, $apellido, $workerPermiso, $targetId]);
-
-                    if (!$relationExists) {
-                        $link = $pdo->prepare('INSERT INTO empresa_trabajadores (id_empresa, id_trabajador, asignado_por, asignado_en) VALUES (?, ?, ?, NOW())');
-                        $link->execute([$currentUserId, $targetId, $currentUserId]);
-                    }
-
-                    $pdo->commit();
-
-                    if ($relationExists) {
-                        $response['type'] = 'info';
-                        $response['message'] = 'El trabajador ya estaba asignado a tu empresa. Se actualizaron sus datos.';
+                    if (!$relationExists && $assignedElsewhere) {
+                        $response['type'] = 'danger';
+                        $response['message'] = 'El trabajador ya esta asignado a otra empresa de RRHH.';
                     } else {
-                        $response['type'] = $alreadyWorker ? 'info' : 'success';
-                        $response['message'] = $alreadyWorker
-                            ? 'El trabajador ya tenia acceso. Actualizamos la relacion con tu empresa.'
-                            : 'Trabajador asignado correctamente.';
-                    }
+                        $pdo->beginTransaction();
 
-                    $assignValues = ['nombre' => '', 'apellido' => '', 'email' => ''];
-                    $nextTab = 'worker_' . $targetId;
+                        $update = $pdo->prepare('UPDATE usuarios SET nombre = ?, apellido = ?, id_permiso = ? WHERE id_usuario = ?');
+                        $update->execute([$nombre, $apellido, $workerPermiso, $targetId]);
+
+                        if (!$relationExists) {
+                            $link = $pdo->prepare('INSERT INTO empresa_trabajadores (id_empresa, id_trabajador, asignado_en) VALUES (?, ?, NOW())');
+                            $link->execute([$currentUserId, $targetId]);
+                        }
+
+                        if ($assignedElsewhere) {
+                            // Remove links with other HR accounts to keep the worker exclusive
+                            $cleanup = $pdo->prepare('DELETE FROM empresa_trabajadores WHERE id_trabajador = ? AND id_empresa <> ?');
+                            $cleanup->execute([$targetId, $currentUserId]);
+                        }
+
+                        $pdo->commit();
+
+                        if ($relationExists) {
+                            $response['type'] = $assignedElsewhere ? 'success' : 'info';
+                            $response['message'] = $assignedElsewhere
+                                ? 'Actualizamos los datos del trabajador y confirmamos la asignacion con tu empresa.'
+                                : 'El trabajador ya estaba asignado a tu empresa. Se actualizaron sus datos.';
+                        } else {
+                            $response['type'] = $alreadyWorker ? 'info' : 'success';
+                            $response['message'] = $alreadyWorker
+                                ? 'El trabajador ya tenia acceso. Actualizamos la relacion con tu empresa.'
+                                : 'Trabajador asignado correctamente.';
+                        }
+
+                        $assignValues = ['nombre' => '', 'apellido' => '', 'email' => ''];
+                        $nextTab = 'worker_' . $targetId;
+                    }
                 }
             } catch (Throwable $exception) {
                 if ($pdo->inTransaction()) {
@@ -403,4 +420,5 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
