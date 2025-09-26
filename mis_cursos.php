@@ -210,91 +210,167 @@ $errorMessage = null;
 
 try {
     $pdo = getPdo();
-    $stmt = $pdo->prepare(
-        'SELECT
-            c.id_compra,
-            c.pagado_en,
-            c.moneda,
-            ci.id_item,
-            ci.cantidad,
-            ci.precio_unitario,
-            ci.titulo_snapshot,
-            cursos.nombre_curso,
-            modalidades.nombre_modalidad,
-            i.id_inscripcion,
-            i.estado AS inscripcion_estado,
-            i.progreso AS inscripcion_progreso
-        FROM compras c
-        INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
-        INNER JOIN cursos ON cursos.id_curso = ci.id_curso
-        LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad
-        LEFT JOIN inscripciones i ON i.id_item_compra = ci.id_item AND i.id_usuario = c.id_usuario
-        WHERE c.id_usuario = :usuario
-          AND c.estado = :estado
-        ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC'
-    );
-    $stmt->bindValue(':usuario', $userId, PDO::PARAM_INT);
-    $stmt->bindValue(':estado', 'pagada', PDO::PARAM_STR);
-    $stmt->execute();
 
     $items = [];
+    $loadedFromHrView = false;
 
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $itemId = (int)$row['id_item'];
+    if ($isHrManager) {
+        $sqlHr = <<<'SQL'
+SELECT
+    v.id_curso,
+    v.tipo_curso,
+    SUM(v.cantidad) AS total_cantidad,
+    COALESCE(NULLIF(c.nombre_curso, ''), CONCAT('Curso #', v.id_curso)) AS nombre_curso,
+    GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+FROM v_cursos_rrhh v
+LEFT JOIN cursos c ON c.id_curso = v.id_curso
+LEFT JOIN curso_modalidad cm ON cm.id_curso = v.id_curso
+LEFT JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+WHERE v.id_usuario = :usuario
+GROUP BY v.id_curso, v.tipo_curso, COALESCE(NULLIF(c.nombre_curso, ''), CONCAT('Curso #', v.id_curso))
+ORDER BY nombre_curso ASC, v.tipo_curso ASC
+SQL;
+        $stmtHr = $pdo->prepare($sqlHr);
+        $stmtHr->bindValue(':usuario', $userId, PDO::PARAM_INT);
+        $stmtHr->execute();
 
-        if (!isset($items[$itemId])) {
-            $formattedDate = null;
-            if (!empty($row['pagado_en'])) {
-                try {
-                    $formattedDate = (new DateTimeImmutable($row['pagado_en']))->format('d/m/Y H:i');
-                } catch (Throwable $exception) {
-                    $formattedDate = $row['pagado_en'];
-                }
+        while ($row = $stmtHr->fetch(PDO::FETCH_ASSOC)) {
+            $itemKey = ($row['tipo_curso'] ?? 'curso') . '-' . (int)$row['id_curso'];
+            $courseName = trim((string)($row['nombre_curso'] ?? ''));
+            if ($courseName === '') {
+                $courseName = 'Curso';
             }
 
-            $items[$itemId] = [
-                'id_item' => $itemId,
-                'nombre_curso' => $row['nombre_curso'] ?: $row['titulo_snapshot'],
-                'nombre_modalidad' => $row['nombre_modalidad'],
-                'pagado_en' => $row['pagado_en'],
-                'pagado_en_formatted' => $formattedDate,
-                'moneda' => $row['moneda'],
-                'precio_unitario' => (float)$row['precio_unitario'],
-                'cantidad' => (int)$row['cantidad'],
-                'inscripcion' => null,
-            ];
+            $cantidad = (int)($row['total_cantidad'] ?? 0);
+            $modalidadResumen = $row['modalidad_resumen'] ?? null;
+
+            if (!isset($items[$itemKey])) {
+                $items[$itemKey] = [
+                    'id_item' => null,
+                    'id_curso' => (int)$row['id_curso'],
+                    'tipo_curso' => $row['tipo_curso'] ?? null,
+                    'nombre_curso' => $courseName,
+                    'nombre_modalidad' => $modalidadResumen,
+                    'pagado_en' => null,
+                    'pagado_en_formatted' => null,
+                    'moneda' => null,
+                    'precio_unitario' => null,
+                    'cantidad' => $cantidad,
+                    'inscripcion' => null,
+                    'asignaciones' => [],
+                    'asignados' => 0,
+                    'disponibles' => $cantidad,
+                    'can_assign' => false,
+                ];
+            } else {
+                $items[$itemKey]['cantidad'] += $cantidad;
+                $items[$itemKey]['disponibles'] = max(0, (int)$items[$itemKey]['cantidad']);
+            }
         }
 
-        if ($items[$itemId]['inscripcion'] === null && !empty($row['inscripcion_estado'])) {
-            $stateKey = strtolower((string)$row['inscripcion_estado']);
-            $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', (string)$row['inscripcion_estado']));
-            $stateClass = $statusClasses[$stateKey] ?? 'bg-secondary';
+        $loadedFromHrView = !empty($items);
+    }
 
-            $progress = null;
-            if ($row['inscripcion_progreso'] !== null) {
-                $progress = max(0, min(100, (int)$row['inscripcion_progreso']));
+    if (!$isHrManager) {
+        $stmt = $pdo->prepare(
+            'SELECT
+                c.id_compra,
+                c.pagado_en,
+                c.moneda,
+                ci.id_item,
+                ci.cantidad,
+                ci.precio_unitario,
+                ci.titulo_snapshot,
+                cursos.nombre_curso,
+                modalidades.nombre_modalidad,
+                i.id_inscripcion,
+                i.estado AS inscripcion_estado,
+                i.progreso AS inscripcion_progreso
+             FROM compras c
+             INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
+             INNER JOIN cursos ON cursos.id_curso = ci.id_curso
+             LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad
+             LEFT JOIN inscripciones i ON i.id_item_compra = ci.id_item AND i.id_usuario = c.id_usuario
+             WHERE c.id_usuario = :usuario
+               AND c.estado = :estado
+             ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC'
+        );
+        $stmt->bindValue(':usuario', $userId, PDO::PARAM_INT);
+        $stmt->bindValue(':estado', 'pagada', PDO::PARAM_STR);
+        $stmt->execute();
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $itemId = (int)$row['id_item'];
+
+            if (!isset($items[$itemId])) {
+                $formattedDate = null;
+                if (!empty($row['pagado_en'])) {
+                    try {
+                        $formattedDate = (new DateTimeImmutable($row['pagado_en']))->format('d/m/Y H:i');
+                    } catch (Throwable $exception) {
+                        $formattedDate = $row['pagado_en'];
+                    }
+                }
+
+                $items[$itemId] = [
+                    'id_item' => $itemId,
+                    'nombre_curso' => $row['nombre_curso'] ?: $row['titulo_snapshot'],
+                    'nombre_modalidad' => $row['nombre_modalidad'],
+                    'pagado_en' => $row['pagado_en'],
+                    'pagado_en_formatted' => $formattedDate,
+                    'moneda' => $row['moneda'],
+                    'precio_unitario' => (float)$row['precio_unitario'],
+                    'cantidad' => (int)$row['cantidad'],
+                    'inscripcion' => null,
+                    'can_assign' => $isHrManager,
+                ];
             }
 
-            $items[$itemId]['inscripcion'] = [
-                'id_inscripcion' => (int)$row['id_inscripcion'],
-                'estado' => $stateLabel,
-                'clase' => $stateClass,
-                'progreso' => $progress,
-            ];
+            if ($items[$itemId]['inscripcion'] === null && !empty($row['inscripcion_estado'])) {
+                $stateKey = strtolower((string)$row['inscripcion_estado']);
+                $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', (string)$row['inscripcion_estado']));
+                $stateClass = $statusClasses[$stateKey] ?? 'bg-secondary';
+
+                $progress = null;
+                if ($row['inscripcion_progreso'] !== null) {
+                    $progress = max(0, min(100, (int)$row['inscripcion_progreso']));
+                }
+
+                $items[$itemId]['inscripcion'] = [
+                    'id_inscripcion' => (int)$row['id_inscripcion'],
+                    'estado' => $stateLabel,
+                    'clase' => $stateClass,
+                    'progreso' => $progress,
+                ];
+            }
         }
     }
 
     if ($isHrManager) {
-        foreach ($items as $itemId => &$item) {
-            $item['asignaciones'] = [];
-            $item['asignados'] = 0;
-            $item['disponibles'] = max(0, (int)$item['cantidad']);
+        $assignableMap = [];
+
+        foreach ($items as $key => &$item) {
+            if (!isset($item['asignaciones']) || !is_array($item['asignaciones'])) {
+                $item['asignaciones'] = [];
+            }
+            if (!isset($item['asignados'])) {
+                $item['asignados'] = 0;
+            }
+            if (!isset($item['disponibles'])) {
+                $item['disponibles'] = max(0, (int)$item['cantidad']);
+            }
+
+            if (!empty($item['can_assign']) && isset($item['id_item']) && $item['id_item'] !== null) {
+                $assignableMap[(int)$item['id_item']] = $key;
+            } else {
+                $item['can_assign'] = false;
+                $item['disponibles'] = max(0, (int)$item['cantidad'] - (int)($item['asignados'] ?? 0));
+            }
         }
         unset($item);
 
-        if (!empty($items)) {
-            $itemIds = array_keys($items);
-            $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+        if (!empty($assignableMap)) {
+            $placeholders = implode(',', array_fill(0, count($assignableMap), '?'));
             $sqlAssignments = 'SELECT
                     i.id_inscripcion,
                     i.id_item_compra,
@@ -310,13 +386,15 @@ try {
                 WHERE i.id_item_compra IN (' . $placeholders . ')';
 
             $stmtAssignments = $pdo->prepare($sqlAssignments);
-            $stmtAssignments->execute($itemIds);
+            $stmtAssignments->execute(array_keys($assignableMap));
 
             while ($assignment = $stmtAssignments->fetch(PDO::FETCH_ASSOC)) {
                 $assignmentItemId = (int)$assignment['id_item_compra'];
-                if (!isset($items[$assignmentItemId])) {
+                if (!isset($assignableMap[$assignmentItemId])) {
                     continue;
                 }
+
+                $itemKey = $assignableMap[$assignmentItemId];
 
                 $stateKey = strtolower((string)$assignment['estado']);
                 $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', (string)$assignment['estado']));
@@ -327,7 +405,7 @@ try {
                     $progress = max(0, min(100, (int)$assignment['progreso']));
                 }
 
-                $items[$assignmentItemId]['asignaciones'][] = [
+                $items[$itemKey]['asignaciones'][] = [
                     'id_inscripcion' => (int)$assignment['id_inscripcion'],
                     'id_usuario' => (int)$assignment['id_usuario'],
                     'nombre' => $assignment['nombre'],
@@ -339,24 +417,26 @@ try {
                     'progreso' => $progress,
                 ];
             }
-        }
 
-        foreach ($items as $itemId => &$item) {
-            $assignedCount = count($item['asignaciones']);
-            $item['asignados'] = $assignedCount;
-            $item['disponibles'] = max(0, (int)$item['cantidad'] - $assignedCount);
-        }
-        unset($item);
+            foreach ($assignableMap as $itemId => $itemKey) {
+                $assignedCount = count($items[$itemKey]['asignaciones']);
+                $items[$itemKey]['asignados'] = $assignedCount;
+                $items[$itemKey]['disponibles'] = max(0, (int)$items[$itemKey]['cantidad'] - $assignedCount);
+                $items[$itemKey]['can_assign'] = true;
+            }
 
-        $stmtWorkers = $pdo->prepare(
-            'SELECT u.id_usuario, u.nombre, u.apellido, u.email
-             FROM empresa_trabajadores et
-             INNER JOIN usuarios u ON u.id_usuario = et.id_trabajador
-             WHERE et.id_empresa = ? AND u.id_permiso = 4
-             ORDER BY u.nombre ASC, u.apellido ASC, u.email ASC'
-        );
-        $stmtWorkers->execute([$userId]);
-        $workersOptions = $stmtWorkers->fetchAll(PDO::FETCH_ASSOC);
+            $stmtWorkers = $pdo->prepare(
+                'SELECT u.id_usuario, u.nombre, u.apellido, u.email
+                 FROM empresa_trabajadores et
+                 INNER JOIN usuarios u ON u.id_usuario = et.id_trabajador
+                 WHERE et.id_empresa = ? AND u.id_permiso = 4
+                 ORDER BY u.nombre ASC, u.apellido ASC, u.email ASC'
+            );
+            $stmtWorkers->execute([$userId]);
+            $workersOptions = $stmtWorkers->fetchAll(PDO::FETCH_ASSOC);
+        } else {
+            $workersOptions = [];
+        }
     }
 
     $cursosComprados = array_values($items);
@@ -364,6 +444,7 @@ try {
     error_log('mis_cursos load: ' . $exception->getMessage());
     $errorMessage = 'No pudimos cargar tus cursos en este momento.';
 }
+
 
 $configActive = 'mis_cursos';
 ?>
@@ -469,7 +550,7 @@ $configActive = 'mis_cursos';
                                         </div>
                                     <?php endif; ?>
 
-                                    <?php if ($isHrManager): ?>
+                                    <?php if ($isHrManager && !empty($curso['can_assign'])): ?>
                                         <?php
                                         $assignedWorkers = $curso['asignaciones'] ?? [];
                                         $assignedWorkerIds = [];
