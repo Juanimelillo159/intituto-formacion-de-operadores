@@ -211,10 +211,25 @@ $errorMessage = null;
 try {
     $pdo = getPdo();
 
-    $items = [];
-    $loadedFromHrView = false;
+    $tableExists = static function (PDO $pdo, string $table): bool {
+        try {
+            $stmt = $pdo->prepare("SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = :table LIMIT 1");
+            $stmt->bindValue(':table', $table, PDO::PARAM_STR);
+            $stmt->execute();
+            return (bool)$stmt->fetchColumn();
+        } catch (Throwable $tableException) {
+            error_log('mis_cursos table check ' . $table . ': ' . $tableException->getMessage());
+            return false;
+        }
+    };
+
+    $inscripcionesAvailable = $tableExists($pdo, 'inscripciones');
+    $comprasAvailable = $tableExists($pdo, 'compras');
+    $compraItemsAvailable = $tableExists($pdo, 'compra_items');
 
     if ($isHrManager) {
+        $courses = [];
+
         $sqlHr = <<<'SQL'
 SELECT
     v.id_curso,
@@ -235,141 +250,132 @@ SQL;
         $stmtHr->execute();
 
         while ($row = $stmtHr->fetch(PDO::FETCH_ASSOC)) {
-            $itemKey = ($row['tipo_curso'] ?? 'curso') . '-' . (int)$row['id_curso'];
+            $courseId = (int)$row['id_curso'];
+            $courseKey = 'course-' . $courseId;
             $courseName = trim((string)($row['nombre_curso'] ?? ''));
             if ($courseName === '') {
                 $courseName = 'Curso';
             }
 
-            $cantidad = (int)($row['total_cantidad'] ?? 0);
-            $modalidadResumen = $row['modalidad_resumen'] ?? null;
+            $totalCantidad = (int)($row['total_cantidad'] ?? 0);
 
-            if (!isset($items[$itemKey])) {
-                $items[$itemKey] = [
+            if (!isset($courses[$courseKey])) {
+                $courses[$courseKey] = [
                     'id_item' => null,
-                    'id_curso' => (int)$row['id_curso'],
+                    'id_curso' => $courseId,
                     'tipo_curso' => $row['tipo_curso'] ?? null,
                     'nombre_curso' => $courseName,
-                    'nombre_modalidad' => $modalidadResumen,
+                    'nombre_modalidad' => $row['modalidad_resumen'] ?? null,
                     'pagado_en' => null,
                     'pagado_en_formatted' => null,
                     'moneda' => null,
                     'precio_unitario' => null,
-                    'cantidad' => $cantidad,
+                    'cantidad' => $totalCantidad,
                     'inscripcion' => null,
                     'asignaciones' => [],
                     'asignados' => 0,
-                    'disponibles' => $cantidad,
+                    'disponibles' => $totalCantidad,
                     'can_assign' => false,
+                    'purchase_items' => [],
                 ];
             } else {
-                $items[$itemKey]['cantidad'] += $cantidad;
-                $items[$itemKey]['disponibles'] = max(0, (int)$items[$itemKey]['cantidad']);
+                $courses[$courseKey]['cantidad'] += $totalCantidad;
+                $courses[$courseKey]['disponibles'] = max(0, (int)$courses[$courseKey]['cantidad']);
             }
         }
 
-        $loadedFromHrView = !empty($items);
-    }
-
-    if (!$isHrManager) {
-        $stmt = $pdo->prepare(
-            'SELECT
-                c.id_compra,
-                c.pagado_en,
-                c.moneda,
-                ci.id_item,
-                ci.cantidad,
-                ci.precio_unitario,
-                ci.titulo_snapshot,
-                cursos.nombre_curso,
-                modalidades.nombre_modalidad,
-                i.id_inscripcion,
-                i.estado AS inscripcion_estado,
-                i.progreso AS inscripcion_progreso
-             FROM compras c
-             INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
-             INNER JOIN cursos ON cursos.id_curso = ci.id_curso
-             LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad
-             LEFT JOIN inscripciones i ON i.id_item_compra = ci.id_item AND i.id_usuario = c.id_usuario
-             WHERE c.id_usuario = :usuario
-               AND c.estado = :estado
-             ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC'
-        );
-        $stmt->bindValue(':usuario', $userId, PDO::PARAM_INT);
-        $stmt->bindValue(':estado', 'pagada', PDO::PARAM_STR);
-        $stmt->execute();
-
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $itemId = (int)$row['id_item'];
-
-            if (!isset($items[$itemId])) {
-                $formattedDate = null;
-                if (!empty($row['pagado_en'])) {
-                    try {
-                        $formattedDate = (new DateTimeImmutable($row['pagado_en']))->format('d/m/Y H:i');
-                    } catch (Throwable $exception) {
-                        $formattedDate = $row['pagado_en'];
-                    }
-                }
-
-                $items[$itemId] = [
-                    'id_item' => $itemId,
-                    'nombre_curso' => $row['nombre_curso'] ?: $row['titulo_snapshot'],
-                    'nombre_modalidad' => $row['nombre_modalidad'],
-                    'pagado_en' => $row['pagado_en'],
-                    'pagado_en_formatted' => $formattedDate,
-                    'moneda' => $row['moneda'],
-                    'precio_unitario' => (float)$row['precio_unitario'],
-                    'cantidad' => (int)$row['cantidad'],
-                    'inscripcion' => null,
-                    'can_assign' => $isHrManager,
-                ];
-            }
-
-            if ($items[$itemId]['inscripcion'] === null && !empty($row['inscripcion_estado'])) {
-                $stateKey = strtolower((string)$row['inscripcion_estado']);
-                $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', (string)$row['inscripcion_estado']));
-                $stateClass = $statusClasses[$stateKey] ?? 'bg-secondary';
-
-                $progress = null;
-                if ($row['inscripcion_progreso'] !== null) {
-                    $progress = max(0, min(100, (int)$row['inscripcion_progreso']));
-                }
-
-                $items[$itemId]['inscripcion'] = [
-                    'id_inscripcion' => (int)$row['id_inscripcion'],
-                    'estado' => $stateLabel,
-                    'clase' => $stateClass,
-                    'progreso' => $progress,
-                ];
-            }
-        }
-    }
-
-    if ($isHrManager) {
         $assignableMap = [];
 
-        foreach ($items as $key => &$item) {
-            if (!isset($item['asignaciones']) || !is_array($item['asignaciones'])) {
-                $item['asignaciones'] = [];
-            }
-            if (!isset($item['asignados'])) {
-                $item['asignados'] = 0;
-            }
-            if (!isset($item['disponibles'])) {
-                $item['disponibles'] = max(0, (int)$item['cantidad']);
+        if ($comprasAvailable && $compraItemsAvailable) {
+            $sqlPurchases = 'SELECT
+                    c.id_compra,
+                    c.pagado_en,
+                    c.moneda,
+                    ci.id_item,
+                    ci.id_curso AS item_id_curso,
+                    ci.cantidad,
+                    ci.precio_unitario,
+                    ci.titulo_snapshot,
+                    cursos.nombre_curso,
+                    modalidades.nombre_modalidad
+                FROM compras c
+                INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
+                INNER JOIN cursos ON cursos.id_curso = ci.id_curso
+                LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad
+                WHERE c.id_usuario = :usuario
+                  AND c.estado = :estado
+                ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC';
+            $stmtPurchases = $pdo->prepare($sqlPurchases);
+            $stmtPurchases->bindValue(':usuario', $userId, PDO::PARAM_INT);
+            $stmtPurchases->bindValue(':estado', 'pagada', PDO::PARAM_STR);
+            $stmtPurchases->execute();
+
+            while ($row = $stmtPurchases->fetch(PDO::FETCH_ASSOC)) {
+            $itemId = (int)$row['id_item'];
+            $courseId = (int)$row['item_id_curso'];
+            $courseKey = 'course-' . $courseId;
+
+            if (!isset($courses[$courseKey])) {
+                $courseName = trim((string)($row['nombre_curso'] ?? ''));
+                if ($courseName === '') {
+                    $courseName = $row['titulo_snapshot'] ?? 'Curso';
+                }
+
+                $courses[$courseKey] = [
+                    'id_item' => null,
+                    'id_curso' => $courseId,
+                    'tipo_curso' => null,
+                    'nombre_curso' => $courseName,
+                    'nombre_modalidad' => $row['nombre_modalidad'],
+                    'pagado_en' => null,
+                    'pagado_en_formatted' => null,
+                    'moneda' => null,
+                    'precio_unitario' => null,
+                    'cantidad' => 0,
+                    'inscripcion' => null,
+                    'asignaciones' => [],
+                    'asignados' => 0,
+                    'disponibles' => 0,
+                    'can_assign' => false,
+                    'purchase_items' => [],
+                ];
             }
 
-            if (!empty($item['can_assign']) && isset($item['id_item']) && $item['id_item'] !== null) {
-                $assignableMap[(int)$item['id_item']] = $key;
-            } else {
-                $item['can_assign'] = false;
-                $item['disponibles'] = max(0, (int)$item['cantidad'] - (int)($item['asignados'] ?? 0));
+            $formattedDate = null;
+            if (!empty($row['pagado_en'])) {
+                try {
+                    $formattedDate = (new DateTimeImmutable($row['pagado_en']))->format('d/m/Y H:i');
+                } catch (Throwable $exception) {
+                    $formattedDate = $row['pagado_en'];
+                }
+            }
+
+            $courses[$courseKey]['purchase_items'][$itemId] = [
+                'id_item' => $itemId,
+                'id_curso' => $courseId,
+                'nombre_curso' => $courses[$courseKey]['nombre_curso'],
+                'nombre_modalidad' => $row['nombre_modalidad'],
+                'pagado_en' => $row['pagado_en'],
+                'pagado_en_formatted' => $formattedDate,
+                'moneda' => $row['moneda'],
+                'precio_unitario' => (float)$row['precio_unitario'],
+                'cantidad' => (int)$row['cantidad'],
+                'asignaciones' => [],
+                'asignados' => 0,
+                'disponibles' => (int)$row['cantidad'],
+            ];
+
+            if ($courses[$courseKey]['nombre_modalidad'] === null && $row['nombre_modalidad'] !== null) {
+                $courses[$courseKey]['nombre_modalidad'] = $row['nombre_modalidad'];
+            }
+
+            if ($inscripcionesAvailable) {
+                $courses[$courseKey]['can_assign'] = true;
+                $assignableMap[$itemId] = $courseKey;
             }
         }
-        unset($item);
 
-        if (!empty($assignableMap)) {
+        if ($inscripcionesAvailable && !empty($assignableMap)) {
             $placeholders = implode(',', array_fill(0, count($assignableMap), '?'));
             $sqlAssignments = 'SELECT
                     i.id_inscripcion,
@@ -394,7 +400,10 @@ SQL;
                     continue;
                 }
 
-                $itemKey = $assignableMap[$assignmentItemId];
+                $courseKey = $assignableMap[$assignmentItemId];
+                if (!isset($courses[$courseKey]['purchase_items'][$assignmentItemId])) {
+                    continue;
+                }
 
                 $stateKey = strtolower((string)$assignment['estado']);
                 $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', (string)$assignment['estado']));
@@ -405,7 +414,7 @@ SQL;
                     $progress = max(0, min(100, (int)$assignment['progreso']));
                 }
 
-                $items[$itemKey]['asignaciones'][] = [
+                $assignmentData = [
                     'id_inscripcion' => (int)$assignment['id_inscripcion'],
                     'id_usuario' => (int)$assignment['id_usuario'],
                     'nombre' => $assignment['nombre'],
@@ -415,33 +424,168 @@ SQL;
                     'estado' => $stateLabel,
                     'clase' => $stateClass,
                     'progreso' => $progress,
+                    'id_item_compra' => $assignmentItemId,
                 ];
+
+                $courses[$courseKey]['purchase_items'][$assignmentItemId]['asignaciones'][] = $assignmentData;
+                $courses[$courseKey]['asignaciones'][] = $assignmentData;
+            }
+        }
+
+        }
+
+        foreach ($courses as $courseKey => &$course) {
+            $totalQuantity = 0;
+            $totalAssigned = 0;
+            $latestTimestamp = null;
+            $latestFormatted = null;
+            $currency = $course['moneda'];
+            $unitPrice = $course['precio_unitario'];
+
+            foreach ($course['purchase_items'] as &$purchaseItem) {
+                $assignedCount = count($purchaseItem['asignaciones']);
+                $purchaseItem['asignados'] = $assignedCount;
+                $purchaseItem['disponibles'] = max(0, (int)$purchaseItem['cantidad'] - $assignedCount);
+                $totalQuantity += (int)$purchaseItem['cantidad'];
+                $totalAssigned += $assignedCount;
+
+                if (!empty($purchaseItem['pagado_en'])) {
+                    $timestamp = strtotime($purchaseItem['pagado_en']);
+                    if ($timestamp !== false && ($latestTimestamp === null || $timestamp > $latestTimestamp)) {
+                        $latestTimestamp = $timestamp;
+                        $latestFormatted = $purchaseItem['pagado_en_formatted'];
+                    }
+                }
+
+                if ($currency === null && $purchaseItem['moneda'] !== null) {
+                    $currency = $purchaseItem['moneda'];
+                }
+                if ($unitPrice === null && $purchaseItem['precio_unitario'] !== null) {
+                    $unitPrice = $purchaseItem['precio_unitario'];
+                }
+            }
+            unset($purchaseItem);
+
+            if ($totalQuantity > 0) {
+                $course['cantidad'] = $totalQuantity;
             }
 
-            foreach ($assignableMap as $itemId => $itemKey) {
-                $assignedCount = count($items[$itemKey]['asignaciones']);
-                $items[$itemKey]['asignados'] = $assignedCount;
-                $items[$itemKey]['disponibles'] = max(0, (int)$items[$itemKey]['cantidad'] - $assignedCount);
-                $items[$itemKey]['can_assign'] = true;
+            $course['asignados'] = $totalAssigned;
+            $course['disponibles'] = max(0, (int)$course['cantidad'] - $totalAssigned);
+            $course['pagado_en'] = $latestTimestamp !== null ? date('Y-m-d H:i:s', $latestTimestamp) : $course['pagado_en'];
+            $course['pagado_en_formatted'] = $latestFormatted;
+            $course['moneda'] = $currency;
+            $course['precio_unitario'] = $unitPrice;
+        }
+        unset($course);
+
+        $cursosComprados = array_values($courses);
+
+        $stmtWorkers = $pdo->prepare(
+            'SELECT u.id_usuario, u.nombre, u.apellido, u.email
+             FROM empresa_trabajadores et
+             INNER JOIN usuarios u ON u.id_usuario = et.id_trabajador
+             WHERE et.id_empresa = ? AND u.id_permiso = 4
+             ORDER BY u.nombre ASC, u.apellido ASC, u.email ASC'
+        );
+        $stmtWorkers->execute([$userId]);
+        $workersOptions = $stmtWorkers->fetchAll(PDO::FETCH_ASSOC);
+    } else {
+        if ($comprasAvailable && $compraItemsAvailable) {
+            $items = [];
+
+            $selectBase = "SELECT
+                    c.id_compra,
+                    c.pagado_en,
+                    c.moneda,
+                    ci.id_item,
+                    ci.cantidad,
+                    ci.precio_unitario,
+                    ci.titulo_snapshot,
+                    cursos.nombre_curso,
+                    modalidades.nombre_modalidad";
+            if ($inscripcionesAvailable) {
+                $selectFields = $selectBase . ",
+                    i.id_inscripcion,
+                    i.estado AS inscripcion_estado,
+                    i.progreso AS inscripcion_progreso";
+                $joinInscripciones = " LEFT JOIN inscripciones i ON i.id_item_compra = ci.id_item AND i.id_usuario = c.id_usuario";
+            } else {
+                $selectFields = $selectBase . ",
+                    NULL AS id_inscripcion,
+                    NULL AS inscripcion_estado,
+                    NULL AS inscripcion_progreso";
+                $joinInscripciones = '';
             }
 
-            $stmtWorkers = $pdo->prepare(
-                'SELECT u.id_usuario, u.nombre, u.apellido, u.email
-                 FROM empresa_trabajadores et
-                 INNER JOIN usuarios u ON u.id_usuario = et.id_trabajador
-                 WHERE et.id_empresa = ? AND u.id_permiso = 4
-                 ORDER BY u.nombre ASC, u.apellido ASC, u.email ASC'
-            );
-            $stmtWorkers->execute([$userId]);
-            $workersOptions = $stmtWorkers->fetchAll(PDO::FETCH_ASSOC);
+            $sqlUser = $selectFields . "
+                 FROM compras c
+                 INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
+                 INNER JOIN cursos ON cursos.id_curso = ci.id_curso
+                 LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad" . $joinInscripciones . "
+                 WHERE c.id_usuario = :usuario
+                   AND c.estado = :estado
+                 ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC";
+
+            $stmt = $pdo->prepare($sqlUser);
+            $stmt->bindValue(':usuario', $userId, PDO::PARAM_INT);
+            $stmt->bindValue(':estado', 'pagada', PDO::PARAM_STR);
+            $stmt->execute();
+
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $itemId = (int)$row['id_item'];
+
+                if (!isset($items[$itemId])) {
+                    $formattedDate = null;
+                    if (!empty($row['pagado_en'])) {
+                        try {
+                            $formattedDate = (new DateTimeImmutable($row['pagado_en']))->format('d/m/Y H:i');
+                        } catch (Throwable $exception) {
+                            $formattedDate = $row['pagado_en'];
+                        }
+                    }
+
+                    $items[$itemId] = [
+                        'id_item' => $itemId,
+                        'nombre_curso' => $row['nombre_curso'] ?: $row['titulo_snapshot'],
+                        'nombre_modalidad' => $row['nombre_modalidad'],
+                        'pagado_en' => $row['pagado_en'],
+                        'pagado_en_formatted' => $formattedDate,
+                        'moneda' => $row['moneda'],
+                        'precio_unitario' => (float)$row['precio_unitario'],
+                        'cantidad' => (int)$row['cantidad'],
+                        'inscripcion' => null,
+                    ];
+                }
+
+                if ($inscripcionesAvailable && $items[$itemId]['inscripcion'] === null && !empty($row['inscripcion_estado'])) {
+                    $stateKey = strtolower((string)$row['inscripcion_estado']);
+                    $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', (string)$row['inscripcion_estado']));
+                    $stateClass = $statusClasses[$stateKey] ?? 'bg-secondary';
+
+                    $progress = null;
+                    if ($row['inscripcion_progreso'] !== null) {
+                        $progress = max(0, min(100, (int)($row['inscripcion_progreso'])));
+                    }
+
+                    $items[$itemId]['inscripcion'] = [
+                        'id_inscripcion' => (int)$row['id_inscripcion'],
+                        'estado' => $stateLabel,
+                        'clase' => $stateClass,
+                        'progreso' => $progress,
+                    ];
+                }
+            }
+
+            $cursosComprados = array_values($items);
         } else {
-            $workersOptions = [];
+            $cursosComprados = [];
         }
     }
-
-    $cursosComprados = array_values($items);
 } catch (Throwable $exception) {
-    error_log('mis_cursos load: ' . $exception->getMessage());
+    $errorDetails = $exception->getMessage();
+    error_log('mis_cursos load: ' . $errorDetails);
+    @file_put_contents(__DIR__ . '/mis_cursos_error.log', '[' . date('Y-m-d H:i:s') . '] ' . $errorDetails . PHP_EOL, FILE_APPEND);
     $errorMessage = 'No pudimos cargar tus cursos en este momento.';
 }
 
@@ -550,7 +694,7 @@ $configActive = 'mis_cursos';
                                         </div>
                                     <?php endif; ?>
 
-                                    <?php if ($isHrManager && !empty($curso['can_assign'])): ?>
+                                    <?php if ($isHrManager): ?>
                                         <?php
                                         $assignedWorkers = $curso['asignaciones'] ?? [];
                                         $assignedWorkerIds = [];
@@ -564,11 +708,8 @@ $configActive = 'mis_cursos';
                                                 $availableWorkers[] = $workerOption;
                                             }
                                         }
-                                        $panelId = 'assign-panel-' . (int)$curso['id_item'];
-                                        $selectAllId = 'assign-select-all-' . (int)$curso['id_item'];
-                                        $formId = 'assign-form-' . (int)$curso['id_item'];
-                                        $availableSlots = isset($curso['disponibles']) ? (int)$curso['disponibles'] : max(0, (int)$curso['cantidad']);
-                                        $maxSelectable = min($availableSlots, count($availableWorkers));
+                                        $purchaseItems = $curso['purchase_items'] ?? [];
+                                        $hasPurchaseItems = !empty($purchaseItems);
                                         ?>
                                         <div class="course-card__section mt-4">
                                             <h3 class="course-card__section-title h6 mb-3">Trabajadores asignados</h3>
@@ -600,72 +741,111 @@ $configActive = 'mis_cursos';
                                             <?php endif; ?>
                                         </div>
 
-                                        <div class="course-card__section mt-3">
-                                            <button class="btn btn-outline-primary btn-sm<?php echo ($availableSlots <= 0 || empty($availableWorkers)) ? ' disabled' : ''; ?>" type="button" <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>data-bs-toggle="collapse" data-bs-target="#<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>" aria-expanded="false" aria-controls="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>>
-                                                Asignar trabajadores
-                                            </button>
-                                            <?php if ($availableSlots <= 0): ?>
-                                                <p class="text-danger small mb-0 mt-2">No quedan cupos disponibles para asignar.</p>
-                                            <?php elseif (empty($workersOptions)): ?>
-                                                <p class="text-muted small mb-0 mt-2">Todav&iacute;a no sumaste trabajadores a tu empresa.</p>
-                                            <?php elseif (empty($availableWorkers)): ?>
-                                                <p class="text-muted small mb-0 mt-2">Todos tus trabajadores ya tienen este curso asignado.</p>
-                                            <?php endif; ?>
-                                        </div>
+                                        <?php if ($hasPurchaseItems): ?>
+                                            <?php foreach ($purchaseItems as $purchaseItem): ?>
+                                                <?php
+                                                $purchaseItemId = (int)($purchaseItem['id_item'] ?? 0);
+                                                if ($purchaseItemId <= 0) {
+                                                    continue;
+                                                }
+                                                $panelId = 'assign-panel-' . $purchaseItemId;
+                                                $selectAllId = 'assign-select-all-' . $purchaseItemId;
+                                                $formId = 'assign-form-' . $purchaseItemId;
+                                                $availableSlots = isset($purchaseItem['disponibles']) ? (int)$purchaseItem['disponibles'] : max(0, (int)($purchaseItem['cantidad'] ?? 0));
+                                                $maxSelectable = min($availableSlots, count($availableWorkers));
+                                                $purchaseAssigned = $purchaseItem['asignaciones'] ?? [];
+                                                $purchaseAssignedCount = isset($purchaseItem['asignados']) ? (int)$purchaseItem['asignados'] : count($purchaseAssigned);
+                                                $purchaseDateLabel = $purchaseItem['pagado_en_formatted'] ?? ($purchaseItem['pagado_en'] ?? null);
+                                                $canAssignPurchase = !empty($curso['can_assign']);
+                                                ?>
+                                                <div class="course-card__section mt-4">
+                                                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                                                        <div>
+                                                            <h3 class="course-card__section-title h6 mb-1">Compra<?php echo $purchaseDateLabel ? ' (' . htmlspecialchars($purchaseDateLabel, ENT_QUOTES, 'UTF-8') . ')' : ' sin fecha'; ?></h3>
+                                                            <?php if (!empty($purchaseItem['nombre_modalidad'])): ?>
+                                                                <p class="text-muted small mb-0"><?php echo htmlspecialchars($purchaseItem['nombre_modalidad'], ENT_QUOTES, 'UTF-8'); ?></p>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <div class="assign-panel__stats d-flex flex-wrap gap-3 align-items-center small text-muted">
+                                                            <span>Total: <strong><?php echo (int)($purchaseItem['cantidad'] ?? 0); ?></strong></span>
+                                                            <span>Asignados: <strong><?php echo $purchaseAssignedCount; ?></strong></span>
+                                                            <span>Disponibles: <strong data-remaining-count><?php echo $availableSlots; ?></strong></span>
+                                                        </div>
+                                                    </div>
 
-                                        <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>
-                                            <div class="collapse mt-3" id="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                <div class="assign-panel shadow-sm">
-                                                    <form method="POST" class="assign-workers-form" id="<?php echo htmlspecialchars($formId, ENT_QUOTES, 'UTF-8'); ?>" data-available="<?php echo (int)$availableSlots; ?>">
-                                                        <input type="hidden" name="action" value="assign_workers">
-                                                        <input type="hidden" name="item_id" value="<?php echo (int)$curso['id_item']; ?>">
-                                                        <div class="assign-panel__stats d-flex flex-wrap gap-3 align-items-center small text-muted mb-3">
-                                                            <span>Cupos disponibles: <strong data-remaining-count><?php echo (int)$availableSlots; ?></strong></span>
-                                                            <span>Seleccionados: <strong data-selected-count>0</strong></span>
+                                                    <?php if ($canAssignPurchase): ?>
+                                                        <button class="btn btn-outline-primary btn-sm<?php echo ($availableSlots <= 0 || empty($availableWorkers)) ? ' disabled' : ''; ?>" type="button" <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>data-bs-toggle="collapse" data-bs-target="#<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>" aria-expanded="false" aria-controls="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>"<?php endif; ?>>
+                                                            Asignar trabajadores
+                                                        </button>
+                                                        <?php if ($availableSlots <= 0): ?>
+                                                            <p class="text-danger small mb-0 mt-2">No quedan cupos disponibles para esta compra.</p>
+                                                        <?php elseif (empty($workersOptions)): ?>
+                                                            <p class="text-muted small mb-0 mt-2">Todav&iacute;a no sumaste trabajadores a tu empresa.</p>
+                                                        <?php elseif (empty($availableWorkers)): ?>
+                                                            <p class="text-muted small mb-0 mt-2">Todos tus trabajadores ya tienen este curso asignado.</p>
+                                                        <?php endif; ?>
+
+                                                        <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>
+                                                            <div class="collapse mt-3" id="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <div class="assign-panel shadow-sm">
+                                                                <form method="POST" class="assign-workers-form" id="<?php echo htmlspecialchars($formId, ENT_QUOTES, 'UTF-8'); ?>" data-available="<?php echo (int)$availableSlots; ?>">
+                                                                    <input type="hidden" name="action" value="assign_workers">
+                                                                    <input type="hidden" name="item_id" value="<?php echo $purchaseItemId; ?>">
+                                                                    <div class="assign-panel__stats d-flex flex-wrap gap-3 align-items-center small text-muted mb-3">
+                                                                        <span>Cupos disponibles: <strong data-remaining-count><?php echo (int)$availableSlots; ?></strong></span>
+                                                                        <span>Seleccionados: <strong data-selected-count>0</strong></span>
+                                                                    </div>
+                                                                    <div class="form-check form-check-sm mb-2">
+                                                                        <input class="form-check-input assign-select-all" type="checkbox" id="<?php echo htmlspecialchars($selectAllId, ENT_QUOTES, 'UTF-8'); ?>" data-max-select="<?php echo (int)$maxSelectable; ?>">
+                                                                        <label class="form-check-label small" for="<?php echo htmlspecialchars($selectAllId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                            Seleccionar todos (hasta <?php echo (int)$maxSelectable; ?>)
+                                                                        </label>
+                                                                    </div>
+                                                                    <div class="assign-workers-list border rounded bg-white p-2" style="max-height: 220px; overflow: auto;">
+                                                                        <?php foreach ($availableWorkers as $worker): ?>
+                                                                            <?php
+                                                                            $workerId = (int)($worker['id_usuario'] ?? 0);
+                                                                            if ($workerId <= 0) {
+                                                                                continue;
+                                                                            }
+                                                                            $workerName = trim((string)($worker['nombre'] ?? '') . ' ' . (string)($worker['apellido'] ?? ''));
+                                                                            if ($workerName === '') {
+                                                                                $workerName = (string)($worker['email'] ?? 'Trabajador');
+                                                                            }
+                                                                            $workerEmail = (string)($worker['email'] ?? '');
+                                                                            $workerLabel = $workerName;
+                                                                            if ($workerEmail !== '' && $workerName !== $workerEmail) {
+                                                                                $workerLabel .= ' (' . $workerEmail . ')';
+                                                                            }
+                                                                            $inputId = 'assign-worker-' . $purchaseItemId . '-' . $workerId;
+                                                                            ?>
+                                                                            <div class="form-check form-check-sm mb-2">
+                                                                                <input class="form-check-input assign-worker-checkbox" type="checkbox" name="worker_ids[]" value="<?php echo $workerId; ?>" id="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                                <label class="form-check-label small" for="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($workerLabel, ENT_QUOTES, 'UTF-8'); ?></label>
+                                                                            </div>
+                                                                        <?php endforeach; ?>
+                                                                    </div>
+                                                                    <p class="text-muted small mt-3 mb-3">Vas a crear una inscripci&oacute;n por cada trabajador seleccionado. Esta acci&oacute;n no se puede revertir.</p>
+                                                                    <div class="d-flex flex-wrap gap-2">
+                                                                        <button type="submit" class="btn btn-primary btn-sm" data-assign-submit disabled>
+                                                                            Asignar
+                                                                        </button>
+                                                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                            Cancelar
+                                                                        </button>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
                                                         </div>
-                                                        <div class="form-check form-check-sm mb-2">
-                                                            <input class="form-check-input assign-select-all" type="checkbox" id="<?php echo htmlspecialchars($selectAllId, ENT_QUOTES, 'UTF-8'); ?>" data-max-select="<?php echo (int)$maxSelectable; ?>">
-                                                            <label class="form-check-label small" for="<?php echo htmlspecialchars($selectAllId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                Seleccionar todos (hasta <?php echo (int)$maxSelectable; ?>)
-                                                            </label>
-                                                        </div>
-                                                        <div class="assign-workers-list border rounded bg-white p-2" style="max-height: 220px; overflow: auto;">
-                                                            <?php foreach ($availableWorkers as $worker): ?>
-                                                                <?php
-                                                                $workerId = (int)($worker['id_usuario'] ?? 0);
-                                                                if ($workerId <= 0) {
-                                                                    continue;
-                                                                }
-                                                                $workerName = trim((string)($worker['nombre'] ?? '') . ' ' . (string)($worker['apellido'] ?? ''));
-                                                                if ($workerName === '') {
-                                                                    $workerName = (string)($worker['email'] ?? 'Trabajador');
-                                                                }
-                                                                $workerEmail = (string)($worker['email'] ?? '');
-                                                                $workerLabel = $workerName;
-                                                                if ($workerEmail !== '' && $workerName !== $workerEmail) {
-                                                                    $workerLabel .= ' (' . $workerEmail . ')';
-                                                                }
-                                                                $inputId = 'assign-worker-' . (int)$curso['id_item'] . '-' . $workerId;
-                                                                ?>
-                                                                <div class="form-check form-check-sm mb-2">
-                                                                    <input class="form-check-input assign-worker-checkbox" type="checkbox" name="worker_ids[]" value="<?php echo $workerId; ?>" id="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                    <label class="form-check-label small" for="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                        <?php echo htmlspecialchars($workerLabel, ENT_QUOTES, 'UTF-8'); ?>
-                                                                    </label>
-                                                                </div>
-                                                            <?php endforeach; ?>
-                                                        </div>
-                                                        <p class="text-muted small mt-3 mb-3">Vas a crear una inscripci&oacute;n por cada trabajador seleccionado. Esta acci&oacute;n no se puede revertir.</p>
-                                                        <div class="d-flex flex-wrap gap-2">
-                                                            <button type="submit" class="btn btn-primary btn-sm" data-assign-submit disabled>
-                                                                Asignar
-                                                            </button>
-                                                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="collapse" data-bs-target="#<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                Cancelar
-                                                            </button>
-                                                        </div>
-                                                    </form>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <p class="text-muted small mb-0 mt-2">Las asignaciones no est&aacute;n disponibles en este entorno.</p>
+                                                <?php endif; ?>
                                                 </div>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <div class="course-card__section mt-4">
+                                                <p class="text-muted small mb-0">Todav&iacute;a no ten&eacute;s compras con cupos disponibles para asignar.</p>
                                             </div>
                                         <?php endif; ?>
                                     <?php endif; ?>
