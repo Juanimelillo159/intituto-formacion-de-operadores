@@ -37,32 +37,38 @@
         }
         showMessage('Verificando credenciales de Google...', 'info');
         fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({ credential: credential })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ credential: credential })
         })
-            .then(function (response) {
-                if (!response.ok) {
-                    throw new Error('Respuesta invalida del servidor');
-                }
-                return response.json();
-            })
-            .then(function (payload) {
-                if (payload && payload.success) {
-                    hideMessage();
-                    window.location.href = payload.redirect || 'index.php';
-                    return;
-                }
-                var message = (payload && payload.message) ? payload.message : 'No se pudo completar el acceso con Google.';
-                showMessage(message, 'danger');
-            })
-            .catch(function () {
-                showMessage('No se pudo verificar la cuenta de Google. Intentalo nuevamente.', 'danger');
+        .then(function (response) {
+        if (!response.ok) {
+            return response.text().then(function (txt) {
+            // Muestra el status y el texto (por si el servidor devolvió HTML de error o JSON con error)
+            var msg = 'HTTP ' + response.status + (txt ? ' · ' + txt : '');
+            throw new Error(msg);
             });
-    };
+        }
+        return response.json().catch(function (e) {
+            // El servidor respondió 200 pero no es JSON válido
+            throw new Error('Respuesta no JSON del servidor');
+        });
+        })
+        .then(function (payload) {
+        if (payload && payload.success) {
+            hideMessage();
+            window.location.href = payload.redirect || 'index.php';
+            return;
+        }
+        var message = (payload && payload.message) ? payload.message : 'No se pudo completar el acceso con Google.';
+        showMessage(message, 'danger');
+        })
+.catch(function (err) {
+  console.error('[GOOGLE AUTH FETCH ERROR]', err);
+  showMessage('No se pudo verificar la cuenta de Google. ' + (err && err.message ? err.message : 'Intentalo nuevamente.'), 'danger');
+});
+
 
     var renderButton = function () {
         google.accounts.id.initialize({
