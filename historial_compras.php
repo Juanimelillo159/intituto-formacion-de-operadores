@@ -11,7 +11,6 @@ if (!isset($_SESSION['id_usuario']) && !isset($_SESSION['usuario'])) {
 }
 
 $userId = (int)($_SESSION['id_usuario'] ?? $_SESSION['usuario'] ?? 0);
-
 if ($userId <= 0) {
     header('Location: login.php');
     exit;
@@ -24,83 +23,121 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
 $formatMoney = static function (float $amount, ?string $currency = null): string {
     $formatted = number_format($amount, 2, ',', '.');
     $currencyCode = trim((string)$currency);
-
     return $currencyCode !== '' ? $currencyCode . ' ' . $formatted : $formatted;
 };
 
-$compras = [];
+$capacitaciones = [];
+$certificaciones = [];
+$combinado = [];
 $errorMessage = null;
 
 try {
     $pdo = getPdo();
-    $stmt = $pdo->prepare(
-        'SELECT
-            c.id_compra,
-            c.pagado_en,
-            c.total,
-            c.moneda,
-            c.metodo_pago,
-            c.referencia_externa,
-            ci.id_item,
-            ci.cantidad,
-            ci.precio_unitario,
-            ci.titulo_snapshot,
-            cursos.nombre_curso,
-            modalidades.nombre_modalidad
-        FROM compras c
-        INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
-        INNER JOIN cursos ON cursos.id_curso = ci.id_curso
-        LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad
-        WHERE c.id_usuario = :usuario
-          AND c.estado = :estado
-        ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC'
-    );
-    $stmt->bindValue(':usuario', $userId, PDO::PARAM_INT);
-    $stmt->bindValue(':estado', 'pagada', PDO::PARAM_STR);
-    $stmt->execute();
 
-    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-        $compraId = (int)$row['id_compra'];
+    // CAPACITACIONES
+    $sqlCap = <<<SQL
+        SELECT
+            cc.id_capacitacion            AS id_registro,
+            cc.creado_en                  AS fecha,
+            cc.precio_total               AS total,
+            cc.moneda                     AS moneda,
+            cc.id_curso                   AS id_curso,
+            cc.id_estado                  AS id_estado,
+            c.nombre_curso                AS nombre_curso,
+            ei.nombre_estado              AS estado_label
+        FROM checkout_capacitaciones cc
+        LEFT JOIN cursos c ON c.id_curso = cc.id_curso
+        LEFT JOIN estados_inscripciones ei ON ei.id_estado = cc.id_estado
+        WHERE cc.creado_por = :user
+        ORDER BY cc.creado_en DESC, cc.id_capacitacion DESC
+    SQL;
 
-        if (!isset($compras[$compraId])) {
-            $formattedDate = null;
-            if (!empty($row['pagado_en'])) {
-                try {
-                    $formattedDate = (new DateTimeImmutable($row['pagado_en']))->format('d/m/Y H:i');
-                } catch (Throwable $exception) {
-                    $formattedDate = $row['pagado_en'];
-                }
-            }
+    $stmtCap = $pdo->prepare($sqlCap);
+    $stmtCap->bindValue(':user', $userId, PDO::PARAM_INT);
+    $stmtCap->execute();
 
-            $compras[$compraId] = [
-                'id_compra' => $compraId,
-                'pagado_en' => $row['pagado_en'],
-                'pagado_en_formatted' => $formattedDate,
-                'total' => (float)$row['total'],
-                'moneda' => $row['moneda'],
-                'metodo_pago' => $row['metodo_pago'],
-                'referencia_externa' => $row['referencia_externa'],
-                'items' => [],
-            ];
+    while ($row = $stmtCap->fetch(PDO::FETCH_ASSOC)) {
+        $fechaRaw = $row['fecha'] ?? null;
+        $fechaFmt = $fechaRaw;
+        if (!empty($fechaRaw)) {
+            try { $fechaFmt = (new DateTimeImmutable($fechaRaw))->format('d/m/Y H:i'); } catch (Throwable $e) {}
         }
 
-        $cantidad = (int)$row['cantidad'];
-        $precioUnitario = (float)$row['precio_unitario'];
-        $subtotal = $cantidad * $precioUnitario;
-
-        $compras[$compraId]['items'][] = [
-            'id_item' => (int)$row['id_item'],
-            'nombre_curso' => $row['nombre_curso'] ?: $row['titulo_snapshot'],
-            'nombre_modalidad' => $row['nombre_modalidad'],
-            'cantidad' => $cantidad,
-            'precio_unitario' => $precioUnitario,
-            'subtotal' => $subtotal,
+        $item = [
+            'tipo'            => 'capacitacion',
+            'id'              => (int)$row['id_registro'],
+            'fecha'           => $fechaRaw,
+            'fecha_formatted' => $fechaFmt,
+            'total'           => (float)($row['total'] ?? 0),
+            'moneda'          => $row['moneda'] ?? '',
+            'curso'           => $row['nombre_curso'] ?? 'Curso',
+            'estado_label'    => $row['estado_label'] ?? null,
+            'id_estado'       => $row['id_estado'] ?? null,
         ];
+        $capacitaciones[] = $item;
+        $combinado[] = $item;
     }
 
-    $compras = array_values($compras);
+    // CERTIFICACIONES
+    $sqlCert = <<<SQL
+        SELECT
+            ct.id_certificacion           AS id_registro,
+            ct.creado_en                  AS fecha,
+            ct.precio_total               AS total,
+            ct.moneda                     AS moneda,
+            ct.id_curso                   AS id_curso,
+            ct.id_estado                  AS id_estado,
+            ct.pdf_path                   AS pdf_path,
+            ct.pdf_nombre                 AS pdf_nombre,
+            c.nombre_curso                AS nombre_curso,
+            ei.nombre_estado              AS estado_label
+        FROM checkout_certificaciones ct
+        LEFT JOIN cursos c ON c.id_curso = ct.id_curso
+        LEFT JOIN estados_inscripciones ei ON ei.id_estado = ct.id_estado
+        WHERE ct.creado_por = :user
+        ORDER BY ct.creado_en DESC, ct.id_certificacion DESC
+    SQL;
+
+    $stmtCert = $pdo->prepare($sqlCert);
+    $stmtCert->bindValue(':user', $userId, PDO::PARAM_INT);
+    $stmtCert->execute();
+
+    while ($row = $stmtCert->fetch(PDO::FETCH_ASSOC)) {
+        $fechaRaw = $row['fecha'] ?? null;
+        $fechaFmt = $fechaRaw;
+        if (!empty($fechaRaw)) {
+            try { $fechaFmt = (new DateTimeImmutable($fechaRaw))->format('d/m/Y H:i'); } catch (Throwable $e) {}
+        }
+
+        $item = [
+            'tipo'            => 'certificacion',
+            'id'              => (int)$row['id_registro'],
+            'fecha'           => $fechaRaw,
+            'fecha_formatted' => $fechaFmt,
+            'total'           => (float)($row['total'] ?? 0),
+            'moneda'          => $row['moneda'] ?? '',
+            'curso'           => $row['nombre_curso'] ?? 'Curso',
+            'estado_label'    => $row['estado_label'] ?? null,
+            'id_estado'       => $row['id_estado'] ?? null,
+            'pdf_path'        => $row['pdf_path'] ?? null,
+            'pdf_nombre'      => $row['pdf_nombre'] ?? null,
+        ];
+        $certificaciones[] = $item;
+        $combinado[] = $item;
+    }
+
+    // Orden combinado por fecha DESC
+    usort($combinado, static function($a, $b) {
+        $fa = $a['fecha'] ?? '';
+        $fb = $b['fecha'] ?? '';
+        if ($fa === $fb) return 0;
+        if ($fa === '' || $fa === null) return 1;
+        if ($fb === '' || $fb === null) return -1;
+        return strcmp($fb, $fa);
+    });
+
 } catch (Throwable $exception) {
-    $errorMessage = 'No pudimos cargar tus compras en este momento.';
+    $errorMessage = 'No pudimos cargar tu historial en este momento.';
 }
 ?>
 <!DOCTYPE html>
@@ -116,6 +153,7 @@ try {
             <div class="col-xl-8">
                 <div class="config-hero-card shadow-lg w-100 text-center">
                     <h1>Historial de compras</h1>
+                    <p class="mb-0">Capacitaciones y certificaciones adquiridas con tu cuenta.</p>
                 </div>
             </div>
         </div>
@@ -126,75 +164,286 @@ try {
     <div class="container">
         <div class="row justify-content-center">
             <div class="col-xl-8">
+
                 <?php if ($errorMessage !== null): ?>
                     <div class="config-card shadow text-center">
                         <p class="mb-0"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></p>
                     </div>
-                <?php elseif (empty($compras)): ?>
+
+                <?php elseif (empty($combinado)): ?>
                     <div class="config-card shadow text-center">
-                        <p class="mb-4">No ten&eacute;s compras pagadas a&uacute;n.</p>
+                        <p class="mb-4">Todav&iacute;a no registramos compras.</p>
                         <a class="btn btn-gradient" href="index.php#cursos">Explorar cursos disponibles</a>
                     </div>
+
                 <?php else: ?>
-                    <?php foreach ($compras as $compra): ?>
-                        <div class="config-card shadow mb-4 text-start">
-                            <div class="row gy-3 align-items-center border-bottom pb-3 mb-3">
-                                <div class="col-md-4">
-                                    <div class="text-uppercase text-muted small">Pagado el</div>
-                                    <div class="fw-semibold"><?php echo htmlspecialchars($compra['pagado_en_formatted'] ?? 'Sin datos', ENT_QUOTES, 'UTF-8'); ?></div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="text-uppercase text-muted small">Total</div>
-                                    <?php $totalLabel = $formatMoney($compra['total'], $compra['moneda']); ?>
-                                    <div class="fw-semibold"><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="text-uppercase text-muted small">M&eacute;todo de pago</div>
-                                    <div class="fw-semibold"><?php echo htmlspecialchars($compra['metodo_pago'] !== null && $compra['metodo_pago'] !== '' ? $compra['metodo_pago'] : 'Sin datos', ENT_QUOTES, 'UTF-8'); ?></div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="text-uppercase text-muted small">Referencia externa</div>
-                                    <div><?php echo htmlspecialchars($compra['referencia_externa'] !== null && $compra['referencia_externa'] !== '' ? $compra['referencia_externa'] : 'Sin datos', ENT_QUOTES, 'UTF-8'); ?></div>
-                                </div>
+
+                    <!-- Vista combinada -->
+                    <div class="config-card shadow mb-4 text-start">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center border-bottom pb-2 mb-3 gap-2">
+                            <div>
+                                <h5 class="mb-0">Movimientos recientes</h5>
+                                <span class="text-muted small">Ordenado por fecha</span>
                             </div>
+                            <div class="w-100 w-md-auto">
+                                <input id="recentSearch" type="text" class="form-control form-control-sm" placeholder="Buscar curso...">
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table id="recentTable" class="table table-sm align-middle">
+                                <thead class="table-light">
+                                <tr>
+                                    <th class="text-start">Fecha</th>
+                                    <th class="text-start">Tipo</th>
+                                    <th class="text-start">Curso</th>
+                                    <th class="text-start">Estado</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <?php foreach ($combinado as $row): ?>
+                                    <?php $totalLabel = $formatMoney($row['total'], $row['moneda']); ?>
+                                    <tr>
+                                        <td class="text-start"><?php echo htmlspecialchars($row['fecha_formatted'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td class="text-start"><?php echo $row['tipo'] === 'capacitacion' ? 'Capacitaci&oacute;n' : 'Certificaci&oacute;n'; ?></td>
+                                        <td class="text-start"><?php echo htmlspecialchars($row['curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td class="text-start"><?php echo htmlspecialchars($row['estado_label'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td class="text-end"><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="recentPager" class="d-flex justify-content-between align-items-center mt-2"></div>
+                    </div>
+
+                    <!-- Capacitaciones -->
+                    <div class="config-card shadow mb-4 text-start">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center border-bottom pb-2 mb-3 gap-2">
+                            <div>
+                                <h5 class="mb-0">Capacitaciones</h5>
+                                <span class="text-muted small"><?php echo count($capacitaciones); ?> registro(s)</span>
+                            </div>
+                            <div class="w-100 w-md-auto">
+                                <input id="capSearch" type="text" class="form-control form-control-sm" placeholder="Buscar curso...">
+                            </div>
+                        </div>
+
+                        <?php if (empty($capacitaciones)): ?>
+                            <p class="mb-0 text-muted">No hay compras de capacitaciones.</p>
+                        <?php else: ?>
                             <div class="table-responsive">
-                                <table class="table table-sm align-middle">
+                                <table id="capTable" class="table table-sm align-middle">
                                     <thead class="table-light">
-                                        <tr>
-                                            <th scope="col" class="text-start">Curso</th>
-                                            <th scope="col" class="text-start">Modalidad</th>
-                                            <th scope="col" class="text-center">Cantidad</th>
-                                            <th scope="col" class="text-end">Precio unitario</th>
-                                            <th scope="col" class="text-end">Subtotal</th>
-                                        </tr>
+                                    <tr>
+                                        <th class="text-start">Fecha</th>
+                                        <th class="text-start">Curso</th>
+                                        <th class="text-start">Estado</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($compra['items'] as $item): ?>
-                                            <?php
-                                            $unitLabel = $formatMoney($item['precio_unitario'], $compra['moneda']);
-                                            $subtotalLabel = $formatMoney($item['subtotal'], $compra['moneda']);
-                                            ?>
-                                            <tr>
-                                                <td class="text-start"><?php echo htmlspecialchars($item['nombre_curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></td>
-                                                <td class="text-start"><?php echo htmlspecialchars($item['nombre_modalidad'] ?? 'Sin modalidad', ENT_QUOTES, 'UTF-8'); ?></td>
-                                                <td class="text-center"><?php echo (int)$item['cantidad']; ?></td>
-                                                <td class="text-end"><?php echo htmlspecialchars($unitLabel, ENT_QUOTES, 'UTF-8'); ?></td>
-                                                <td class="text-end"><?php echo htmlspecialchars($subtotalLabel, ENT_QUOTES, 'UTF-8'); ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
+                                    <?php foreach ($capacitaciones as $cap): ?>
+                                        <?php $totalLabel = $formatMoney($cap['total'], $cap['moneda']); ?>
+                                        <tr>
+                                            <td class="text-start"><?php echo htmlspecialchars($cap['fecha_formatted'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-start"><?php echo htmlspecialchars($cap['curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-start"><?php echo htmlspecialchars($cap['estado_label'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-end"><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
+                            <div id="capPager" class="d-flex justify-content-between align-items-center mt-2"></div>
+                        <?php endif; ?>
+                    </div>
+
+                    <!-- Certificaciones -->
+                    <div class="config-card shadow mb-4 text-start">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center border-bottom pb-2 mb-3 gap-2">
+                            <div>
+                                <h5 class="mb-0">Certificaciones</h5>
+                                <span class="text-muted small"><?php echo count($certificaciones); ?> registro(s)</span>
+                            </div>
+                            <div class="w-100 w-md-auto">
+                                <input id="certSearch" type="text" class="form-control form-control-sm" placeholder="Buscar curso...">
+                            </div>
                         </div>
-                    <?php endforeach; ?>
+
+                        <?php if (empty($certificaciones)): ?>
+                            <p class="mb-0 text-muted">No hay compras de certificaciones.</p>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table id="certTable" class="table table-sm align-middle">
+                                    <thead class="table-light">
+                                    <tr>
+                                        <th class="text-start">Fecha</th>
+                                        <th class="text-start">Curso</th>
+                                        <th class="text-start">Estado</th>
+                                        <th class="text-start">PDF</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <?php foreach ($certificaciones as $cert): ?>
+                                        <?php $totalLabel = $formatMoney($cert['total'], $cert['moneda']); ?>
+                                        <tr>
+                                            <td class="text-start"><?php echo htmlspecialchars($cert['fecha_formatted'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-start"><?php echo htmlspecialchars($cert['curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-start"><?php echo htmlspecialchars($cert['estado_label'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-start">
+                                                <?php if (!empty($cert['pdf_path'])): ?>
+                                                    <a href="<?php echo htmlspecialchars($cert['pdf_path'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                                                        <?php echo htmlspecialchars($cert['pdf_nombre'] ?? 'Archivo', ENT_QUOTES, 'UTF-8'); ?>
+                                                    </a>
+                                                <?php else: ?>
+                                                    —
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-end"><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div id="certPager" class="d-flex justify-content-between align-items-center mt-2"></div>
+                        <?php endif; ?>
+                    </div>
+
                 <?php endif; ?>
+
             </div>
         </div>
     </div>
 </main>
 
 <?php include 'footer.php'; ?>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Paginación + filtro por curso (en vivo) sin recargar
+(function() {
+    function setupPagerWithFilter(opts) {
+        var table = document.getElementById(opts.tableId);
+        var pager = document.getElementById(opts.pagerId);
+        var input = document.getElementById(opts.searchInputId);
+        var pageSize = opts.pageSize || 10;
+        var courseColIndex = opts.courseColIndex; // índice de columna "Curso"
+
+        if (!table || !pager || courseColIndex == null) return;
+
+        var rows = Array.prototype.slice.call(table.querySelectorAll('tbody tr'));
+        var page = 1;
+
+        // Fila "sin resultados"
+        var noRow = document.createElement('tr');
+        noRow.className = 'no-results';
+        var thCount = table.querySelectorAll('thead th').length || 1;
+        var td = document.createElement('td');
+        td.colSpan = thCount;
+        td.className = 'text-center text-muted';
+        td.textContent = 'Sin resultados';
+        noRow.appendChild(td);
+        noRow.style.display = 'none';
+        table.querySelector('tbody').appendChild(noRow);
+
+        function getMatchedRows() {
+            var term = (input && input.value ? input.value.trim().toLowerCase() : '');
+            if (!term) return rows; // sin filtro
+            return rows.filter(function(tr) {
+                if (tr.classList.contains('no-results')) return false;
+                var cells = tr.cells;
+                if (!cells || !cells[courseColIndex]) return false;
+                var txt = (cells[courseColIndex].textContent || '').toLowerCase();
+                return txt.indexOf(term) !== -1;
+            });
+        }
+
+        function render() {
+            var matched = getMatchedRows();
+            var total = matched.length;
+            var totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+            // Ajustar página si el filtro cambió y quedó fuera de rango
+            if (page > totalPages) page = totalPages;
+
+            // Ocultar todo
+            rows.forEach(function(tr) { tr.style.display = 'none'; });
+            noRow.style.display = (total === 0) ? '' : 'none';
+
+            // Mostrar página actual del subconjunto filtrado
+            if (total > 0) {
+                var start = (page - 1) * pageSize;
+                var end = Math.min(start + pageSize, total);
+                for (var i = start; i < end; i++) {
+                    matched[i].style.display = '';
+                }
+            }
+
+            // Paginador
+            if (total <= pageSize) {
+                pager.style.display = 'none';
+                pager.innerHTML = '';
+                return;
+            } else {
+                pager.style.display = 'flex';
+            }
+
+            var prev = document.createElement('button');
+            prev.className = 'btn btn-sm btn-outline-secondary';
+            prev.textContent = 'Anterior';
+            prev.disabled = page <= 1;
+            prev.addEventListener('click', function() {
+                if (page > 1) { page--; render(); }
+            });
+
+            var info = document.createElement('span');
+            info.className = 'text-muted small';
+            var baseInfo = 'Página ' + page + ' de ' + totalPages + ' · ' + total + ' resultado(s)';
+            if (input && input.value) {
+                info.textContent = baseInfo + ' para "' + input.value + '"';
+            } else {
+                info.textContent = baseInfo;
+            }
+
+            var next = document.createElement('button');
+            next.className = 'btn btn-sm btn-outline-secondary';
+            next.textContent = 'Siguiente';
+            next.disabled = page >= totalPages;
+            next.addEventListener('click', function() {
+                if (page < totalPages) { page++; render(); }
+            });
+
+            pager.className = 'd-flex justify-content-between align-items-center mt-2';
+            pager.innerHTML = '';
+            var left = document.createElement('div'); left.appendChild(prev);
+            var right = document.createElement('div'); right.appendChild(next);
+            pager.appendChild(left);
+            pager.appendChild(info);
+            pager.appendChild(right);
+        }
+
+        if (input) {
+            input.addEventListener('input', function() {
+                page = 1; // reset al cambiar el filtro
+                render();
+            });
+        }
+
+        render();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Índices de columna "Curso":
+        // recentTable: Fecha(0), Tipo(1), Curso(2), Estado(3), Total(4) => curso = 2
+        // capTable:    Fecha(0), Curso(1), Estado(2), Total(3)          => curso = 1
+        // certTable:   Fecha(0), Curso(1), Estado(2), PDF(3), Total(4)  => curso = 1
+        setupPagerWithFilter({ tableId: 'recentTable', pagerId: 'recentPager', searchInputId: 'recentSearch', pageSize: 10, courseColIndex: 2 });
+        setupPagerWithFilter({ tableId: 'capTable',    pagerId: 'capPager',    searchInputId: 'capSearch',    pageSize: 10, courseColIndex: 1 });
+        setupPagerWithFilter({ tableId: 'certTable',   pagerId: 'certPager',   searchInputId: 'certSearch',   pageSize: 10, courseColIndex: 1 });
+    });
+})();
+</script>
 </body>
 </html>
