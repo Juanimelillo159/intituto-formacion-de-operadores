@@ -94,6 +94,13 @@
               </ul>
             </li>
 
+            <li class="nav-item">
+              <a href="certificaciones.php" class="nav-link">
+                <i class="fas fa-solid fa-file-signature"></i>
+                <p>Certificaciones</p>
+              </a>
+            </li>
+
           </ul>
         </nav>
         <!-- /.sidebar-menu -->

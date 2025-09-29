@@ -12,6 +12,17 @@ require_once __DIR__ . '/mercadopago_common.php';
 use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\Exceptions\MPApiException;
 
+$registrarHistoricoCert = function (PDO $con, int $idCertificacion, int $estado): void {
+    $hist = $con->prepare('
+        INSERT INTO historico_estado_certificaciones (id_certificacion, id_estado)
+        VALUES (:id, :estado)
+    ');
+    $hist->execute([
+        ':id' => $idCertificacion,
+        ':estado' => $estado,
+    ]);
+};
+
 $responseCode = 200;
 $response = ['success' => false, 'message' => ''];
 
@@ -33,6 +44,16 @@ try {
     $metodoPago = (string) ($_POST['metodo_pago'] ?? '');
     if ($metodoPago !== 'mercado_pago') {
         throw new InvalidArgumentException('El método de pago seleccionado es inválido para esta operación.');
+    }
+
+    $tipoCheckoutRaw = strtolower(trim((string)($_POST['tipo_checkout'] ?? ($_POST['tipo'] ?? ''))));
+    if ($tipoCheckoutRaw === 'certificaciones') {
+        $tipoCheckoutRaw = 'certificacion';
+    } elseif ($tipoCheckoutRaw === 'capacitaciones') {
+        $tipoCheckoutRaw = 'capacitacion';
+    }
+    if (!in_array($tipoCheckoutRaw, ['curso', 'capacitacion', 'certificacion'], true)) {
+        $tipoCheckoutRaw = 'curso';
     }
 
     $cursoId = (int) ($_POST['id_curso'] ?? 0);
@@ -58,6 +79,31 @@ try {
     }
     if (!$aceptaTyC) {
         throw new InvalidArgumentException('Debés aceptar los Términos y Condiciones para continuar.');
+    }
+
+    $certificacionId = (int)($_POST['id_certificacion'] ?? 0);
+    $certificacionRow = null;
+    if ($tipoCheckoutRaw === 'certificacion') {
+        if ($certificacionId <= 0) {
+            throw new RuntimeException('Necesitamos la certificación aprobada para continuar.');
+        }
+        $certStmt = $con->prepare('SELECT * FROM checkout_certificaciones WHERE id_certificacion = :id LIMIT 1');
+        $certStmt->execute([':id' => $certificacionId]);
+        $certificacionRow = $certStmt->fetch();
+        if (!$certificacionRow) {
+            throw new RuntimeException('No encontramos la certificación registrada.');
+        }
+        $usuarioId = (int)($_SESSION['id_usuario'] ?? 0);
+        if ($usuarioId > 0 && (int)$certificacionRow['creado_por'] !== $usuarioId) {
+            throw new RuntimeException('No tenés autorización para pagar esta certificación.');
+        }
+        $estadoCert = (int)$certificacionRow['id_estado'];
+        if ($estadoCert === 3) {
+            throw new RuntimeException('La certificación ya registra un pago.');
+        }
+        if ($estadoCert !== 2) {
+            throw new RuntimeException('Debés esperar la aprobación de la certificación antes de continuar.');
+        }
     }
 
     $cursoStmt = $con->prepare('SELECT id_curso, nombre_curso FROM cursos WHERE id_curso = :id LIMIT 1');
@@ -126,6 +172,48 @@ try {
 
     $pagoId = (int) $con->lastInsertId();
 
+    if ($tipoCheckoutRaw === 'certificacion' && $certificacionRow) {
+        $observacionesCert = 'Pago iniciado por Mercado Pago el ' . date('d/m/Y H:i');
+        $observacionesPrevias = trim((string)($certificacionRow['observaciones'] ?? ''));
+        if ($observacionesPrevias !== '') {
+            $observacionesCert .= ' | ' . $observacionesPrevias;
+        }
+        $upCert = $con->prepare('
+            UPDATE checkout_certificaciones
+               SET id_estado = 3,
+                   precio_total = :precio,
+                   moneda = :moneda,
+                   observaciones = :obs,
+                   nombre = :nombre,
+                   apellido = :apellido,
+                   email = :email,
+                   telefono = :telefono,
+                   dni = :dni,
+                   direccion = :direccion,
+                   ciudad = :ciudad,
+                   provincia = :provincia,
+                   pais = :pais,
+                   acepta_tyc = 1
+             WHERE id_certificacion = :id
+        ');
+        $upCert->execute([
+            ':precio' => $precioFinal,
+            ':moneda' => strtoupper($moneda),
+            ':obs' => $observacionesCert,
+            ':nombre' => $nombre,
+            ':apellido' => $apellido,
+            ':email' => $email,
+            ':telefono' => $telefono,
+            ':dni' => $dni !== '' ? $dni : null,
+            ':direccion' => $direccion !== '' ? $direccion : null,
+            ':ciudad' => $ciudad !== '' ? $ciudad : null,
+            ':provincia' => $provincia !== '' ? $provincia : null,
+            ':pais' => $pais !== '' ? $pais : 'Argentina',
+            ':id' => (int)$certificacionRow['id_certificacion'],
+        ]);
+        $registrarHistoricoCert($con, (int)$certificacionRow['id_certificacion'], 3);
+    }
+
     checkout_configure_mp();
     $preferenceClient = new PreferenceClient();
 
@@ -152,6 +240,8 @@ try {
             'id_inscripcion' => $inscripcionId,
             'id_curso' => $cursoId,
             'email' => $email,
+            'id_certificacion' => $certificacionRow ? (int) $certificacionRow['id_certificacion'] : null,
+            'tipo_checkout' => $tipoCheckoutRaw,
         ],
     ];
 

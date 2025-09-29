@@ -63,9 +63,129 @@ function h($s)
     return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8');
 }
 
+function checkout_certificacion_estado_label(?int $estado): string
+{
+    return match ($estado) {
+        2 => 'Aprobada',
+        3 => 'Pago registrado',
+        4 => 'Rechazada',
+        default => 'En revisión',
+    };
+}
+
+$certificacionData = null;
+$certificacionEstado = null;
+$certificacionId = 0;
+$certificacionPuedePagar = false;
+$certificacionPagado = false;
+$certificacionPdfUrl = null;
+$certificacionAllowSubmit = true;
+$certificacionSubmitLabel = 'Enviar solicitud';
+
+if ($tipo_checkout === 'certificacion' && $curso) {
+    $usuarioId = (int)($_SESSION['id_usuario'] ?? 0);
+    if ($usuarioId > 0) {
+        $certStmt = $con->prepare('
+            SELECT cc.*
+              FROM checkout_certificaciones cc
+             WHERE cc.id_curso = :curso
+               AND cc.creado_por = :usuario
+          ORDER BY cc.id_certificacion DESC
+             LIMIT 1
+        ');
+        $certStmt->execute([
+            ':curso' => $id_curso,
+            ':usuario' => $usuarioId,
+        ]);
+        $certificacionData = $certStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    if ($certificacionData) {
+        $certificacionId = (int)$certificacionData['id_certificacion'];
+        $certificacionEstado = (int)$certificacionData['id_estado'];
+        $certificacionPuedePagar = ($certificacionEstado === 2);
+        $certificacionPagado = ($certificacionEstado === 3);
+        $certificacionAllowSubmit = ($certificacionEstado === 4);
+        if ($certificacionEstado === 4) {
+            $certificacionSubmitLabel = 'Reenviar solicitud';
+        } elseif ($certificacionEstado === 1) {
+            $certificacionSubmitLabel = 'Solicitud enviada';
+        } elseif ($certificacionEstado === 2) {
+            $certificacionSubmitLabel = 'Documentación aprobada';
+        } elseif ($certificacionEstado === 3) {
+            $certificacionSubmitLabel = 'Solicitud completada';
+        }
+        if (!empty($certificacionData['pdf_path'])) {
+            $certificacionPdfUrl = '../' . ltrim((string)$certificacionData['pdf_path'], '/');
+        }
+    } else {
+        $certificacionAllowSubmit = true;
+        $certificacionSubmitLabel = 'Enviar solicitud';
+    }
+} else {
+    $certificacionAllowSubmit = false;
+}
+
+$sessionUsuario = [];
+if (isset($_SESSION['usuario']) && is_array($_SESSION['usuario'])) {
+    $sessionUsuario = $_SESSION['usuario'];
+}
+
+$prefillNombre = (string)($certificacionData['nombre'] ?? ($sessionUsuario['nombre'] ?? ''));
+$prefillApellido = (string)($certificacionData['apellido'] ?? ($sessionUsuario['apellido'] ?? ''));
+$prefillEmail = (string)($certificacionData['email'] ?? ($sessionUsuario['email'] ?? ''));
+$prefillTelefono = (string)($certificacionData['telefono'] ?? ($sessionUsuario['telefono'] ?? ''));
+$prefillDni = (string)($sessionUsuario['dni'] ?? '');
+$prefillDireccion = (string)($sessionUsuario['direccion'] ?? '');
+$prefillCiudad = (string)($sessionUsuario['ciudad'] ?? '');
+$prefillProvincia = (string)($sessionUsuario['provincia'] ?? '');
+$prefillPais = (string)($sessionUsuario['pais'] ?? 'Argentina');
+if ($tipo_checkout !== 'certificacion') {
+    $prefillNombre = '';
+    $prefillApellido = '';
+    $prefillEmail = '';
+    $prefillTelefono = '';
+    $prefillDni = '';
+    $prefillDireccion = '';
+    $prefillCiudad = '';
+    $prefillProvincia = '';
+    $prefillPais = 'Argentina';
+}
+
+$certificacionFlashSuccess = $_SESSION['certificacion_success'] ?? null;
+$certificacionFlashError = $_SESSION['certificacion_error'] ?? null;
+unset($_SESSION['certificacion_success'], $_SESSION['certificacion_error']);
+
+$certificacionSuccessMessage = null;
+$certificacionSuccessEstadoLabel = null;
+if ($certificacionFlashSuccess !== null) {
+    if (is_array($certificacionFlashSuccess)) {
+        $certificacionSuccessMessage = (string)($certificacionFlashSuccess['message'] ?? 'Solicitud enviada correctamente.');
+        $certificacionSuccessEstadoLabel = isset($certificacionFlashSuccess['estado'])
+            ? checkout_certificacion_estado_label((int)$certificacionFlashSuccess['estado'])
+            : null;
+    } else {
+        $certificacionSuccessMessage = (string)$certificacionFlashSuccess;
+    }
+}
+
+$certificacionErrorMessage = null;
+if ($certificacionFlashError !== null) {
+    $certificacionErrorMessage = is_array($certificacionFlashError)
+        ? (string)($certificacionFlashError['message'] ?? 'No pudimos procesar la solicitud de certificación.')
+        : (string)$certificacionFlashError;
+}
+
 $flash_success = $_SESSION['checkout_success'] ?? null;
 $flash_error   = $_SESSION['checkout_error'] ?? null;
 unset($_SESSION['checkout_success'], $_SESSION['checkout_error']);
+
+$checkoutSubtitle = 'Seguí los pasos para reservar tu lugar en la capacitación elegida.';
+if ($tipo_checkout === 'curso') {
+    $checkoutSubtitle = 'Seguí los pasos para confirmar tu inscripción.';
+} elseif ($tipo_checkout === 'certificacion') {
+    $checkoutSubtitle = 'Completá la solicitud y el pago para finalizar tu certificación.';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -92,7 +212,7 @@ include '../head.php';
                     <div class="checkout-card">
                         <div class="checkout-header">
                             <h1>Finalizá tu inscripción</h1>
-                            <p>Seguí los pasos para reservar tu lugar en la capacitación elegida.</p>
+                            <p><?php echo h($checkoutSubtitle); ?></p>
                             <?php if ($curso): ?>
                                 <div class="checkout-course-name">
                                     <i class="fas fa-graduation-cap"></i>
@@ -119,15 +239,28 @@ include '../head.php';
                                 <div class="checkout-step" data-step="2">
                                     <div class="step-index">2</div>
                                     <div class="step-label">
-                                        Datos personales
-                                        <span class="step-helper">Completá tu información</span>
+                                        <?php if ($tipo_checkout === 'certificacion'): ?>
+                                            Documentación
+                                            <span class="step-helper">Descargá y subí el PDF solicitado</span>
+                                        <?php else: ?>
+                                            Datos personales
+                                            <span class="step-helper">Completá tu información</span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                                 <div class="checkout-step" data-step="3">
                                     <div class="step-index">3</div>
                                     <div class="step-label">
                                         Pago
-                                        <span class="step-helper">Elegí el método</span>
+                                        <span class="step-helper">
+                                            <?php if ($tipo_checkout === 'certificacion' && !$certificacionPuedePagar && !$certificacionPagado): ?>
+                                                Esperá la aprobación
+                                            <?php elseif ($tipo_checkout === 'certificacion' && $certificacionPagado): ?>
+                                                Pago registrado
+                                            <?php else: ?>
+                                                Elegí el método
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -158,13 +291,39 @@ include '../head.php';
                                         </div>
                                     </div>
                                 <?php endif; ?>
+                                <?php if ($certificacionSuccessMessage): ?>
+                                    <div class="alert alert-success checkout-alert" role="alert">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <i class="fas fa-file-circle-check mt-1"></i>
+                                            <div>
+                                                <strong><?php echo h($certificacionSuccessMessage); ?></strong>
+                                                <?php if ($certificacionSuccessEstadoLabel): ?>
+                                                    <div class="small mt-1">Estado actual: <?php echo h($certificacionSuccessEstadoLabel); ?>.</div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                                <?php if ($certificacionErrorMessage): ?>
+                                    <div class="alert alert-danger checkout-alert" role="alert">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <i class="fas fa-circle-xmark mt-1"></i>
+                                            <div>
+                                                <strong>No pudimos registrar la certificación.</strong>
+                                                <div class="small mt-1"><?php echo h($certificacionErrorMessage); ?></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
 
-                                <form id="checkoutForm" action="../admin/procesarsbd.php" method="POST" enctype="multipart/form-data" novalidate>
+                                <form id="checkoutForm" action="../admin/procesarsbd.php" method="POST" enctype="multipart/form-data" novalidate data-certificacion-has-pdf="<?php echo $certificacionPdfUrl ? '1' : '0'; ?>">
                                     <input type="hidden" name="__accion" id="__accion" value="">
                                     <input type="hidden" name="crear_orden" value="1">
                                     <input type="hidden" name="id_curso" value="<?php echo (int)$id_curso; ?>">
                                     <input type="hidden" name="precio_checkout" value="<?php echo $precio_vigente ? (float)$precio_vigente['precio'] : 0; ?>">
                                     <input type="hidden" name="tipo_checkout" value="<?php echo htmlspecialchars($tipo_checkout, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <input type="hidden" name="id_certificacion" value="<?php echo (int)$certificacionId; ?>">
+                                    <input type="hidden" name="certificacion_estado_actual" value="<?php echo $certificacionEstado !== null ? (int)$certificacionEstado : 0; ?>">
 
                                     <div class="step-panel active" data-step="1">
                                         <div class="row g-4 align-items-stretch">
@@ -220,61 +379,136 @@ include '../head.php';
                                         <div class="row g-3">
                                             <div class="col-md-6">
                                                 <label for="nombre" class="form-label required-field">Nombre</label>
-                                                <input type="text" class="form-control" id="nombre" name="nombre_insc" placeholder="Nombre" autocomplete="given-name">
+                                                <input type="text" class="form-control" id="nombre" name="nombre_insc" placeholder="Nombre" autocomplete="given-name" value="<?php echo h($prefillNombre); ?>">
                                             </div>
                                             <div class="col-md-6">
                                                 <label for="apellido" class="form-label required-field">Apellido</label>
-                                                <input type="text" class="form-control" id="apellido" name="apellido_insc" placeholder="Apellido" autocomplete="family-name">
+                                                <input type="text" class="form-control" id="apellido" name="apellido_insc" placeholder="Apellido" autocomplete="family-name" value="<?php echo h($prefillApellido); ?>">
                                             </div>
                                             <div class="col-md-6">
                                                 <label for="email" class="form-label required-field">Email</label>
-                                                <input type="email" class="form-control" id="email" name="email_insc" placeholder="correo@dominio.com" autocomplete="email">
+                                                <input type="email" class="form-control" id="email" name="email_insc" placeholder="correo@dominio.com" autocomplete="email" value="<?php echo h($prefillEmail); ?>">
                                             </div>
                                             <div class="col-md-6">
                                                 <label for="telefono" class="form-label required-field">Teléfono</label>
-                                                <input type="text" class="form-control" id="telefono" name="tel_insc" placeholder="+54 11 5555-5555" autocomplete="tel">
+                                                <input type="text" class="form-control" id="telefono" name="tel_insc" placeholder="+54 11 5555-5555" autocomplete="tel" value="<?php echo h($prefillTelefono); ?>">
                                             </div>
                                             <div class="col-md-4">
                                                 <label for="dni" class="form-label">DNI</label>
-                                                <input type="text" class="form-control" id="dni" name="dni_insc" placeholder="Documento">
+                                                <input type="text" class="form-control" id="dni" name="dni_insc" placeholder="Documento" value="<?php echo h($certificacionData['dni'] ?? $prefillDni); ?>">
                                             </div>
                                             <div class="col-md-8">
                                                 <label for="direccion" class="form-label">Dirección</label>
-                                                <input type="text" class="form-control" id="direccion" name="dir_insc" placeholder="Calle y número" autocomplete="address-line1">
+                                                <input type="text" class="form-control" id="direccion" name="dir_insc" placeholder="Calle y número" autocomplete="address-line1" value="<?php echo h($certificacionData['direccion'] ?? $prefillDireccion); ?>">
                                             </div>
                                             <div class="col-md-4">
                                                 <label for="ciudad" class="form-label">Ciudad</label>
-                                                <input type="text" class="form-control" id="ciudad" name="ciu_insc" autocomplete="address-level2">
+                                                <input type="text" class="form-control" id="ciudad" name="ciu_insc" autocomplete="address-level2" value="<?php echo h($certificacionData['ciudad'] ?? $prefillCiudad); ?>">
                                             </div>
                                             <div class="col-md-4">
                                                 <label for="provincia" class="form-label">Provincia</label>
-                                                <input type="text" class="form-control" id="provincia" name="prov_insc" autocomplete="address-level1">
+                                                <input type="text" class="form-control" id="provincia" name="prov_insc" autocomplete="address-level1" value="<?php echo h($certificacionData['provincia'] ?? $prefillProvincia); ?>">
                                             </div>
                                             <div class="col-md-4">
                                                 <label for="pais" class="form-label">País</label>
-                                                <input type="text" class="form-control" id="pais" name="pais_insc" value="Argentina" autocomplete="country-name">
+                                                <input type="text" class="form-control" id="pais" name="pais_insc" value="<?php echo h($certificacionData['pais'] ?? $prefillPais); ?>" autocomplete="country-name">
                                             </div>
                                         </div>
                                         <div class="terms-check mt-4">
-                                            <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1">
+                                            <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1" <?php echo (!empty($certificacionData) && (int)$certificacionData['acepta_tyc'] === 1) ? 'checked' : ''; ?>>
                                             <label class="form-check-label" for="acepta">
                                                 Confirmo que los datos ingresados son correctos y acepto los <a href="#" target="_blank" rel="noopener">Términos y Condiciones</a>.
                                             </label>
                                         </div>
-                                        <div class="nav-actions">
-                                            <button type="button" class="btn btn-outline-light btn-rounded" data-prev="1">
-                                                <i class="fas fa-arrow-left me-2"></i>
-                                                Volver
-                                            </button>
-                                            <button type="button" class="btn btn-gradient btn-rounded" data-next="3">
-                                                Continuar al paso 3
-                                                <i class="fas fa-arrow-right ms-2"></i>
-                                            </button>
-                                        </div>
+                                        <?php if ($tipo_checkout === 'certificacion'): ?>
+                                            <div class="certificacion-status mt-4">
+                                                <?php if ($certificacionEstado !== null): ?>
+                                                    <div class="alert alert-info checkout-alert mb-3" role="alert">
+                                                        <div class="d-flex align-items-start gap-2">
+                                                            <i class="fas fa-info-circle mt-1"></i>
+                                                            <div>
+                                                                <strong>Estado de tu solicitud:</strong>
+                                                                <div class="small mt-1"><?php echo h(checkout_certificacion_estado_label($certificacionEstado)); ?>.</div>
+                                                                <?php if (!empty($certificacionData['observaciones'])): ?>
+                                                                    <div class="small text-muted mt-1"><?php echo nl2br(h($certificacionData['observaciones'])); ?></div>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <div class="documentacion-card">
+                                                    <div class="summary-card">
+                                                        <h5>Documentación requerida</h5>
+                                                        <p class="mb-2">Descargá, completá y cargá el formulario en PDF para que nuestro equipo lo revise.</p>
+                                                        <a class="btn btn-outline-light btn-sm mb-3" href="../assets/pdf/solicitud_certificacion.pdf" target="_blank" rel="noopener">
+                                                            <i class="fas fa-file-download me-2"></i>Descargar formulario
+                                                        </a>
+                                                        <?php if ($certificacionPdfUrl): ?>
+                                                            <div class="mb-3">
+                                                                <span class="badge bg-success"><i class="fas fa-file-pdf me-2"></i>PDF cargado</span>
+                                                                <a class="ms-2" href="<?php echo h($certificacionPdfUrl); ?>" target="_blank" rel="noopener">Ver archivo enviado</a>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <label for="cert_pdf" class="form-label required-field">Subir formulario firmado (PDF)</label>
+                                                        <input type="file" class="form-control" id="cert_pdf" name="cert_pdf" accept="application/pdf" <?php echo $certificacionAllowSubmit ? '' : 'disabled'; ?>>
+                                                        <div class="upload-label">Formato requerido: PDF. Tamaño máximo 10 MB.</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="nav-actions">
+                                                <button type="button" class="btn btn-outline-light btn-rounded" data-prev="1">
+                                                    <i class="fas fa-arrow-left me-2"></i>
+                                                    Volver
+                                                </button>
+                                                <div class="d-flex flex-column flex-sm-row gap-2">
+                                                    <button type="button" class="btn btn-gradient btn-rounded" id="btnCertificacionEnviar" <?php echo $certificacionAllowSubmit ? '' : 'disabled'; ?>>
+                                                        <span class="btn-label"><?php echo h($certificacionSubmitLabel); ?></span>
+                                                        <i class="fas fa-paper-plane ms-2"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-light btn-rounded" data-next="3" id="btnIrPaso3" <?php echo $certificacionPuedePagar || $certificacionPagado ? '' : 'disabled'; ?>>
+                                                        Ir al paso 3
+                                                        <i class="fas fa-arrow-right ms-2"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="nav-actions">
+                                                <button type="button" class="btn btn-outline-light btn-rounded" data-prev="1">
+                                                    <i class="fas fa-arrow-left me-2"></i>
+                                                    Volver
+                                                </button>
+                                                <button type="button" class="btn btn-gradient btn-rounded" data-next="3">
+                                                    Continuar al paso 3
+                                                    <i class="fas fa-arrow-right ms-2"></i>
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
 
                                     <div class="step-panel" data-step="3">
                                         <div class="payment-box">
+                                            <?php if ($tipo_checkout === 'certificacion' && !$certificacionPuedePagar && !$certificacionPagado): ?>
+                                                <div class="alert alert-info checkout-alert" role="alert">
+                                                    <div class="d-flex align-items-start gap-2">
+                                                        <i class="fas fa-hourglass-half mt-1"></i>
+                                                        <div>
+                                                            <strong>Estamos revisando tu documentación.</strong>
+                                                            <div class="small mt-1">Te avisaremos por correo cuando podamos habilitar el pago.</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php elseif ($tipo_checkout === 'certificacion' && $certificacionPagado): ?>
+                                                <div class="alert alert-success checkout-alert" role="alert">
+                                                    <div class="d-flex align-items-start gap-2">
+                                                        <i class="fas fa-circle-check mt-1"></i>
+                                                        <div>
+                                                            <strong>¡Listo! Registramos el pago de tu certificación.</strong>
+                                                            <div class="small mt-1">Si necesitás actualizar algún dato, contactate con nuestro equipo.</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
+                                            <?php if ($tipo_checkout !== 'certificacion' || $certificacionPuedePagar || $certificacionPagado): ?>
                                             <h5>Método de pago</h5>
                                             <label class="payment-option">
                                                 <input type="radio" id="metodo_transfer" name="metodo_pago" value="transferencia" checked>
@@ -331,6 +565,7 @@ include '../head.php';
                                                     </ul>
                                                 </div>
                                             </div>
+                                            <?php endif; ?>
                                         </div>
 
                                         <div class="nav-actions">
@@ -338,7 +573,7 @@ include '../head.php';
                                                 <i class="fas fa-arrow-left me-2"></i>
                                                 Volver
                                             </button>
-                                            <button type="button" class="btn btn-gradient btn-rounded" id="btnConfirmar">
+                                            <button type="button" class="btn btn-gradient btn-rounded" id="btnConfirmar" <?php echo ($tipo_checkout === 'certificacion' && (!$certificacionPuedePagar || $certificacionPagado)) ? 'disabled' : ''; ?>>
                                                 <span class="btn-label">Confirmar inscripción</span>
                                                 <i class="fas fa-paper-plane ms-2"></i>
                                             </button>
@@ -370,6 +605,11 @@ include '../head.php';
             }
 
             const mpAvailable = <?php echo $precio_vigente ? 'true' : 'false'; ?>;
+            const checkoutType = '<?php echo htmlspecialchars($tipo_checkout, ENT_QUOTES, 'UTF-8'); ?>';
+            const certificacionPuedePagar = <?php echo $certificacionPuedePagar ? 'true' : 'false'; ?>;
+            const certificacionPagado = <?php echo $certificacionPagado ? 'true' : 'false'; ?>;
+            const certificacionAllowSubmit = <?php echo $certificacionAllowSubmit ? 'true' : 'false'; ?>;
+            const certificacionId = <?php echo (int)$certificacionId; ?>;
             const mpEndpoint = '../checkout/mercadopago_init.php';
             let currentStep = 1;
             let mpProcessing = false;
@@ -404,6 +644,18 @@ include '../head.php';
             };
 
             const validateStep = (step) => {
+                if (checkoutType === 'certificacion') {
+                    if (step === 3) {
+                        if (certificacionPagado) {
+                            showAlert('info', 'Pago registrado', 'Ya registramos el pago de tu certificación.');
+                            return false;
+                        }
+                        if (!certificacionPuedePagar) {
+                            showAlert('info', 'Aún estamos revisando tu documentación', 'Te avisaremos por correo cuando habilitemos el pago.');
+                            return false;
+                        }
+                    }
+                }
                 if (step === 2) {
                     const required = [
                         { id: 'nombre', label: 'Nombre' },
@@ -435,8 +687,13 @@ include '../head.php';
                     }
                 }
                 if (step === 3) {
-                    const mp = document.getElementById('metodo_mp').checked;
-                    const transfer = document.getElementById('metodo_transfer').checked;
+                    const mpEl = document.getElementById('metodo_mp');
+                    const transferEl = document.getElementById('metodo_transfer');
+                    const mp = mpEl ? mpEl.checked : false;
+                    const transfer = transferEl ? transferEl.checked : false;
+                    if (!mpEl && !transferEl) {
+                        return true;
+                    }
                     if (!mp && !transfer) {
                         goToStep(3);
                         showAlert('error', 'Seleccioná un método de pago', 'Elegí una forma de pago para continuar.');
@@ -472,10 +729,45 @@ include '../head.php';
                 return true;
             };
 
+            const validateCertificacionDocumento = () => {
+                if (checkoutType !== 'certificacion') {
+                    return true;
+                }
+                if (!certificacionAllowSubmit) {
+                    showAlert('info', 'Solicitud en revisión', 'Ya recibimos tu formulario y estamos revisándolo.');
+                    return false;
+                }
+                if (!certPdfInput) {
+                    return true;
+                }
+                const file = certPdfInput.files[0];
+                if (!file) {
+                    const message = certificacionHasPdf
+                        ? 'Subí nuevamente el formulario firmado para reenviar la solicitud.'
+                        : 'Adjuntá el formulario firmado en formato PDF.';
+                    showAlert('error', 'Falta el formulario', message);
+                    return false;
+                }
+                if (file.type !== 'application/pdf') {
+                    showAlert('error', 'Archivo inválido', 'El formulario debe estar en formato PDF.');
+                    return false;
+                }
+                const maxSize = 10 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    showAlert('error', 'Archivo demasiado grande', 'El PDF debe pesar hasta 10 MB.');
+                    return false;
+                }
+                return true;
+            };
+
             document.querySelectorAll('[data-next]').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const next = parseInt(btn.dataset.next, 10);
                     if (Number.isNaN(next)) {
+                        return;
+                    }
+                    if (checkoutType === 'certificacion' && currentStep === 2 && next === 3 && (!certificacionPuedePagar && !certificacionPagado)) {
+                        showAlert('info', 'Aún no podés continuar', 'Necesitamos aprobar tu documentación antes de habilitar el pago.');
                         return;
                     }
                     if (currentStep === 2 && !validateStep(2)) {
@@ -500,7 +792,16 @@ include '../head.php';
             const transferDetails = document.getElementById('transferDetails');
             const mpDetails = document.getElementById('mpDetails');
             const form = document.getElementById('checkoutForm');
+            const btnCertificacionEnviar = document.getElementById('btnCertificacionEnviar');
+            const btnIrPaso3 = document.getElementById('btnIrPaso3');
+            const certPdfInput = document.getElementById('cert_pdf');
+            const crearOrdenInput = document.querySelector('input[name="crear_orden"]');
+            const accionInput = document.getElementById('__accion');
+            const certificacionHasPdf = form ? form.dataset.certificacionHasPdf === '1' : false;
             const confirmButton = document.getElementById('btnConfirmar');
+            if (!form || !confirmButton) {
+                return;
+            }
             let confirmLabel = confirmButton.querySelector('.btn-label');
             let confirmIcon = confirmButton.querySelector('i');
             const confirmDefault = {
@@ -508,6 +809,24 @@ include '../head.php';
                 icon: 'fas fa-paper-plane ms-2'
             };
             const confirmDefaultMarkup = confirmButton.innerHTML;
+
+            if (btnCertificacionEnviar && form) {
+                btnCertificacionEnviar.addEventListener('click', () => {
+                    if (checkoutType !== 'certificacion') {
+                        return;
+                    }
+                    if (!validateStep(2) || !validateCertificacionDocumento()) {
+                        return;
+                    }
+                    if (accionInput) {
+                        accionInput.value = 'crear_certificacion';
+                    }
+                    if (crearOrdenInput) {
+                        crearOrdenInput.value = '';
+                    }
+                    form.submit();
+                });
+            }
 
             const refreshConfirmElements = () => {
                 confirmLabel = confirmButton.querySelector('.btn-label');
@@ -519,7 +838,7 @@ include '../head.php';
                 if (!confirmLabel || !confirmIcon) {
                     return;
                 }
-                if (mpRadio.checked) {
+                if (mpRadio && mpRadio.checked) {
                     confirmLabel.textContent = 'Ir a Mercado Pago';
                     confirmIcon.className = 'fas fa-credit-card ms-2';
                 } else {
@@ -529,6 +848,9 @@ include '../head.php';
             };
 
             const togglePaymentDetails = () => {
+                if (!transferRadio || !mpRadio || !transferDetails || !mpDetails) {
+                    return;
+                }
                 if (transferRadio.checked) {
                     transferDetails.classList.remove('hidden');
                     mpDetails.classList.add('hidden');
@@ -539,8 +861,12 @@ include '../head.php';
                 updateConfirmButton();
             };
 
-            mpRadio.addEventListener('change', togglePaymentDetails);
-            transferRadio.addEventListener('change', togglePaymentDetails);
+            if (mpRadio) {
+                mpRadio.addEventListener('change', togglePaymentDetails);
+            }
+            if (transferRadio) {
+                transferRadio.addEventListener('change', togglePaymentDetails);
+            }
             togglePaymentDetails();
 
             const setConfirmLoading = (isLoading) => {
@@ -582,10 +908,20 @@ include '../head.php';
             };
 
             confirmButton.addEventListener('click', () => {
+                if (checkoutType === 'certificacion') {
+                    if (certificacionPagado) {
+                        showAlert('info', 'Pago registrado', 'Ya registramos el pago de tu certificación. No es necesario volver a enviar el formulario.');
+                        return;
+                    }
+                    if (!certificacionPuedePagar) {
+                        showAlert('info', 'Documentación en revisión', 'Te avisaremos por correo cuando habilitemos el pago.');
+                        return;
+                    }
+                }
                 if (!validateStep(2) || !validateStep(3)) {
                     return;
                 }
-                const mpSelected = mpRadio.checked;
+                const mpSelected = mpRadio ? mpRadio.checked : false;
                 const title = mpSelected ? 'Ir a Mercado Pago' : 'Confirmar inscripción';
                 const text = mpSelected
                     ? 'Vamos a generar tu orden y redirigirte a Mercado Pago para que completes el pago.'
@@ -612,7 +948,9 @@ include '../head.php';
                     if (mpSelected) {
                         iniciarMercadoPago();
                     } else {
-                        document.getElementById('__accion').value = 'crear_orden';
+                        if (accionInput) {
+                            accionInput.value = 'crear_orden';
+                        }
                         form.submit();
                     }
                 });

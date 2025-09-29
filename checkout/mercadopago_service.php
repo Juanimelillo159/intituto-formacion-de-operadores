@@ -43,6 +43,134 @@ function checkout_fetch_mp_order(PDO $con, array $lookup): ?array
     return null;
 }
 
+function checkout_registrar_historico_certificacion(PDO $con, int $idCertificacion, int $estado): void
+{
+    $st = $con->prepare('
+        INSERT INTO historico_estado_certificaciones (id_certificacion, id_estado)
+        VALUES (:id, :estado)
+    ');
+    $st->execute([
+        ':id' => $idCertificacion,
+        ':estado' => $estado,
+    ]);
+}
+
+function checkout_extract_certificacion_id(array $payloadData, ?array $paymentData): int
+{
+    $sources = [];
+    if (isset($payloadData['request']['metadata']) && is_array($payloadData['request']['metadata'])) {
+        $sources[] = $payloadData['request']['metadata'];
+    }
+    if (isset($payloadData['metadata']) && is_array($payloadData['metadata'])) {
+        $sources[] = $payloadData['metadata'];
+    }
+    if ($paymentData !== null && isset($paymentData['metadata']) && is_array($paymentData['metadata'])) {
+        $sources[] = $paymentData['metadata'];
+    }
+
+    foreach ($sources as $meta) {
+        if (!isset($meta['id_certificacion'])) {
+            continue;
+        }
+        $value = $meta['id_certificacion'];
+        if (is_numeric($value)) {
+            $id = (int) $value;
+            if ($id > 0) {
+                return $id;
+            }
+        }
+    }
+
+    return 0;
+}
+
+function checkout_update_certificacion_por_pago(
+    PDO $con,
+    int $certificacionId,
+    string $estadoPago,
+    string $mpStatus,
+    string $statusDetail,
+    string $paymentId
+): ?array {
+    if ($certificacionId <= 0) {
+        return null;
+    }
+
+    $st = $con->prepare('SELECT id_estado, observaciones FROM checkout_certificaciones WHERE id_certificacion = :id LIMIT 1');
+    $st->execute([':id' => $certificacionId]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$row) {
+        return null;
+    }
+
+    $estadoActual = (int) ($row['id_estado'] ?? 0);
+    $observacionesActual = trim((string) ($row['observaciones'] ?? ''));
+
+    $accion = null;
+    $nuevoEstado = null;
+
+    if ($estadoPago === 'pagado') {
+        $accion = 'Pago acreditado por Mercado Pago';
+        $nuevoEstado = 3;
+    } elseif (in_array($estadoPago, ['rechazado', 'cancelado'], true)) {
+        $accion = $estadoPago === 'rechazado'
+            ? 'Pago rechazado por Mercado Pago'
+            : 'Pago cancelado en Mercado Pago';
+        if ($estadoActual === 3) {
+            $nuevoEstado = 2;
+        } else {
+            $nuevoEstado = $estadoActual;
+        }
+    } else {
+        return null;
+    }
+
+    $notaCabecera = $accion;
+    if ($paymentId !== '') {
+        $notaCabecera .= ' (#' . $paymentId . ')';
+    }
+
+    if ($observacionesActual !== '' && strpos($observacionesActual, $notaCabecera) !== false) {
+        return null;
+    }
+
+    $ahora = new DateTimeImmutable('now');
+    $nota = $notaCabecera . ' el ' . $ahora->format('d/m/Y H:i');
+    $detalle = $statusDetail !== '' ? $statusDetail : $mpStatus;
+    if ($detalle !== '') {
+        $nota .= ' - ' . $detalle;
+    }
+    if ($observacionesActual !== '') {
+        $nota .= ' | ' . $observacionesActual;
+    }
+
+    $sql = 'UPDATE checkout_certificaciones SET observaciones = :obs';
+    $params = [
+        ':obs' => $nota,
+        ':id' => $certificacionId,
+    ];
+    if ($nuevoEstado !== null && $nuevoEstado !== $estadoActual) {
+        $sql .= ', id_estado = :estado';
+        $params[':estado'] = $nuevoEstado;
+    } else {
+        $nuevoEstado = $estadoActual;
+    }
+    $sql .= ' WHERE id_certificacion = :id';
+
+    $up = $con->prepare($sql);
+    $up->execute($params);
+
+    if ($nuevoEstado !== $estadoActual) {
+        checkout_registrar_historico_certificacion($con, $certificacionId, $nuevoEstado);
+    }
+
+    return [
+        'id' => $certificacionId,
+        'estado' => $nuevoEstado,
+        'nota' => $nota,
+    ];
+}
+
 /**
  * Actualiza el estado del pago a partir de la respuesta de Mercado Pago.
  */
@@ -82,10 +210,35 @@ function checkout_sync_mp_payment(PDO $con, array $mpRow, ?array $paymentData, s
         ];
     }
 
-    $payloadJson = checkout_encode_payload($payloadData);
+    $certificacionId = checkout_extract_certificacion_id($payloadData, $paymentData);
+    $certificacionUpdate = null;
+    $payloadJson = '';
 
     $con->beginTransaction();
     try {
+        if ($certificacionId > 0) {
+            $certificacionUpdate = checkout_update_certificacion_por_pago(
+                $con,
+                $certificacionId,
+                $estadoPago,
+                $mpStatus,
+                $statusDetail,
+                $paymentId
+            );
+            if ($certificacionUpdate) {
+                $payloadData['certificacion'] = [
+                    'id' => $certificacionUpdate['id'],
+                    'estado' => $certificacionUpdate['estado'],
+                    'updated_at' => (new DateTimeImmutable('now'))->format(DateTimeInterface::ATOM),
+                ];
+                if (!empty($certificacionUpdate['nota'])) {
+                    $payloadData['certificacion']['nota'] = $certificacionUpdate['nota'];
+                }
+            }
+        }
+
+        $payloadJson = checkout_encode_payload($payloadData);
+
         $upMp = $con->prepare(
             "UPDATE checkout_mercadopago
                 SET status = :status,
@@ -180,6 +333,7 @@ function checkout_sync_mp_payment(PDO $con, array $mpRow, ?array $paymentData, s
         'source' => $source,
         'emails_sent' => $emailsSent,
         'email_errors' => $emailErrors,
+        'certificacion' => $certificacionUpdate,
     ]);
 
     return [
@@ -188,5 +342,6 @@ function checkout_sync_mp_payment(PDO $con, array $mpRow, ?array $paymentData, s
         'estado_pago' => $estadoPago,
         'emails_sent' => $emailsSent,
         'email_errors' => $emailErrors,
+        'certificacion' => $certificacionUpdate,
     ];
 }
