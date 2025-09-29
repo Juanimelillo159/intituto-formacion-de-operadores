@@ -85,8 +85,12 @@ $include_google_auth = true;
 
       <!-- Google: mensaje + botón centrado -->
       <div id="googleSignInMessage" role="alert" style="display:none;"></div>
-      <div class="d-flex justify-content-center mt-3">
-        <div id="googleSignInButton" style="max-width:360px; width:100%;"></div>
+      <div id="googleSignInMessage" role="alert" style="display:none;"></div>
+      <div class="text-center mt-3">
+      <div id="googleSignInButton" style="display:inline-block; max-width:360px; width:100%;"></div>
+</div>
+
+
       </div>
 
     </div>
