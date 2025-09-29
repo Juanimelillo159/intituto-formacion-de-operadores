@@ -1,195 +1,166 @@
 ﻿<?php
-/**
- * admin/google_auth.php
- * Valida el ID token de Google (GIS), crea o inicia sesión de usuario y responde JSON.
- * Requisitos:
- *  - config.php define GOOGLE_CLIENT_ID (o existe variable de entorno GOOGLE_CLIENT_ID)
- *  - sbd.php provee $con (PDO) y NO imprime nada
- *  - Tabla usuarios tiene columnas: email, clave, id_usuario, id_estado, id_permiso, verificado, nombre, apellido, google_sub (NULL UNIQUE)
- */
-
-// ===== Logging básico (útil en hosting) =====
-ini_set('display_errors', '0'); // no mostrar al usuario
-ini_set('log_errors', '1');
-ini_set('error_log', __DIR__ . '/php-google-auth.log'); // genera /admin/php-google-auth.log
-error_reporting(E_ALL);
-
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-header('Content-Type: application/json; charset=UTF-8');
 
-// ===== Utilidad para responder error como JSON + log =====
-function jerr($msg, $extra = []) {
-    error_log('[GOOGLE_AUTH_ERROR] ' . $msg . ' ' . json_encode($extra));
-    echo json_encode(['success' => false, 'message' => $msg] + $extra);
-    exit;
+require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/sbd.php';
+
+$page_title = "Registro | Instituto de Formación";
+$page_description = "Crea tu cuenta en el Instituto de Formación de Operadores";
+
+// Mensajes flash (del handler admin/registro.php)
+$registro_mensaje = $_SESSION['registro_mensaje'] ?? null;
+$registro_tipo    = $_SESSION['registro_tipo'] ?? 'info';
+if ($registro_mensaje !== null) {
+    unset($_SESSION['registro_mensaje'], $_SESSION['registro_tipo']);
 }
 
-// ===== Cargar config y conexión =====
-$root = dirname(__DIR__);
-require_once $root . '/config.php'; // asegura GOOGLE_CLIENT_ID
-require_once $root . '/sbd.php';    // debe inicializar $con (PDO) sin hacer echo
+// Para que head.php cargue GIS y exponga window.googleClientId
+$googleClientId = defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : (getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE');
+$include_google_auth = true;
+?>
+<!DOCTYPE html>
+<html lang="es">
+<?php include __DIR__ . '/head.php'; ?>
+<body>
 
-// ===== Leer input (ID token) =====
-$raw = file_get_contents('php://input');
-$data = json_decode($raw, true);
-$idToken = $data['credential'] ?? '';
-if (!$idToken) { jerr('Token faltante'); }
+<?php include __DIR__ . '/nav.php'; ?>
 
-// ===== Resolver Client ID (backend) =====
-$clientId = getenv('GOOGLE_CLIENT_ID') ?: (defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '');
-if (!$clientId || $clientId === 'TU_CLIENT_ID_DE_GOOGLE') {
-    jerr('Client ID no configurado');
-}
+<section class="content-wrapper">
+  <div class="container">
+    <div class="login-container">
+      <div class="login-logo">
+        <img src="logos/LOGO PNG_Mesa de trabajo 1.png" alt="Instituto de Formacion de Operadores">
+      </div>
 
-// ===== Verificación del ID token =====
+      <?php if ($registro_mensaje !== null): ?>
+        <div class="alert alert-<?php echo htmlspecialchars($registro_tipo, ENT_QUOTES, 'UTF-8'); ?> text-center" role="alert">
+          <?php echo htmlspecialchars($registro_mensaje, ENT_QUOTES, 'UTF-8'); ?>
+        </div>
+      <?php endif; ?>
 
-// 1) Con librería oficial (si está instalada por Composer: google/apiclient)
-function verifyWithLibrary($idToken, $clientId) {
-    if (class_exists('\Google_Client')) {
-        try {
-            $client = new \Google_Client(['client_id' => $clientId]);
-            $payload = $client->verifyIdToken($idToken);
-            if ($payload && ($payload['aud'] ?? null) === $clientId) {
-                return $payload;
-            }
-        } catch (\Throwable $e) {
-            error_log('[GOOGLE_AUTH_LIB] ' . $e->getMessage());
-        }
+      <!-- Formulario clásico: names alineados con admin/registro.php -->
+      <form method="POST" action="admin/registro.php" id="form-registro">
+        <div class="mb-3">
+          <label for="nombre" class="form-label">Nombre</label>
+          <input type="text" class="form-control" name="nombre" id="nombre" required autocomplete="given-name">
+        </div>
+
+        <div class="mb-3">
+          <label for="apellido" class="form-label">Apellido</label>
+          <input type="text" class="form-control" name="apellido" id="apellido" required autocomplete="family-name">
+        </div>
+
+        <div class="mb-3">
+          <label for="telefono" class="form-label">Número de teléfono</label>
+          <input type="tel" class="form-control" name="telefono" id="telefono" required autocomplete="tel"
+                 inputmode="tel" pattern="[0-9+()\s-]{6,}" title="Ingresa un número de teléfono válido.">
+        </div>
+
+        <div class="mb-3">
+          <label for="email" class="form-label">Correo electrónico</label>
+          <input type="email" class="form-control" name="email" id="email" required autocomplete="email">
+        </div>
+
+        <div class="mb-3">
+          <label for="clave" class="form-label">Contraseña</label>
+          <input type="password" class="form-control" name="clave" id="clave" required autocomplete="new-password">
+        </div>
+
+        <div class="mb-3">
+          <label for="confirmar_clave" class="form-label">Repetir contraseña</label>
+          <input type="password" class="form-control" name="confirmar_clave" id="confirmar_clave" required autocomplete="new-password">
+        </div>
+
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" name="aceptar_terminos" id="aceptar_terminos" required>
+          <label class="form-check-label" for="aceptar_terminos">
+            Acepto los <a href="index.php">Términos y condiciones</a>
+          </label>
+        </div>
+
+        <button type="submit" name="registrar_usuario" class="btn btn-primary w-100" id="btn-registrar">Crear cuenta</button>
+      </form>
+
+      <div class="text-center mt-3"><span class="text-muted"> o </span></div>
+
+      <!-- Google: mensaje + botón centrado -->
+      <div id="googleSignInMessage" role="alert" style="display:none;"></div>
+      <div class="d-flex justify-content-center mt-3">
+        <div id="googleSignInButton" style="max-width:360px; width:100%;"></div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<?php include __DIR__ . '/footer.php'; ?>
+
+<!-- Libs -->
+<script src="/AdminLTE-3.2.0/plugins/jquery/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.js"></script>
+
+<!-- Validaciones simples en cliente (opcional) -->
+<script>
+(function() {
+  var form          = document.getElementById('form-registro');
+  var clave         = document.getElementById('clave');
+  var confirmar     = document.getElementById('confirmar_clave');
+  var submitButton  = document.getElementById('btn-registrar');
+  var nombre        = document.getElementById('nombre');
+  var apellido      = document.getElementById('apellido');
+  var telefono      = document.getElementById('telefono');
+  var emailInput    = document.getElementById('email');
+
+  function showModal(type, message, title) {
+    var text = message == null ? '' : String(message);
+    if (typeof Swal === 'undefined') { alert(text); return; }
+    var icon = 'info', defaultTitle = 'Aviso';
+    if (type === 'success') { icon = 'success'; defaultTitle = 'Cuenta creada'; }
+    else if (type === 'error' || type === 'danger') { icon = 'error'; defaultTitle = 'Hubo un problema'; }
+    else if (type === 'warning') { icon = 'warning'; defaultTitle = 'Atención'; }
+    Swal.fire({
+      icon: icon,
+      title: title || defaultTitle,
+      text: text,
+      confirmButtonText: 'Aceptar',
+      customClass: { confirmButton: 'btn btn-primary' },
+      buttonsStyling: false
+    });
+  }
+
+  function isEmpty(v){ return v == null || String(v).trim() === ''; }
+
+  function validatePasswords() {
+    if (!clave || !confirmar) return;
+    confirmar.setCustomValidity(confirmar.value !== clave.value ? 'Las contraseñas no coinciden' : '');
+  }
+  if (clave)    clave.addEventListener('input', validatePasswords);
+  if (confirmar) confirmar.addEventListener('input', validatePasswords);
+
+  if (!form) return;
+
+  form.addEventListener('submit', function (e) {
+    // Validaciones mínimas en cliente (el backend valida de verdad)
+    validatePasswords();
+    if (confirmar && confirmar.validationMessage) {
+      e.preventDefault();
+      showModal('error', confirmar.validationMessage, 'Datos incompletos');
+      return;
     }
-    return null;
-}
-
-// 2) Via tokeninfo (requiere salida a internet). Primero cURL; si falla, file_get_contents.
-function verifyWithTokenInfo($idToken, $clientId) {
-    $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($idToken);
-
-    // cURL
-    if (function_exists('curl_init')) {
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT => 12,
-        ]);
-        $out  = curl_exec($ch);
-        $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err  = curl_error($ch);
-        curl_close($ch);
-
-        if ($http === 200 && $out) {
-            $payload = json_decode($out, true);
-            if (is_array($payload)) {
-                if (($payload['aud'] ?? null) !== $clientId) return null;
-                if (!in_array($payload['iss'] ?? '', ['https://accounts.google.com','accounts.google.com'], true)) return null;
-                if (($payload['exp'] ?? 0) < time()) return null;
-                return $payload;
-            }
-        } else {
-            error_log('[GOOGLE_AUTH_CURL] HTTP=' . $http . ' err=' . $err);
-        }
+    if (telefono && !/^[0-9+()\s-]{6,}$/.test(telefono.value.trim())) {
+      e.preventDefault();
+      showModal('error', 'Ingresa un número de teléfono válido.', 'Datos incompletos');
+      telefono.focus();
+      return;
     }
+  });
+})();
+</script>
 
-    // file_get_contents
-    if (ini_get('allow_url_fopen')) {
-        $out = @file_get_contents($url);
-        if ($out !== false) {
-            $payload = json_decode($out, true);
-            if (is_array($payload)) {
-                if (($payload['aud'] ?? null) !== $clientId) return null;
-                if (!in_array($payload['iss'] ?? '', ['https://accounts.google.com','accounts.google.com'], true)) return null;
-                if (($payload['exp'] ?? 0) < time()) return null;
-                return $payload;
-            }
-        } else {
-            error_log('[GOOGLE_AUTH_FOPEN] No se pudo abrir tokeninfo');
-        }
-    } else {
-        error_log('[GOOGLE_AUTH_FOPEN] allow_url_fopen deshabilitado');
-    }
+<!-- Google Auth (mismo endpoint que login.php) -->
+<script>window.googleAuthEndpoint = 'admin/google_auth.php';</script>
+<script src="assets/js/google-auth.js"></script>
 
-    return null;
-}
-
-$payload = verifyWithLibrary($idToken, $clientId) ?: verifyWithTokenInfo($idToken, $clientId);
-if (!$payload) { jerr('Fallo verificación token (payload vacío)'); }
-
-// ===== Validaciones mínimas del token =====
-$aud = $payload['aud'] ?? null;
-$iss = $payload['iss'] ?? null;
-$exp = (int)($payload['exp'] ?? 0);
-if ($aud !== $clientId) { jerr('aud no coincide', ['aud' => $aud]); }
-if (!in_array($iss, ['https://accounts.google.com', 'accounts.google.com'], true)) { jerr('iss inválido', ['iss' => $iss]); }
-if ($exp < time()) { jerr('token expirado', ['exp' => $exp, 'now' => time()]); }
-
-$email         = strtolower(trim($payload['email'] ?? ''));
-$emailVerified = filter_var($payload['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
-$googleSub     = $payload['sub'] ?? null;
-$given         = $payload['given_name'] ?? null;
-$family        = $payload['family_name'] ?? null;
-$name          = $payload['name'] ?? null;
-
-if (!$email || !$emailVerified) { jerr('email no verificado o vacío'); }
-if (!$googleSub) { jerr('sub faltante'); }
-
-// ===== Login / Registro =====
-try {
-    $con->beginTransaction();
-
-    $stmt = $con->prepare('SELECT id_usuario, email, id_permiso FROM usuarios WHERE email = :email LIMIT 1');
-    $stmt->bindValue(':email', $email);
-    $stmt->execute();
-    $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($user) {
-        $id = (int)$user['id_usuario'];
-        $upd = $con->prepare('UPDATE usuarios
-            SET google_sub = COALESCE(google_sub, :sub),
-                verificado = 1,
-                nombre = COALESCE(NULLIF(nombre, \'\'), :nombre),
-                apellido = COALESCE(NULLIF(apellido, \'\'), :apellido),
-                id_estado = :estado
-            WHERE id_usuario = :id');
-        $upd->bindValue(':sub', $googleSub);
-        $upd->bindValue(':nombre', $given ?: ($name ?: null));
-        $upd->bindValue(':apellido', $family ?: null);
-        $upd->bindValue(':estado', 2, PDO::PARAM_INT); // 2 = logueado
-        $upd->bindValue(':id', $id, PDO::PARAM_INT);
-        $upd->execute();
-
-        $_SESSION['usuario'] = $id;
-        $_SESSION['email']   = $email;
-        $_SESSION['permiso'] = (int)$user['id_permiso'];
-    } else {
-        // crear usuario
-        $permiso = 2; // default
-        $rand    = bin2hex(random_bytes(24));
-        $hash    = password_hash($rand, PASSWORD_DEFAULT);
-
-        $ins = $con->prepare('INSERT INTO usuarios (email, clave, id_estado, id_permiso, verificado, google_sub, nombre, apellido)
-                              VALUES (:email, :clave, :estado, :permiso, 1, :sub, :nombre, :apellido)');
-        $ins->bindValue(':email', $email);
-        $ins->bindValue(':clave', $hash);
-        $ins->bindValue(':estado', 2, PDO::PARAM_INT);
-        $ins->bindValue(':permiso', $permiso, PDO::PARAM_INT);
-        $ins->bindValue(':sub', $googleSub);
-        $ins->bindValue(':nombre', $given ?: ($name ?: null));
-        $ins->bindValue(':apellido', $family ?: null);
-        $ins->execute();
-
-        $id = (int)$con->lastInsertId();
-        $_SESSION['usuario'] = $id;
-        $_SESSION['email']   = $email;
-        $_SESSION['permiso'] = $permiso;
-    }
-
-    $_SESSION['mis_cursos_alert'] = [
-        'icon' => 'success',
-        'title' => 'Sesión iniciada con Google',
-        'message' => 'Acceso completado correctamente.'
-    ];
-
-    $con->commit();
-    echo json_encode(['success' => true, 'redirect' => '../mis_cursos.php']);
-} catch (Throwable $e) {
-    if ($con->inTransaction()) $con->rollBack();
-    jerr('Error de servidor al guardar sesión', ['ex' => $e->getMessage()]);
-}
+</body>
+</html>
