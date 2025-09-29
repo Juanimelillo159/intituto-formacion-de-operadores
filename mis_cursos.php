@@ -935,8 +935,6 @@ $configActive = 'mis_cursos';
                                                     <?php if ($inscripcion['progreso'] !== null): ?>
                                                         <div class="text-muted small mt-2">Progreso: <?php echo (int)$inscripcion['progreso']; ?>%</div>
                                                     <?php endif; ?>
-                                                <?php else: ?>
-                                                    <span class="badge bg-success">Acceso disponible</span>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
@@ -979,34 +977,74 @@ $configActive = 'mis_cursos';
                                         }
                                         $purchaseItems = $curso['purchase_items'] ?? [];
                                         $hasPurchaseItems = !empty($purchaseItems);
+                                        $assignedCount = count($assignedWorkers);
+                                        $collapseSourceParts = [];
+                                        if (!empty($curso['tipo_curso'])) {
+                                            $collapseSourceParts[] = (string)$curso['tipo_curso'];
+                                        }
+                                        if (!empty($curso['id_curso'])) {
+                                            $collapseSourceParts[] = (string)$curso['id_curso'];
+                                        }
+                                        if (!empty($curso['id_item'])) {
+                                            $collapseSourceParts[] = (string)$curso['id_item'];
+                                        }
+                                        if (empty($collapseSourceParts)) {
+                                            $collapseSourceParts[] = (string)($curso['nombre_curso'] ?? 'curso');
+                                        }
+                                        $assignedCollapseSource = strtolower(implode('-', $collapseSourceParts));
+                                        $assignedCollapseSlug = preg_replace('/[^a-z0-9_-]/', '-', $assignedCollapseSource);
+                                        if (!is_string($assignedCollapseSlug) || $assignedCollapseSlug === '') {
+                                            $assignedCollapseSlug = substr(md5($assignedCollapseSource !== '' ? $assignedCollapseSource : uniqid('assigned', true)), 0, 8);
+                                        }
+                                        $assignedCollapseSlug = trim((string)$assignedCollapseSlug, '-');
+                                        if ($assignedCollapseSlug === '') {
+                                            $assignedCollapseSlug = substr(md5(uniqid('assigned', true)), 0, 8);
+                                        }
+                                        $assignedCollapseId = 'assigned-workers-' . $assignedCollapseSlug;
                                         ?>
                                         <div class="course-card__section mt-4">
-                                            <h3 class="course-card__section-title h6 mb-3">Trabajadores asignados</h3>
-                                            <?php if (empty($assignedWorkers)): ?>
+                                            <div class="assigned-workers__section-header d-flex align-items-center justify-content-between gap-2">
+                                                <h3 class="course-card__section-title h6 mb-0">Trabajadores asignados</h3>
+                                                <?php if ($assignedCount > 0): ?>
+                                                    <button class="btn btn-sm btn-outline-secondary assigned-workers__toggle collapsed"
+                                                        type="button"
+                                                        data-bs-toggle="collapse"
+                                                        data-bs-target="#<?php echo htmlspecialchars($assignedCollapseId, ENT_QUOTES, 'UTF-8'); ?>"
+                                                        aria-expanded="false"
+                                                        aria-controls="<?php echo htmlspecialchars($assignedCollapseId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                        Ver lista (<?php echo $assignedCount; ?>)
+                                                    </button>
+                                                <?php endif; ?>
+                                            </div>
+                                            <?php if ($assignedCount === 0): ?>
                                                 <p class="text-muted small mb-0">Todav&iacute;a no asignaste este curso.</p>
                                             <?php else: ?>
-                                                <ul class="assigned-workers list-unstyled mb-0">
-                                                    <?php foreach ($assignedWorkers as $assignment): ?>
-                                                        <?php
-                                                        $fullName = trim((string)($assignment['nombre'] ?? '') . ' ' . (string)($assignment['apellido'] ?? ''));
-                                                        if ($fullName === '') {
-                                                            $fullName = (string)($assignment['email'] ?? 'Trabajador');
-                                                        }
-                                                        ?>
-                                                        <li class="assigned-workers__item">
-                                                            <div class="assigned-workers__header d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                                                <span class="fw-semibold"><?php echo htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'); ?></span>
-                                                                <span class="badge <?php echo htmlspecialchars($assignment['clase'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($assignment['estado'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                            </div>
-                                                            <?php if (!empty($assignment['email'])): ?>
-                                                                <span class="text-muted small d-block"><?php echo htmlspecialchars((string)$assignment['email'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                            <?php endif; ?>
-                                                            <?php if ($assignment['progreso'] !== null): ?>
-                                                                <span class="text-muted small">Progreso: <?php echo (int)$assignment['progreso']; ?>%</span>
-                                                            <?php endif; ?>
-                                                        </li>
-                                                    <?php endforeach; ?>
-                                                </ul>
+                                                <div id="<?php echo htmlspecialchars($assignedCollapseId, ENT_QUOTES, 'UTF-8'); ?>" class="collapse assigned-workers__collapse">
+                                                    <div class="assigned-workers__scroll mt-3">
+                                                        <ul class="assigned-workers list-unstyled mb-0">
+                                                            <?php foreach ($assignedWorkers as $assignment): ?>
+                                                                <?php
+                                                                $fullName = trim((string)($assignment['nombre'] ?? '') . ' ' . (string)($assignment['apellido'] ?? ''));
+                                                                if ($fullName === '') {
+                                                                    $fullName = (string)($assignment['email'] ?? 'Trabajador');
+                                                                }
+                                                                ?>
+                                                                <li class="assigned-workers__item">
+                                                                    <div class="assigned-workers__header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                                                        <span class="fw-semibold"><?php echo htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'); ?></span>
+                                                                        <span class="badge <?php echo htmlspecialchars($assignment['clase'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($assignment['estado'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                                    </div>
+                                                                    <?php if (!empty($assignment['email'])): ?>
+                                                                        <span class="text-muted small d-block"><?php echo htmlspecialchars((string)$assignment['email'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                                                    <?php endif; ?>
+                                                                    <?php if ($assignment['progreso'] !== null): ?>
+                                                                        <span class="text-muted small">Progreso: <?php echo (int)$assignment['progreso']; ?>%</span>
+                                                                    <?php endif; ?>
+                                                                </li>
+                                                            <?php endforeach; ?>
+                                                        </ul>
+                                                    </div>
+                                                </div>
                                             <?php endif; ?>
                                         </div>
 
@@ -1141,6 +1179,32 @@ $configActive = 'mis_cursos';
 
 <!-- CSS para la sidebar fija “por fuera” -->
 <style>
+.assigned-workers__section-header {
+  align-items: center;
+}
+
+.assigned-workers__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.assigned-workers__toggle::after {
+  content: "\25BC";
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+
+.assigned-workers__toggle:not(.collapsed)::after {
+  transform: rotate(180deg);
+}
+
+.assigned-workers__scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
 @media (min-width: 1200px) {
   .sidebar-outside {
     left: 24px;      /* separación del borde izquierdo */
