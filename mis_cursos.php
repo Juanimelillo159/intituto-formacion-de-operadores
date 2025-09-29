@@ -262,8 +262,235 @@ SQL;
                 error_log('mis_cursos assign_cap: ' . $exception->getMessage());
                 $redirectWithFeedback(['type' => 'danger', 'message' => 'No pudimos asignar el curso. Intentalo nuevamente.']);
             }
-        } elseif ($assignmentType === 'cert') {
-            $redirectWithFeedback(['type' => 'info', 'message' => 'Por el momento las certificaciones no admiten asignaciones manuales.']);
+           } elseif ($assignmentType === 'cert') {
+            try {
+                $pdo = getPdo();
+                $pdo->beginTransaction();
+
+                // 1) Bloquear "cupos" de certificaciones para este curso del usuario (como en CAP pero en checkout_certificaciones)
+                $seatLockSql = <<<'SQL'
+SELECT
+    ccert.id_certificacion,
+    ccert.email,
+    ccert.id_estado,
+    u.id_usuario AS assigned_user_id
+FROM checkout_certificaciones ccert
+LEFT JOIN usuarios u ON u.email = ccert.email
+WHERE ccert.creado_por = :usuario AND ccert.id_curso = :curso
+FOR UPDATE
+SQL;
+                $stmtSeats = $pdo->prepare($seatLockSql);
+                $stmtSeats->bindValue(':usuario', $userId, PDO::PARAM_INT);
+                $stmtSeats->bindValue(':curso', $courseId, PDO::PARAM_INT);
+                $stmtSeats->execute();
+
+                $seatRows = $stmtSeats->fetchAll(PDO::FETCH_ASSOC);
+                if (empty($seatRows)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'No se encontraron certificaciones para el curso seleccionado.']);
+                }
+
+                $availableSeats = [];
+                $assignedUserIds = [];
+                $assignedEmails = [];
+                foreach ($seatRows as $seatRow) {
+                    $seatId = (int)($seatRow['id_certificacion'] ?? 0);
+                    if ($seatId <= 0) continue;
+                    $email = trim((string)($seatRow['email'] ?? ''));
+                    if ($email === '') {
+                        $availableSeats[] = $seatId; // cupo sin asignar
+                    } else {
+                        $assignedEmails[strtolower($email)] = true;
+                        if ($seatRow['assigned_user_id'] !== null) {
+                            $assignedUserIds[(int)$seatRow['assigned_user_id']] = true;
+                        }
+                    }
+                }
+
+                if (empty($availableSeats)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'No quedan cupos disponibles para esta certificación.']);
+                }
+
+                if (count($workerIds) > count($availableSeats)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'warning', 'message' => 'Seleccionaste más trabajadores que cupos disponibles.']);
+                }
+
+                // 2) Validar que los trabajadores pertenezcan a la empresa
+                $placeholders = implode(',', array_fill(0, count($workerIds), '?'));
+                $stmtMembership = $pdo->prepare('SELECT id_trabajador FROM empresa_trabajadores WHERE id_empresa = ? AND id_trabajador IN (' . $placeholders . ')');
+                $membershipParams = array_merge([$userId], $workerIds);
+                $stmtMembership->execute($membershipParams);
+                $validMembers = array_map('intval', $stmtMembership->fetchAll(PDO::FETCH_COLUMN));
+                $missingWorkers = array_diff($workerIds, $validMembers);
+                if (!empty($missingWorkers)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'Algunos trabajadores seleccionados no pertenecen a tu empresa.']);
+                }
+
+                // 3) Traer datos de los trabajadores
+                $stmtWorkersData = $pdo->prepare('SELECT id_usuario, nombre, apellido, email, telefono FROM usuarios WHERE id_usuario IN (' . $placeholders . ')');
+                $stmtWorkersData->execute($workerIds);
+                $workersData = [];
+                while ($workerRow = $stmtWorkersData->fetch(PDO::FETCH_ASSOC)) {
+                    $workersData[(int)$workerRow['id_usuario']] = $workerRow;
+                }
+                if (count($workersData) !== count($workerIds)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'No encontramos a todos los trabajadores seleccionados.']);
+                }
+
+                // 4) Evitar duplicados (si ya están asignados a alguna fila)
+                foreach ($workerIds as $workerId) {
+                    $workerRow = $workersData[$workerId];
+                    $workerEmail = trim((string)($workerRow['email'] ?? ''));
+                    if ($workerEmail === '') {
+                        $pdo->rollBack();
+                        $redirectWithFeedback(['type' => 'danger', 'message' => 'Uno de los trabajadores no tiene correo electrónico configurado.']);
+                    }
+                    if (isset($assignedUserIds[$workerId]) || isset($assignedEmails[strtolower($workerEmail)])) {
+                        $pdo->rollBack();
+                        $redirectWithFeedback(['type' => 'warning', 'message' => 'Alguno de los trabajadores ya tiene asignada esta certificación.']);
+                    }
+                }
+
+                // 5) Validar/recibir PDF (opcional, pero si viene debe ser PDF)
+                $uploadedPdf = $_FILES['cert_pdf'] ?? null;
+                $pdfIsProvided = is_array($uploadedPdf) && ($uploadedPdf['error'] === UPLOAD_ERR_OK) && (int)$uploadedPdf['size'] > 0;
+                $pdfMime = null;
+                $pdfOrigName = null;
+                $pdfTempPath = null;
+
+                if ($pdfIsProvided) {
+                    $pdfOrigName = (string)$uploadedPdf['name'];
+                    $pdfTempPath = (string)$uploadedPdf['tmp_name'];
+                    $size = (int)$uploadedPdf['size'];
+                    if ($size > 10 * 1024 * 1024) { // 10 MB
+                        $pdo->rollBack();
+                        $redirectWithFeedback(['type' => 'danger', 'message' => 'El PDF supera el tamaño máximo permitido (10MB).']);
+                    }
+                    // Chequeo MIME real
+                    $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
+                    $detected = $finfo ? finfo_file($finfo, $pdfTempPath) : null;
+                    if ($finfo) { finfo_close($finfo); }
+                    $pdfMime = $detected ?: ($uploadedPdf['type'] ?? '');
+                    if (stripos($pdfMime, 'pdf') === false) {
+                        $pdo->rollBack();
+                        $redirectWithFeedback(['type' => 'danger', 'message' => 'El archivo subido debe ser un PDF.']);
+                    }
+                }
+
+                // 6) Preparar UPDATE y (si existe) histórico de estados
+                $updateSeat = $pdo->prepare(
+                    'UPDATE checkout_certificaciones
+                     SET nombre = :nombre,
+                         apellido = :apellido,
+                         email = :email,
+                         telefono = :telefono,
+                         id_estado = :estado,
+                         pdf_path = :pdf_path,
+                         pdf_nombre = :pdf_nombre,
+                         pdf_mime = :pdf_mime
+                     WHERE id_certificacion = :id'
+                );
+
+                $historyStmt = null;
+                try {
+                    $historyStmt = $pdo->prepare('INSERT INTO historico_estado_certificaciones (id_certificacion, id_estado, cambiado_en) VALUES (:id, :estado, NOW())');
+                } catch (Throwable $historyException) {
+                    $historyStmt = null; // si la tabla no existe, seguimos igual
+                }
+
+                $assignedStateId = 2; // por ejemplo "asignado/pendiente"
+                $availableQueue = $availableSeats;
+
+                // Preparar carpeta de subidas
+                $baseDir = __DIR__ . '/uploads/certificaciones/' . $userId;
+                if (!is_dir($baseDir)) {
+                    @mkdir($baseDir, 0775, true);
+                }
+                $firstDestAbs = null; // guardamos el primer destino para copiar a los demás
+
+                foreach ($workerIds as $workerId) {
+                    $seatId = array_shift($availableQueue);
+                    if ($seatId === null) break;
+
+                    $workerRow = $workersData[$workerId];
+                    $workerName = trim((string)($workerRow['nombre'] ?? ''));
+                    $workerLastname = trim((string)($workerRow['apellido'] ?? ''));
+                    $workerEmail = trim((string)($workerRow['email'] ?? ''));
+                    $workerPhone = trim((string)($workerRow['telefono'] ?? ''));
+
+                    // Guardar PDF por cada asiento (si vino)
+                    $destRel = null;
+                    $destAbs = null;
+                    $fileName = null;
+                    $fileMime = null;
+
+                    if ($pdfIsProvided) {
+                        $ts = time();
+                        $fileName = 'cert_' . $seatId . '_' . $ts . '.pdf';
+                        $destAbs = rtrim($baseDir, '/\\') . DIRECTORY_SEPARATOR . $fileName;
+                        $destRel = 'uploads/certificaciones/' . $userId . '/' . $fileName;
+                        $fileMime = $pdfMime;
+
+                        if ($firstDestAbs === null) {
+                            // mover el archivo original al primero
+                            if (!@move_uploaded_file($pdfTempPath, $destAbs)) {
+                                $pdo->rollBack();
+                                $redirectWithFeedback(['type' => 'danger', 'message' => 'No se pudo guardar el PDF.']);
+                            }
+                            $firstDestAbs = $destAbs;
+                        } else {
+                            // copiar desde el primero a este destino
+                            if (!@copy($firstDestAbs, $destAbs)) {
+                                $pdo->rollBack();
+                                $redirectWithFeedback(['type' => 'danger', 'message' => 'No se pudo duplicar el PDF para todos los asignados.']);
+                            }
+                        }
+                    }
+
+                    $updateSeat->execute([
+                        ':nombre'     => $workerName !== '' ? $workerName : null,
+                        ':apellido'   => $workerLastname !== '' ? $workerLastname : null,
+                        ':email'      => $workerEmail,
+                        ':telefono'   => $workerPhone !== '' ? $workerPhone : null,
+                        ':estado'     => $assignedStateId,
+                        ':pdf_path'   => $destRel,
+                        ':pdf_nombre' => $pdfIsProvided ? $pdfOrigName : null,
+                        ':pdf_mime'   => $pdfIsProvided ? $fileMime : null,
+                        ':id'         => $seatId,
+                    ]);
+
+                    if ($historyStmt !== null) {
+                        try {
+                            $historyStmt->execute([
+                                ':id' => $seatId,
+                                ':estado' => $assignedStateId,
+                            ]);
+                        } catch (Throwable $historyError) {
+                            error_log('mis_cursos history cert insert: ' . $historyError->getMessage());
+                        }
+                    }
+                }
+
+                $pdo->commit();
+
+                $assignedTotal = count($workerIds);
+                $redirectWithFeedback([
+                    'type' => 'success',
+                    'message' => $assignedTotal === 1
+                        ? 'Se asignó 1 trabajador a la certificación.'
+                        : 'Se asignaron ' . $assignedTotal . ' trabajadores a la certificación.'
+                ]);
+            } catch (Throwable $exception) {
+                if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                error_log('mis_cursos assign_cert: ' . $exception->getMessage());
+                $redirectWithFeedback(['type' => 'danger', 'message' => 'No pudimos asignar la certificación. Intentalo nuevamente.']);
+            }
         } elseif ($legacyItemId !== null) {
             try {
                 $pdo = getPdo();
@@ -595,25 +822,39 @@ SQL;
 
         if ($checkoutCertificacionesAvailable) {
             $sqlCertificaciones = <<<'SQL'
-SELECT
-    ccert.id_certificacion,
-    ccert.id_curso,
-    ccert.precio_total,
-    ccert.moneda,
-    ccert.creado_en,
-    cursos.nombre_curso,
-    mods.modalidad_resumen
-FROM checkout_certificaciones ccert
-LEFT JOIN cursos ON cursos.id_curso = ccert.id_curso
-LEFT JOIN (
-    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
-    FROM curso_modalidad cm
-    INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
-    GROUP BY cm.id_curso
-) AS mods ON mods.id_curso = ccert.id_curso
-WHERE ccert.creado_por = :usuario
-ORDER BY ccert.id_curso ASC, ccert.creado_en ASC, ccert.id_certificacion ASC
-SQL;
+            SELECT
+                ccert.id_certificacion,
+                ccert.id_curso,
+                ccert.precio_total,
+                ccert.moneda,
+                ccert.creado_en,
+                ccert.nombre,
+                ccert.apellido,
+                ccert.email,
+                ccert.telefono,
+                ccert.id_estado,
+                ccert.pdf_path,
+                ccert.pdf_nombre,
+                ccert.pdf_mime,
+                cursos.nombre_curso,
+                mods.modalidad_resumen,
+                est.nombre_estado AS estado_checkout,
+                u.id_usuario AS assigned_user_id,
+                u.nombre AS assigned_nombre,
+                u.apellido AS assigned_apellido
+            FROM checkout_certificaciones ccert
+            LEFT JOIN cursos ON cursos.id_curso = ccert.id_curso
+            LEFT JOIN (
+                SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+                FROM curso_modalidad cm
+                INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+                GROUP BY cm.id_curso
+            ) AS mods ON mods.id_curso = ccert.id_curso
+            LEFT JOIN estados_inscripciones est ON est.id_estado = ccert.id_estado
+            LEFT JOIN usuarios u ON u.email = ccert.email
+            WHERE ccert.creado_por = :usuario
+            ORDER BY ccert.id_curso ASC, ccert.creado_en ASC, ccert.id_certificacion ASC
+            SQL;
             $stmtCertificaciones = $pdo->prepare($sqlCertificaciones);
             $stmtCertificaciones->bindValue(':usuario', $userId, PDO::PARAM_INT);
             $stmtCertificaciones->execute();
@@ -717,6 +958,38 @@ SQL;
                             $course['pagado_en_formatted'] = $createdAt;
                         }
                     }
+                     $email = trim((string)($cert['email'] ?? ''));
+                    if ($email === '') {
+                        $course['disponibles']++;
+                        $purchaseItem['disponibles']++;
+                        // permitir asignar en certificaciones
+                        $course['can_assign'] = true;
+                        $purchaseItem['can_assign'] = true;
+                    } else {
+                        $stateKey = strtolower((string)($cert['estado_checkout'] ?? ''));
+                        $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', $stateKey));
+                        $stateClass = $statusClasses[$stateKey] ?? 'bg-secondary';
+
+                        $assignmentData = [
+                            'id_certificacion' => (int)$cert['id_certificacion'],
+                            'id_usuario' => $cert['assigned_user_id'] !== null ? (int)$cert['assigned_user_id'] : null,
+                            'nombre' => $cert['nombre'] ?? $cert['assigned_nombre'] ?? '',
+                            'apellido' => $cert['apellido'] ?? $cert['assigned_apellido'] ?? '',
+                            'email' => $email,
+                            'estado' => $stateLabel,
+                            'clase' => $stateClass,
+                            'progreso' => null,
+                            'id_item_compra' => (int)$cert['id_certificacion'],
+                            'pdf_path' => $cert['pdf_path'] ?? null,
+                            'pdf_nombre' => $cert['pdf_nombre'] ?? null,
+                            'pdf_mime' => $cert['pdf_mime'] ?? null,
+                        ];
+
+                        $purchaseItem['asignaciones'][] = $assignmentData;
+                        $purchaseItem['asignados']++;
+                        $course['asignaciones'][] = $assignmentData;
+                        $course['asignados']++;
+                    }
                 }
             }
         }
@@ -742,7 +1015,8 @@ SQL;
             $course['disponibles'] = $courseDisponibles;
             $course['asignados'] = (int)($course['asignados'] ?? 0);
             $course['cantidad'] = (int)($course['cantidad'] ?? 0);
-            $courseHasSlots = !empty($workersOptions) && $courseDisponibles > 0 && $course['tipo_curso'] === 'capacitacion';
+            $courseHasSlots = !empty($workersOptions) && $courseDisponibles > 0 && in_array($course['tipo_curso'] ?? '', ['capacitacion','certificacion'], true);
+
 
             $course['can_assign'] = $courseHasSlots;
 
@@ -1106,7 +1380,12 @@ $configActive = 'mis_cursos';
                                             <?php if ($availableSlots > 0 && !empty($availableWorkers)): ?>
                                                 <div class="collapse mt-3" id="<?php echo htmlspecialchars($panelId, ENT_QUOTES, 'UTF-8'); ?>">
                                                     <div class="assign-panel shadow-sm">
-                                                        <form method="POST" class="assign-workers-form" id="<?php echo htmlspecialchars($formId, ENT_QUOTES, 'UTF-8'); ?>" data-available="<?php echo (int)$availableSlots; ?>">
+                                                       <form method="POST"
+                                                            enctype="multipart/form-data"
+                                                            class="assign-workers-form"
+                                                            id="<?php echo htmlspecialchars($formId, ENT_QUOTES, 'UTF-8'); ?>"
+                                                            data-available="<?php echo (int)$availableSlots; ?>"
+                                                            data-is-cert="<?php echo (($curso['tipo_curso'] ?? '') === 'certificacion') ? '1' : '0'; ?>">
                                                             <input type="hidden" name="action" value="assign_workers">
                                                             <input type="hidden" name="item_id" value="<?php echo htmlspecialchars($purchaseItemToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                             <div class="assign-panel__stats d-flex flex-wrap gap-3 align-items-center small text-muted mb-3">
@@ -1119,6 +1398,13 @@ $configActive = 'mis_cursos';
                                                                     Seleccionar todos (hasta <?php echo (int)$maxSelectable; ?>)
                                                                 </label>
                                                             </div>
+                                                            <?php if (($curso['tipo_curso'] ?? '') === 'certificacion'): ?>
+                                                                <div class="mb-3">
+                                                                    <label class="form-label small fw-semibold">Subir PDF (requisito/constancia)</label>
+                                                                    <input type="file" name="cert_pdf" accept="application/pdf" class="form-control form-control-sm">
+                                                                    <div class="form-text">Formato PDF, máx. 10MB. Se adjuntará al/los trabajadores seleccionados.</div>
+                                                                </div>
+                                                            <?php endif; ?>
                                                             <div class="assign-workers-list border rounded bg-white p-2" style="max-height: 220px; overflow: auto;">
                                                                 <?php foreach ($availableWorkers as $worker): ?>
                                                                     <?php
@@ -1133,9 +1419,29 @@ $configActive = 'mis_cursos';
                                                                     }
                                                                     $inputId = 'assign-worker-' . $purchaseItemSlug . '-' . $workerId;
                                                                     ?>
-                                                                    <div class="form-check form-check-sm mb-2">
-                                                                        <input class="form-check-input assign-worker-checkbox" type="checkbox" name="worker_ids[]" value="<?php echo $workerId; ?>" id="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
-                                                                        <label class="form-check-label small" for="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars($workerLabel, ENT_QUOTES, 'UTF-8'); ?></label>
+                                                                   <div class="form-check form-check-sm mb-2">
+                                                                        <input class="form-check-input assign-worker-checkbox"
+                                                                            type="checkbox"
+                                                                            name="worker_ids[]"
+                                                                            value="<?php echo $workerId; ?>"
+                                                                            id="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>"
+                                                                            data-worker-id="<?php echo $workerId; ?>">
+                                                                        <label class="form-check-label small" for="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                            <?php echo htmlspecialchars($workerLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                                                        </label>
+
+                                                                        <?php if (($curso['tipo_curso'] ?? '') === 'certificacion'): ?>
+                                                                            <?php $fileInputId = 'cert-pdf-' . $purchaseItemSlug . '-' . $workerId; ?>
+                                                                            <input type="file"
+                                                                                name="cert_pdf[<?php echo $workerId; ?>]"
+                                                                                id="<?php echo htmlspecialchars($fileInputId, ENT_QUOTES, 'UTF-8'); ?>"
+                                                                                accept="application/pdf"
+                                                                                class="form-control form-control-sm mt-1 d-none"
+                                                                                data-file-for-worker="<?php echo $workerId; ?>">
+                                                                            <div class="form-text d-none" data-file-hint-for="<?php echo $workerId; ?>">
+                                                                                PDF requerido para este trabajador (máx. 10MB).
+                                                                            </div>
+                                                                        <?php endif; ?>
                                                                     </div>
                                                                 <?php endforeach; ?>
                                                             </div>
