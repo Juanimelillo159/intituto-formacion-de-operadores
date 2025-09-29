@@ -19,6 +19,10 @@ define('SMTP_PASS', getenv('SMTP_PASS') ?: 'Ju4ni159@');
 define('SMTP_FROM_EMAIL', getenv('SMTP_FROM_EMAIL') ?: 'pruebas@institutodeoperadores.com');
 define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'Instituto de Operadores');
 
+// Google OAuth
+define('GOOGLE_CLIENT_ID', getenv('GOOGLE_CLIENT_ID') ?: '949222209259-qtbapafr0vd1isvc0op1oo4tg6rmdmu0.apps.googleusercontent.com');
+
+
 function getPdo(): PDO
 {
     static $pdo = null;

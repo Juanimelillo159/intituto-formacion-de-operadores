@@ -8,7 +8,9 @@ $page_title = "Login | Instituto de Formación";
 $page_description = "Pagina de inicio de sesión del Instituto de Formación de Operadores";
 $login_mensaje = isset($_SESSION['login_mensaje']) ? $_SESSION['login_mensaje'] : null;
 $login_tipo = isset($_SESSION['login_tipo']) ? $_SESSION['login_tipo'] : 'info';
-$googleClientId = getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE';
+$googleClientId = GOOGLE_CLIENT_ID;
+$include_google_auth = true;
+include("head.php");
 if ($login_mensaje !== null) {
     unset($_SESSION['login_mensaje'], $_SESSION['login_tipo']);
 }
