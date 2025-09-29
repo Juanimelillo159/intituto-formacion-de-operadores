@@ -61,7 +61,10 @@ if ($login_mensaje !== null) {
 
       <div class="text-center mt-3"><span class="text-muted"> o </span></div>
       <div id="googleSignInMessage" role="alert" style="display:none;"></div>
-      <div id="googleSignInButton" class="mt-3 w-100"></div>
+      <div class="d-flex justify-content-center mt-3">
+      <div id="googleSignInButton"></div>
+      </div>
+
     </div>
   </div>
 </section>
