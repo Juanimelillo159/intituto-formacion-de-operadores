@@ -23,6 +23,7 @@ define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'Instituto de Operadores');
 define('GOOGLE_CLIENT_ID', getenv('GOOGLE_CLIENT_ID') ?: '949222209259-qtbapafr0vd1isvc0op1oo4tg6rmdmu0.apps.googleusercontent.com');
 
 
+
 function getPdo(): PDO
 {
     static $pdo = null;

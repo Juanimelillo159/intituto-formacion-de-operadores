@@ -1,43 +1,49 @@
 <?php
-// === LOGGING BÁSICO (temporal, útil para Hostinger) ===
+/**
+ * admin/google_auth.php
+ * Valida el ID token de Google (GIS), crea o inicia sesión de usuario y responde JSON.
+ * Requisitos:
+ *  - config.php define GOOGLE_CLIENT_ID (o existe variable de entorno GOOGLE_CLIENT_ID)
+ *  - sbd.php provee $con (PDO) y NO imprime nada
+ *  - Tabla usuarios tiene columnas: email, clave, id_usuario, id_estado, id_permiso, verificado, nombre, apellido, google_sub (NULL UNIQUE)
+ */
+
+// ===== Logging básico (útil en hosting) =====
 ini_set('display_errors', '0'); // no mostrar al usuario
 ini_set('log_errors', '1');
-ini_set('error_log', __DIR__ . '/php-google-auth.log'); // log en /admin/php-google-auth.log
+ini_set('error_log', __DIR__ . '/php-google-auth.log'); // genera /admin/php-google-auth.log
 error_reporting(E_ALL);
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 header('Content-Type: application/json; charset=UTF-8');
 
-// Utilidad para responder error con log
+// ===== Utilidad para responder error como JSON + log =====
 function jerr($msg, $extra = []) {
     error_log('[GOOGLE_AUTH_ERROR] ' . $msg . ' ' . json_encode($extra));
     echo json_encode(['success' => false, 'message' => $msg] + $extra);
     exit;
 }
 
-// === CARGAR CONEXIÓN / CONFIG ===
-$root = dirname(__DIR__); // carpeta raíz del proyecto
-// sbd.php debe preparar $con (PDO). Si sbd.php ya incluye config.php, no pasa nada
-require_once $root . '/sbd.php';
+// ===== Cargar config y conexión =====
+$root = dirname(__DIR__);
+require_once $root . '/config.php'; // asegura GOOGLE_CLIENT_ID
+require_once $root . '/sbd.php';    // debe inicializar $con (PDO) sin hacer echo
 
-// === LEER INPUT ===
+// ===== Leer input (ID token) =====
 $raw = file_get_contents('php://input');
 $data = json_decode($raw, true);
 $idToken = $data['credential'] ?? '';
 if (!$idToken) { jerr('Token faltante'); }
 
-// === CLIENT ID (desde config.php) ===
-$clientId = getenv('GOOGLE_CLIENT_ID');
-if (defined('GOOGLE_CLIENT_ID') && GOOGLE_CLIENT_ID) {
-    $clientId = GOOGLE_CLIENT_ID;
-}
+// ===== Resolver Client ID (backend) =====
+$clientId = getenv('GOOGLE_CLIENT_ID') ?: (defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '');
 if (!$clientId || $clientId === 'TU_CLIENT_ID_DE_GOOGLE') {
     jerr('Client ID no configurado');
 }
 
-// === VERIFICACIÓN DEL ID TOKEN ===
+// ===== Verificación del ID token =====
 
-// 1) Con librería oficial (si la tenés instalada por Composer)
+// 1) Con librería oficial (si está instalada por Composer: google/apiclient)
 function verifyWithLibrary($idToken, $clientId) {
     if (class_exists('\Google_Client')) {
         try {
@@ -53,7 +59,7 @@ function verifyWithLibrary($idToken, $clientId) {
     return null;
 }
 
-// 2) Via tokeninfo (requiere salida a internet). Primero intenta cURL; si falla, intenta file_get_contents.
+// 2) Via tokeninfo (requiere salida a internet). Primero cURL; si falla, file_get_contents.
 function verifyWithTokenInfo($idToken, $clientId) {
     $url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($idToken);
 
@@ -106,7 +112,7 @@ function verifyWithTokenInfo($idToken, $clientId) {
 $payload = verifyWithLibrary($idToken, $clientId) ?: verifyWithTokenInfo($idToken, $clientId);
 if (!$payload) { jerr('Fallo verificación token (payload vacío)'); }
 
-// Validaciones mínimas
+// ===== Validaciones mínimas del token =====
 $aud = $payload['aud'] ?? null;
 $iss = $payload['iss'] ?? null;
 $exp = (int)($payload['exp'] ?? 0);
@@ -124,7 +130,7 @@ $name          = $payload['name'] ?? null;
 if (!$email || !$emailVerified) { jerr('email no verificado o vacío'); }
 if (!$googleSub) { jerr('sub faltante'); }
 
-// === LOGIN / REGISTRO ===
+// ===== Login / Registro =====
 try {
     $con->beginTransaction();
 
