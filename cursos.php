@@ -5,7 +5,7 @@ require_once 'sbd.php';
 
 $sql = $con->prepare("SELECT * FROM cursos");
 $sql->execute();
-$cursos = $sql->fetchAll(PDO::FETCH_ASSOC);
+$cursos = $sql->fetchAll(mode: PDO::FETCH_ASSOC);
 ?>
 <div class="row row-cols-1 row-cols-md-3 g-4">
   <?php foreach ($cursos as $curso) { ?>
