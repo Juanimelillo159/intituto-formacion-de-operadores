@@ -65,7 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'assign_workers') {
-        $itemId = (int)($_POST['item_id'] ?? 0);
+        $itemTokenRaw = $_POST['item_id'] ?? '';
+        $itemToken = trim((string)$itemTokenRaw);
         $workerIdsInput = $_POST['worker_ids'] ?? [];
         if (!is_array($workerIdsInput)) {
             $workerIdsInput = [$workerIdsInput];
@@ -80,98 +81,281 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $workerIds = array_values($workerIds);
 
-        if ($itemId <= 0 || empty($workerIds)) {
+        if ($itemToken === '' || empty($workerIds)) {
             $redirectWithFeedback(['type' => 'danger', 'message' => 'Selecciona al menos un trabajador y un curso validos.']);
         }
 
-        try {
-            $pdo = getPdo();
-            $pdo->beginTransaction();
+        $assignmentType = null;
+        $courseId = 0;
+        $legacyItemId = null;
 
-            $stmtItem = $pdo->prepare(
-                'SELECT ci.id_item, ci.id_curso, ci.id_modalidad, ci.cantidad
-                 FROM compra_items ci
-                 INNER JOIN compras c ON c.id_compra = ci.id_compra
-                 WHERE ci.id_item = :item AND c.id_usuario = :usuario AND c.estado = :estado
-                 LIMIT 1 FOR UPDATE'
-            );
-            $stmtItem->bindValue(':item', $itemId, PDO::PARAM_INT);
-            $stmtItem->bindValue(':usuario', $userId, PDO::PARAM_INT);
-            $stmtItem->bindValue(':estado', 'pagada', PDO::PARAM_STR);
-            $stmtItem->execute();
-            $itemData = $stmtItem->fetch(PDO::FETCH_ASSOC);
+        if (preg_match('/^(cap|cert)-(\d+)$/', $itemToken, $matches)) {
+            $assignmentType = $matches[1];
+            $courseId = (int)$matches[2];
+        } elseif (ctype_digit($itemToken)) {
+            $legacyItemId = (int)$itemToken;
+        }
 
-            if (!$itemData) {
-                $pdo->rollBack();
-                $redirectWithFeedback(['type' => 'danger', 'message' => 'No se encontro el curso seleccionado.']);
+        if ($assignmentType === 'cap') {
+            try {
+                $pdo = getPdo();
+                $pdo->beginTransaction();
+
+                $seatLockSql = <<<'SQL'
+SELECT
+    cc.id_capacitacion,
+    cc.email,
+    cc.id_estado,
+    u.id_usuario AS assigned_user_id
+FROM checkout_capacitaciones cc
+LEFT JOIN usuarios u ON u.email = cc.email
+WHERE cc.creado_por = :usuario AND cc.id_curso = :curso
+FOR UPDATE
+SQL;
+                $stmtSeats = $pdo->prepare($seatLockSql);
+                $stmtSeats->bindValue(':usuario', $userId, PDO::PARAM_INT);
+                $stmtSeats->bindValue(':curso', $courseId, PDO::PARAM_INT);
+                $stmtSeats->execute();
+
+                $seatRows = $stmtSeats->fetchAll(PDO::FETCH_ASSOC);
+                if (empty($seatRows)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'No se encontro el curso seleccionado.']);
+                }
+
+                $availableSeats = [];
+                $assignedUserIds = [];
+                $assignedEmails = [];
+
+                foreach ($seatRows as $seatRow) {
+                    $seatId = (int)($seatRow['id_capacitacion'] ?? 0);
+                    if ($seatId <= 0) {
+                        continue;
+                    }
+                    $email = trim((string)($seatRow['email'] ?? ''));
+                    if ($email === '') {
+                        $availableSeats[] = $seatId;
+                    } else {
+                        $assignedEmails[strtolower($email)] = true;
+                        if ($seatRow['assigned_user_id'] !== null) {
+                            $assignedUserIds[(int)$seatRow['assigned_user_id']] = true;
+                        }
+                    }
+                }
+
+                if (empty($availableSeats)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'No quedan cupos disponibles para este curso.']);
+                }
+
+                if (count($workerIds) > count($availableSeats)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'warning', 'message' => 'Seleccionaste mas trabajadores que cupos disponibles.']);
+                }
+
+                $placeholders = implode(',', array_fill(0, count($workerIds), '?'));
+                $stmtMembership = $pdo->prepare('SELECT id_trabajador FROM empresa_trabajadores WHERE id_empresa = ? AND id_trabajador IN (' . $placeholders . ')');
+                $membershipParams = array_merge([$userId], $workerIds);
+                $stmtMembership->execute($membershipParams);
+                $validMembers = array_map('intval', $stmtMembership->fetchAll(PDO::FETCH_COLUMN));
+                $missingWorkers = array_diff($workerIds, $validMembers);
+                if (!empty($missingWorkers)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'Algunos trabajadores seleccionados no pertenecen a tu empresa.']);
+                }
+
+                $stmtWorkersData = $pdo->prepare('SELECT id_usuario, nombre, apellido, email, telefono FROM usuarios WHERE id_usuario IN (' . $placeholders . ')');
+                $stmtWorkersData->execute($workerIds);
+                $workersData = [];
+                while ($workerRow = $stmtWorkersData->fetch(PDO::FETCH_ASSOC)) {
+                    $workersData[(int)$workerRow['id_usuario']] = $workerRow;
+                }
+
+                if (count($workersData) !== count($workerIds)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'No encontramos a todos los trabajadores seleccionados.']);
+                }
+
+                foreach ($workerIds as $workerId) {
+                    $workerRow = $workersData[$workerId];
+                    $workerEmail = trim((string)($workerRow['email'] ?? ''));
+                    if ($workerEmail === '') {
+                        $pdo->rollBack();
+                        $redirectWithFeedback(['type' => 'danger', 'message' => 'Uno de los trabajadores no tiene correo electronico configurado.']);
+                    }
+                    if (isset($assignedUserIds[$workerId]) || isset($assignedEmails[strtolower($workerEmail)])) {
+                        $pdo->rollBack();
+                        $redirectWithFeedback(['type' => 'warning', 'message' => 'Alguno de los trabajadores ya tiene asignado este curso.']);
+                    }
+                }
+
+                $updateSeat = $pdo->prepare(
+                    'UPDATE checkout_capacitaciones
+                     SET nombre = :nombre,
+                         apellido = :apellido,
+                         email = :email,
+                         telefono = :telefono,
+                         dni = NULL,
+                         direccion = NULL,
+                         ciudad = NULL,
+                         provincia = NULL,
+                         pais = NULL,
+                         id_estado = :estado
+                     WHERE id_capacitacion = :id'
+                );
+
+                $historyStmt = null;
+                try {
+                    $historyStmt = $pdo->prepare('INSERT INTO historico_estado_capacitaciones (id_capacitacion, id_estado, cambiado_en) VALUES (:id, :estado, NOW())');
+                } catch (Throwable $historyException) {
+                    $historyStmt = null;
+                }
+
+                $assignedStateId = 2;
+                $availableQueue = $availableSeats;
+
+                foreach ($workerIds as $workerId) {
+                    $seatId = array_shift($availableQueue);
+                    if ($seatId === null) {
+                        break;
+                    }
+                    $workerRow = $workersData[$workerId];
+                    $workerName = trim((string)($workerRow['nombre'] ?? ''));
+                    $workerLastname = trim((string)($workerRow['apellido'] ?? ''));
+                    $workerEmail = trim((string)($workerRow['email'] ?? ''));
+                    $workerPhone = trim((string)($workerRow['telefono'] ?? ''));
+
+                    $updateSeat->execute([
+                        ':nombre' => $workerName !== '' ? $workerName : null,
+                        ':apellido' => $workerLastname !== '' ? $workerLastname : null,
+                        ':email' => $workerEmail,
+                        ':telefono' => $workerPhone !== '' ? $workerPhone : null,
+                        ':estado' => $assignedStateId,
+                        ':id' => $seatId,
+                    ]);
+
+                    if ($historyStmt !== null) {
+                        try {
+                            $historyStmt->execute([
+                                ':id' => $seatId,
+                                ':estado' => $assignedStateId,
+                            ]);
+                        } catch (Throwable $historyError) {
+                            error_log('mis_cursos history insert: ' . $historyError->getMessage());
+                        }
+                    }
+                }
+
+                $pdo->commit();
+
+                $assignedTotal = count($workerIds);
+                $redirectWithFeedback([
+                    'type' => 'success',
+                    'message' => $assignedTotal === 1
+                        ? 'Se asigno 1 trabajador al curso.'
+                        : 'Se asignaron ' . $assignedTotal . ' trabajadores al curso.'
+                ]);
+            } catch (Throwable $exception) {
+                if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                error_log('mis_cursos assign_cap: ' . $exception->getMessage());
+                $redirectWithFeedback(['type' => 'danger', 'message' => 'No pudimos asignar el curso. Intentalo nuevamente.']);
             }
+        } elseif ($assignmentType === 'cert') {
+            $redirectWithFeedback(['type' => 'info', 'message' => 'Por el momento las certificaciones no admiten asignaciones manuales.']);
+        } elseif ($legacyItemId !== null) {
+            try {
+                $pdo = getPdo();
+                $pdo->beginTransaction();
 
-            $stmtAssignments = $pdo->prepare('SELECT id_usuario FROM inscripciones WHERE id_item_compra = :item FOR UPDATE');
-            $stmtAssignments->bindValue(':item', $itemId, PDO::PARAM_INT);
-            $stmtAssignments->execute();
-            $currentAssignments = array_map('intval', $stmtAssignments->fetchAll(PDO::FETCH_COLUMN));
-            $assignedCount = count($currentAssignments);
-            $available = max(0, (int)$itemData['cantidad'] - $assignedCount);
+                $stmtItem = $pdo->prepare(
+                    'SELECT ci.id_item, ci.id_curso, ci.id_modalidad, ci.cantidad
+                     FROM compra_items ci
+                     INNER JOIN compras c ON c.id_compra = ci.id_compra
+                     WHERE ci.id_item = :item AND c.id_usuario = :usuario AND c.estado = :estado
+                     LIMIT 1 FOR UPDATE'
+                );
+                $stmtItem->bindValue(':item', $legacyItemId, PDO::PARAM_INT);
+                $stmtItem->bindValue(':usuario', $userId, PDO::PARAM_INT);
+                $stmtItem->bindValue(':estado', 'pagada', PDO::PARAM_STR);
+                $stmtItem->execute();
+                $itemData = $stmtItem->fetch(PDO::FETCH_ASSOC);
 
-            if ($available <= 0) {
-                $pdo->rollBack();
-                $redirectWithFeedback(['type' => 'danger', 'message' => 'No quedan cupos disponibles para este curso.']);
+                if (!$itemData) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'No se encontro el curso seleccionado.']);
+                }
+
+                $stmtAssignments = $pdo->prepare('SELECT id_usuario FROM inscripciones WHERE id_item_compra = :item FOR UPDATE');
+                $stmtAssignments->bindValue(':item', $legacyItemId, PDO::PARAM_INT);
+                $stmtAssignments->execute();
+                $currentAssignments = array_map('intval', $stmtAssignments->fetchAll(PDO::FETCH_COLUMN));
+                $assignedCount = count($currentAssignments);
+                $available = max(0, (int)$itemData['cantidad'] - $assignedCount);
+
+                if ($available <= 0) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'No quedan cupos disponibles para este curso.']);
+                }
+
+                if (count($workerIds) > $available) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'warning', 'message' => 'Seleccionaste mas trabajadores que cupos disponibles.']);
+                }
+
+                $placeholders = implode(',', array_fill(0, count($workerIds), '?'));
+                $stmtMembership = $pdo->prepare('SELECT id_trabajador FROM empresa_trabajadores WHERE id_empresa = ? AND id_trabajador IN (' . $placeholders . ')');
+                $membershipParams = array_merge([$userId], $workerIds);
+                $stmtMembership->execute($membershipParams);
+                $validMembers = array_map('intval', $stmtMembership->fetchAll(PDO::FETCH_COLUMN));
+                $missingWorkers = array_diff($workerIds, $validMembers);
+                if (!empty($missingWorkers)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'danger', 'message' => 'Algunos trabajadores seleccionados no pertenecen a tu empresa.']);
+                }
+
+                $alreadyAssigned = array_intersect($workerIds, $currentAssignments);
+                if (!empty($alreadyAssigned)) {
+                    $pdo->rollBack();
+                    $redirectWithFeedback(['type' => 'warning', 'message' => 'Alguno de los trabajadores ya tiene asignado este curso.']);
+                }
+
+                $insert = $pdo->prepare(
+                    'INSERT INTO inscripciones (id_usuario, id_curso, id_modalidad, id_item_compra)
+                     VALUES (:usuario, :curso, :modalidad, :item)'
+                );
+                $insert->bindValue(':curso', (int)$itemData['id_curso'], PDO::PARAM_INT);
+                if ($itemData['id_modalidad'] !== null) {
+                    $insert->bindValue(':modalidad', (int)$itemData['id_modalidad'], PDO::PARAM_INT);
+                } else {
+                    $insert->bindValue(':modalidad', null, PDO::PARAM_NULL);
+                }
+                $insert->bindValue(':item', $legacyItemId, PDO::PARAM_INT);
+
+                foreach ($workerIds as $workerId) {
+                    $insert->bindValue(':usuario', $workerId, PDO::PARAM_INT);
+                    $insert->execute();
+                }
+
+                $pdo->commit();
+
+                $assignedTotal = count($workerIds);
+                $redirectWithFeedback([
+                    'type' => 'success',
+                    'message' => $assignedTotal === 1
+                        ? 'Se asigno 1 trabajador al curso.'
+                        : 'Se asignaron ' . $assignedTotal . ' trabajadores al curso.'
+                ]);
+            } catch (Throwable $exception) {
+                if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                error_log('mis_cursos assign_workers: ' . $exception->getMessage());
+                $redirectWithFeedback(['type' => 'danger', 'message' => 'No pudimos asignar el curso. Intentalo nuevamente.']);
             }
-
-            if (count($workerIds) > $available) {
-                $pdo->rollBack();
-                $redirectWithFeedback(['type' => 'warning', 'message' => 'Seleccionaste mas trabajadores que cupos disponibles.']);
-            }
-
-            $placeholders = implode(',', array_fill(0, count($workerIds), '?'));
-            $stmtMembership = $pdo->prepare('SELECT id_trabajador FROM empresa_trabajadores WHERE id_empresa = ? AND id_trabajador IN (' . $placeholders . ')');
-            $membershipParams = array_merge([$userId], $workerIds);
-            $stmtMembership->execute($membershipParams);
-            $validMembers = array_map('intval', $stmtMembership->fetchAll(PDO::FETCH_COLUMN));
-            $missingWorkers = array_diff($workerIds, $validMembers);
-            if (!empty($missingWorkers)) {
-                $pdo->rollBack();
-                $redirectWithFeedback(['type' => 'danger', 'message' => 'Algunos trabajadores seleccionados no pertenecen a tu empresa.']);
-            }
-
-            $alreadyAssigned = array_intersect($workerIds, $currentAssignments);
-            if (!empty($alreadyAssigned)) {
-                $pdo->rollBack();
-                $redirectWithFeedback(['type' => 'warning', 'message' => 'Alguno de los trabajadores ya tiene asignado este curso.']);
-            }
-
-            $insert = $pdo->prepare(
-                'INSERT INTO inscripciones (id_usuario, id_curso, id_modalidad, id_item_compra)
-                 VALUES (:usuario, :curso, :modalidad, :item)'
-            );
-            $insert->bindValue(':curso', (int)$itemData['id_curso'], PDO::PARAM_INT);
-            if ($itemData['id_modalidad'] !== null) {
-                $insert->bindValue(':modalidad', (int)$itemData['id_modalidad'], PDO::PARAM_INT);
-            } else {
-                $insert->bindValue(':modalidad', null, PDO::PARAM_NULL);
-            }
-            $insert->bindValue(':item', $itemId, PDO::PARAM_INT);
-
-            foreach ($workerIds as $workerId) {
-                $insert->bindValue(':usuario', $workerId, PDO::PARAM_INT);
-                $insert->execute();
-            }
-
-            $pdo->commit();
-
-            $assignedTotal = count($workerIds);
-            $redirectWithFeedback([
-                'type' => 'success',
-                'message' => $assignedTotal === 1
-                    ? 'Se asigno 1 trabajador al curso.'
-                    : 'Se asignaron ' . $assignedTotal . ' trabajadores al curso.'
-            ]);
-        } catch (Throwable $exception) {
-            if (isset($pdo) && $pdo instanceof PDO && $pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            error_log('mis_cursos assign_workers: ' . $exception->getMessage());
-            $redirectWithFeedback(['type' => 'danger', 'message' => 'No pudimos asignar el curso. Intentalo nuevamente.']);
+        } else {
+            $redirectWithFeedback(['type' => 'danger', 'message' => 'El curso seleccionado no es valido.']);
         }
     }
 
@@ -194,6 +378,10 @@ $statusLabels = [
     'completado' => 'Completado',
     'vencido' => 'Vencido',
     'cancelado' => 'Cancelado',
+    'pendiente' => 'Pendiente',
+    'aprobado' => 'Aprobado',
+    'pagado' => 'Pagado',
+    'rechazado' => 'Rechazado',
 ];
 
 $statusClasses = [
@@ -202,6 +390,10 @@ $statusClasses = [
     'completado' => 'bg-success',
     'vencido' => 'bg-warning text-dark',
     'cancelado' => 'bg-danger',
+    'pendiente' => 'bg-warning text-dark',
+    'aprobado' => 'bg-success',
+    'pagado' => 'bg-success',
+    'rechazado' => 'bg-danger',
 ];
 
 $cursosComprados = [];
@@ -226,260 +418,314 @@ try {
     $inscripcionesAvailable = $tableExists($pdo, 'inscripciones');
     $comprasAvailable = $tableExists($pdo, 'compras');
     $compraItemsAvailable = $tableExists($pdo, 'compra_items');
+    $checkoutCapacitacionesAvailable = $tableExists($pdo, 'checkout_capacitaciones');
+    $checkoutCertificacionesAvailable = $tableExists($pdo, 'checkout_certificaciones');
+    $estadosInscripcionesAvailable = $tableExists($pdo, 'estados_inscripciones');
 
     if ($isHrManager) {
         $courses = [];
 
-        $sqlHr = <<<'SQL'
+        if ($checkoutCapacitacionesAvailable) {
+            $sqlCapacitaciones = <<<'SQL'
 SELECT
-    v.id_curso,
-    v.tipo_curso,
-    SUM(v.cantidad) AS total_cantidad,
-    COALESCE(NULLIF(c.nombre_curso, ''), CONCAT('Curso #', v.id_curso)) AS nombre_curso,
-    GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
-FROM v_cursos_rrhh v
-LEFT JOIN cursos c ON c.id_curso = v.id_curso
-LEFT JOIN curso_modalidad cm ON cm.id_curso = v.id_curso
-LEFT JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
-WHERE v.id_usuario = :usuario
-GROUP BY v.id_curso, v.tipo_curso, COALESCE(NULLIF(c.nombre_curso, ''), CONCAT('Curso #', v.id_curso))
-ORDER BY nombre_curso ASC, v.tipo_curso ASC
+    cc.id_capacitacion,
+    cc.id_curso,
+    cc.precio_total,
+    cc.moneda,
+    cc.nombre,
+    cc.apellido,
+    cc.email,
+    cc.telefono,
+    cc.id_estado,
+    cc.creado_en,
+    c.nombre_curso,
+    mods.modalidad_resumen,
+    est.nombre_estado AS estado_checkout,
+    u.id_usuario AS assigned_user_id,
+    u.nombre AS assigned_nombre,
+    u.apellido AS assigned_apellido
+FROM checkout_capacitaciones cc
+LEFT JOIN cursos c ON c.id_curso = cc.id_curso
+LEFT JOIN (
+    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+    FROM curso_modalidad cm
+    INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+    GROUP BY cm.id_curso
+) AS mods ON mods.id_curso = cc.id_curso
+LEFT JOIN estados_inscripciones est ON est.id_estado = cc.id_estado
+LEFT JOIN usuarios u ON u.email = cc.email
+WHERE cc.creado_por = :usuario
+ORDER BY cc.id_curso ASC, cc.creado_en ASC, cc.id_capacitacion ASC
 SQL;
-        $stmtHr = $pdo->prepare($sqlHr);
-        $stmtHr->bindValue(':usuario', $userId, PDO::PARAM_INT);
-        $stmtHr->execute();
+            $stmtCapacitaciones = $pdo->prepare($sqlCapacitaciones);
+            $stmtCapacitaciones->bindValue(':usuario', $userId, PDO::PARAM_INT);
+            $stmtCapacitaciones->execute();
 
-        while ($row = $stmtHr->fetch(PDO::FETCH_ASSOC)) {
-            $courseId = (int)$row['id_curso'];
-            $courseKey = 'course-' . $courseId;
-            $courseName = trim((string)($row['nombre_curso'] ?? ''));
-            if ($courseName === '') {
-                $courseName = 'Curso';
-            }
-
-            $totalCantidad = (int)($row['total_cantidad'] ?? 0);
-
-            if (!isset($courses[$courseKey])) {
-                $courses[$courseKey] = [
-                    'id_item' => null,
-                    'id_curso' => $courseId,
-                    'tipo_curso' => $row['tipo_curso'] ?? null,
-                    'nombre_curso' => $courseName,
-                    'nombre_modalidad' => $row['modalidad_resumen'] ?? null,
-                    'pagado_en' => null,
-                    'pagado_en_formatted' => null,
-                    'moneda' => null,
-                    'precio_unitario' => null,
-                    'cantidad' => $totalCantidad,
-                    'inscripcion' => null,
-                    'asignaciones' => [],
-                    'asignados' => 0,
-                    'disponibles' => $totalCantidad,
-                    'can_assign' => false,
-                    'purchase_items' => [],
-                ];
-            } else {
-                $courses[$courseKey]['cantidad'] += $totalCantidad;
-                $courses[$courseKey]['disponibles'] = max(0, (int)$courses[$courseKey]['cantidad']);
-            }
-        }
-
-        $assignableMap = [];
-
-        if ($comprasAvailable && $compraItemsAvailable) {
-            $sqlPurchases = 'SELECT
-                    c.id_compra,
-                    c.pagado_en,
-                    c.moneda,
-                    ci.id_item,
-                    ci.id_curso AS item_id_curso,
-                    ci.cantidad,
-                    ci.precio_unitario,
-                    ci.titulo_snapshot,
-                    cursos.nombre_curso,
-                    modalidades.nombre_modalidad
-                FROM compras c
-                INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
-                INNER JOIN cursos ON cursos.id_curso = ci.id_curso
-                LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad
-                WHERE c.id_usuario = :usuario
-                  AND c.estado = :estado
-                ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC';
-            $stmtPurchases = $pdo->prepare($sqlPurchases);
-            $stmtPurchases->bindValue(':usuario', $userId, PDO::PARAM_INT);
-            $stmtPurchases->bindValue(':estado', 'pagada', PDO::PARAM_STR);
-            $stmtPurchases->execute();
-
-            while ($row = $stmtPurchases->fetch(PDO::FETCH_ASSOC)) {
-            $itemId = (int)$row['id_item'];
-            $courseId = (int)$row['item_id_curso'];
-            $courseKey = 'course-' . $courseId;
-
-            if (!isset($courses[$courseKey])) {
-                $courseName = trim((string)($row['nombre_curso'] ?? ''));
+            while ($seat = $stmtCapacitaciones->fetch(PDO::FETCH_ASSOC)) {
+                $courseId = (int)($seat['id_curso'] ?? 0);
+                if ($courseId <= 0) {
+                    continue;
+                }
+                $courseKey = 'course-' . $courseId;
+                $courseName = trim((string)($seat['nombre_curso'] ?? ''));
                 if ($courseName === '') {
-                    $courseName = $row['titulo_snapshot'] ?? 'Curso';
+                    $courseName = 'Curso #' . $courseId;
+                }
+                $modalidadResumen = $seat['modalidad_resumen'] ?? null;
+
+                if (!isset($courses[$courseKey])) {
+                    $courses[$courseKey] = [
+                        'id_item' => null,
+                        'id_curso' => $courseId,
+                        'tipo_curso' => 'capacitacion',
+                        'nombre_curso' => $courseName,
+                        'nombre_modalidad' => $modalidadResumen,
+                        'pagado_en' => null,
+                        'pagado_en_formatted' => null,
+                        'moneda' => null,
+                        'precio_unitario' => null,
+                        'cantidad' => 0,
+                        'inscripcion' => null,
+                        'asignaciones' => [],
+                        'asignados' => 0,
+                        'disponibles' => 0,
+                        'can_assign' => false,
+                        'purchase_items' => [],
+                    ];
+                } elseif ($courses[$courseKey]['nombre_modalidad'] === null && $modalidadResumen !== null) {
+                    $courses[$courseKey]['nombre_modalidad'] = $modalidadResumen;
                 }
 
-                $courses[$courseKey] = [
-                    'id_item' => null,
-                    'id_curso' => $courseId,
-                    'tipo_curso' => null,
-                    'nombre_curso' => $courseName,
-                    'nombre_modalidad' => $row['nombre_modalidad'],
-                    'pagado_en' => null,
-                    'pagado_en_formatted' => null,
-                    'moneda' => null,
-                    'precio_unitario' => null,
-                    'cantidad' => 0,
-                    'inscripcion' => null,
-                    'asignaciones' => [],
-                    'asignados' => 0,
-                    'disponibles' => 0,
-                    'can_assign' => false,
-                    'purchase_items' => [],
-                ];
-            }
+                $course =& $courses[$courseKey];
+                $purchaseKey = 'cap-' . $courseId;
 
-            $formattedDate = null;
-            if (!empty($row['pagado_en'])) {
-                try {
-                    $formattedDate = (new DateTimeImmutable($row['pagado_en']))->format('d/m/Y H:i');
-                } catch (Throwable $exception) {
-                    $formattedDate = $row['pagado_en'];
-                }
-            }
-
-            $courses[$courseKey]['purchase_items'][$itemId] = [
-                'id_item' => $itemId,
-                'id_curso' => $courseId,
-                'nombre_curso' => $courses[$courseKey]['nombre_curso'],
-                'nombre_modalidad' => $row['nombre_modalidad'],
-                'pagado_en' => $row['pagado_en'],
-                'pagado_en_formatted' => $formattedDate,
-                'moneda' => $row['moneda'],
-                'precio_unitario' => (float)$row['precio_unitario'],
-                'cantidad' => (int)$row['cantidad'],
-                'asignaciones' => [],
-                'asignados' => 0,
-                'disponibles' => (int)$row['cantidad'],
-            ];
-
-            if ($courses[$courseKey]['nombre_modalidad'] === null && $row['nombre_modalidad'] !== null) {
-                $courses[$courseKey]['nombre_modalidad'] = $row['nombre_modalidad'];
-            }
-
-            if ($inscripcionesAvailable) {
-                $courses[$courseKey]['can_assign'] = true;
-                $assignableMap[$itemId] = $courseKey;
-            }
-        }
-
-        if ($inscripcionesAvailable && !empty($assignableMap)) {
-            $placeholders = implode(',', array_fill(0, count($assignableMap), '?'));
-            $sqlAssignments = 'SELECT
-                    i.id_inscripcion,
-                    i.id_item_compra,
-                    i.id_usuario,
-                    i.estado,
-                    i.progreso,
-                    u.nombre,
-                    u.apellido,
-                    u.email,
-                    u.id_permiso
-                FROM inscripciones i
-                INNER JOIN usuarios u ON u.id_usuario = i.id_usuario
-                WHERE i.id_item_compra IN (' . $placeholders . ')';
-
-            $stmtAssignments = $pdo->prepare($sqlAssignments);
-            $stmtAssignments->execute(array_keys($assignableMap));
-
-            while ($assignment = $stmtAssignments->fetch(PDO::FETCH_ASSOC)) {
-                $assignmentItemId = (int)$assignment['id_item_compra'];
-                if (!isset($assignableMap[$assignmentItemId])) {
-                    continue;
+                if (!isset($course['purchase_items'][$purchaseKey])) {
+                    $course['purchase_items'][$purchaseKey] = [
+                        'id_item' => $purchaseKey,
+                        'id_curso' => $courseId,
+                        'tipo_compra' => 'capacitacion',
+                        'nombre_curso' => $course['nombre_curso'],
+                        'nombre_modalidad' => $course['nombre_modalidad'],
+                        'pagado_en' => null,
+                        'pagado_en_formatted' => null,
+                        'moneda' => null,
+                        'precio_unitario' => null,
+                        'cantidad' => 0,
+                        'asignaciones' => [],
+                        'asignados' => 0,
+                        'disponibles' => 0,
+                        'can_assign' => true,
+                    ];
                 }
 
-                $courseKey = $assignableMap[$assignmentItemId];
-                if (!isset($courses[$courseKey]['purchase_items'][$assignmentItemId])) {
-                    continue;
+                $purchaseItem =& $course['purchase_items'][$purchaseKey];
+
+                $course['cantidad']++;
+                $purchaseItem['cantidad']++;
+
+                if ($purchaseItem['precio_unitario'] === null && $seat['precio_total'] !== null) {
+                    $purchaseItem['precio_unitario'] = (float)$seat['precio_total'];
+                }
+                if ($purchaseItem['moneda'] === null && $seat['moneda'] !== null) {
+                    $purchaseItem['moneda'] = (string)$seat['moneda'];
+                }
+                if ($course['moneda'] === null && $purchaseItem['moneda'] !== null) {
+                    $course['moneda'] = $purchaseItem['moneda'];
+                }
+                if ($course['precio_unitario'] === null && $purchaseItem['precio_unitario'] !== null) {
+                    $course['precio_unitario'] = $purchaseItem['precio_unitario'];
                 }
 
-                $stateKey = strtolower((string)$assignment['estado']);
-                $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', (string)$assignment['estado']));
-                $stateClass = $statusClasses[$stateKey] ?? 'bg-secondary';
-
-                $progress = null;
-                if ($assignment['progreso'] !== null) {
-                    $progress = max(0, min(100, (int)$assignment['progreso']));
-                }
-
-                $assignmentData = [
-                    'id_inscripcion' => (int)$assignment['id_inscripcion'],
-                    'id_usuario' => (int)$assignment['id_usuario'],
-                    'nombre' => $assignment['nombre'],
-                    'apellido' => $assignment['apellido'],
-                    'email' => $assignment['email'],
-                    'permiso' => (int)$assignment['id_permiso'],
-                    'estado' => $stateLabel,
-                    'clase' => $stateClass,
-                    'progreso' => $progress,
-                    'id_item_compra' => $assignmentItemId,
-                ];
-
-                $courses[$courseKey]['purchase_items'][$assignmentItemId]['asignaciones'][] = $assignmentData;
-                $courses[$courseKey]['asignaciones'][] = $assignmentData;
-            }
-        }
-
-        }
-
-        foreach ($courses as $courseKey => &$course) {
-            $totalQuantity = 0;
-            $totalAssigned = 0;
-            $latestTimestamp = null;
-            $latestFormatted = null;
-            $currency = $course['moneda'];
-            $unitPrice = $course['precio_unitario'];
-
-            foreach ($course['purchase_items'] as &$purchaseItem) {
-                $assignedCount = count($purchaseItem['asignaciones']);
-                $purchaseItem['asignados'] = $assignedCount;
-                $purchaseItem['disponibles'] = max(0, (int)$purchaseItem['cantidad'] - $assignedCount);
-                $totalQuantity += (int)$purchaseItem['cantidad'];
-                $totalAssigned += $assignedCount;
-
-                if (!empty($purchaseItem['pagado_en'])) {
-                    $timestamp = strtotime($purchaseItem['pagado_en']);
-                    if ($timestamp !== false && ($latestTimestamp === null || $timestamp > $latestTimestamp)) {
-                        $latestTimestamp = $timestamp;
-                        $latestFormatted = $purchaseItem['pagado_en_formatted'];
+                $createdAt = $seat['creado_en'] ?? null;
+                if ($createdAt !== null) {
+                    try {
+                        $createdDate = new DateTimeImmutable($createdAt);
+                        $formattedDate = $createdDate->format('d/m/Y H:i');
+                        $timestamp = (int)$createdDate->format('U');
+                        $purchaseItemTimestamp = $purchaseItem['pagado_en'] !== null ? strtotime((string)$purchaseItem['pagado_en']) : null;
+                        if ($purchaseItemTimestamp === null || $timestamp > $purchaseItemTimestamp) {
+                            $purchaseItem['pagado_en'] = $createdDate->format('Y-m-d H:i:s');
+                            $purchaseItem['pagado_en_formatted'] = $formattedDate;
+                        }
+                        $courseTimestamp = $course['pagado_en'] !== null ? strtotime((string)$course['pagado_en']) : null;
+                        if ($courseTimestamp === null || $timestamp > $courseTimestamp) {
+                            $course['pagado_en'] = $createdDate->format('Y-m-d H:i:s');
+                            $course['pagado_en_formatted'] = $formattedDate;
+                        }
+                    } catch (Throwable $dateException) {
+                        $purchaseItem['pagado_en'] = $createdAt;
+                        $purchaseItem['pagado_en_formatted'] = $createdAt;
+                        if ($course['pagado_en'] === null) {
+                            $course['pagado_en'] = $createdAt;
+                            $course['pagado_en_formatted'] = $createdAt;
+                        }
                     }
                 }
 
-                if ($currency === null && $purchaseItem['moneda'] !== null) {
-                    $currency = $purchaseItem['moneda'];
-                }
-                if ($unitPrice === null && $purchaseItem['precio_unitario'] !== null) {
-                    $unitPrice = $purchaseItem['precio_unitario'];
+                $email = trim((string)($seat['email'] ?? ''));
+                if ($email === '') {
+                    $course['disponibles']++;
+                    $purchaseItem['disponibles']++;
+                    $course['can_assign'] = true;
+                    $purchaseItem['can_assign'] = true;
+                } else {
+                    $stateKey = strtolower((string)($seat['estado_checkout'] ?? ''));
+                    $stateLabel = $statusLabels[$stateKey] ?? ucwords(str_replace('_', ' ', $stateKey));
+                    $stateClass = $statusClasses[$stateKey] ?? 'bg-secondary';
+
+                    $assignmentData = [
+                        'id_capacitacion' => (int)$seat['id_capacitacion'],
+                        'id_usuario' => $seat['assigned_user_id'] !== null ? (int)$seat['assigned_user_id'] : null,
+                        'nombre' => $seat['nombre'] ?? $seat['assigned_nombre'] ?? '',
+                        'apellido' => $seat['apellido'] ?? $seat['assigned_apellido'] ?? '',
+                        'email' => $email,
+                        'estado' => $stateLabel,
+                        'clase' => $stateClass,
+                        'progreso' => null,
+                        'id_item_compra' => (int)$seat['id_capacitacion'],
+                    ];
+
+                    $purchaseItem['asignaciones'][] = $assignmentData;
+                    $purchaseItem['asignados']++;
+                    $course['asignaciones'][] = $assignmentData;
+                    $course['asignados']++;
                 }
             }
-            unset($purchaseItem);
-
-            if ($totalQuantity > 0) {
-                $course['cantidad'] = $totalQuantity;
-            }
-
-            $course['asignados'] = $totalAssigned;
-            $course['disponibles'] = max(0, (int)$course['cantidad'] - $totalAssigned);
-            $course['pagado_en'] = $latestTimestamp !== null ? date('Y-m-d H:i:s', $latestTimestamp) : $course['pagado_en'];
-            $course['pagado_en_formatted'] = $latestFormatted;
-            $course['moneda'] = $currency;
-            $course['precio_unitario'] = $unitPrice;
         }
-        unset($course);
 
-        $cursosComprados = array_values($courses);
+        if ($checkoutCertificacionesAvailable) {
+            $sqlCertificaciones = <<<'SQL'
+SELECT
+    ccert.id_certificacion,
+    ccert.id_curso,
+    ccert.precio_total,
+    ccert.moneda,
+    ccert.creado_en,
+    cursos.nombre_curso,
+    mods.modalidad_resumen
+FROM checkout_certificaciones ccert
+LEFT JOIN cursos ON cursos.id_curso = ccert.id_curso
+LEFT JOIN (
+    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+    FROM curso_modalidad cm
+    INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+    GROUP BY cm.id_curso
+) AS mods ON mods.id_curso = ccert.id_curso
+WHERE ccert.creado_por = :usuario
+ORDER BY ccert.id_curso ASC, ccert.creado_en ASC, ccert.id_certificacion ASC
+SQL;
+            $stmtCertificaciones = $pdo->prepare($sqlCertificaciones);
+            $stmtCertificaciones->bindValue(':usuario', $userId, PDO::PARAM_INT);
+            $stmtCertificaciones->execute();
+
+            while ($cert = $stmtCertificaciones->fetch(PDO::FETCH_ASSOC)) {
+                $courseId = (int)($cert['id_curso'] ?? 0);
+                if ($courseId <= 0) {
+                    continue;
+                }
+                $courseKey = 'course-' . $courseId;
+                $courseName = trim((string)($cert['nombre_curso'] ?? ''));
+                if ($courseName === '') {
+                    $courseName = 'Curso #' . $courseId;
+                }
+                $modalidadResumen = $cert['modalidad_resumen'] ?? null;
+
+                if (!isset($courses[$courseKey])) {
+                    $courses[$courseKey] = [
+                        'id_item' => null,
+                        'id_curso' => $courseId,
+                        'tipo_curso' => 'certificacion',
+                        'nombre_curso' => $courseName,
+                        'nombre_modalidad' => $modalidadResumen,
+                        'pagado_en' => null,
+                        'pagado_en_formatted' => null,
+                        'moneda' => null,
+                        'precio_unitario' => null,
+                        'cantidad' => 0,
+                        'inscripcion' => null,
+                        'asignaciones' => [],
+                        'asignados' => 0,
+                        'disponibles' => 0,
+                        'can_assign' => false,
+                        'purchase_items' => [],
+                    ];
+                } elseif ($courses[$courseKey]['nombre_modalidad'] === null && $modalidadResumen !== null) {
+                    $courses[$courseKey]['nombre_modalidad'] = $modalidadResumen;
+                }
+
+                $course =& $courses[$courseKey];
+                $purchaseKey = 'cert-' . $courseId;
+
+                if (!isset($course['purchase_items'][$purchaseKey])) {
+                    $course['purchase_items'][$purchaseKey] = [
+                        'id_item' => $purchaseKey,
+                        'id_curso' => $courseId,
+                        'tipo_compra' => 'certificacion',
+                        'nombre_curso' => $course['nombre_curso'],
+                        'nombre_modalidad' => $course['nombre_modalidad'],
+                        'pagado_en' => null,
+                        'pagado_en_formatted' => null,
+                        'moneda' => null,
+                        'precio_unitario' => null,
+                        'cantidad' => 0,
+                        'asignaciones' => [],
+                        'asignados' => 0,
+                        'disponibles' => 0,
+                        'can_assign' => false,
+                    ];
+                }
+
+                $purchaseItem =& $course['purchase_items'][$purchaseKey];
+
+                $course['cantidad']++;
+                $purchaseItem['cantidad']++;
+
+                if ($purchaseItem['precio_unitario'] === null && $cert['precio_total'] !== null) {
+                    $purchaseItem['precio_unitario'] = (float)$cert['precio_total'];
+                }
+                if ($purchaseItem['moneda'] === null && $cert['moneda'] !== null) {
+                    $purchaseItem['moneda'] = (string)$cert['moneda'];
+                }
+                if ($course['moneda'] === null && $purchaseItem['moneda'] !== null) {
+                    $course['moneda'] = $purchaseItem['moneda'];
+                }
+                if ($course['precio_unitario'] === null && $purchaseItem['precio_unitario'] !== null) {
+                    $course['precio_unitario'] = $purchaseItem['precio_unitario'];
+                }
+
+                $createdAt = $cert['creado_en'] ?? null;
+                if ($createdAt !== null) {
+                    try {
+                        $createdDate = new DateTimeImmutable($createdAt);
+                        $formattedDate = $createdDate->format('d/m/Y H:i');
+                        $timestamp = (int)$createdDate->format('U');
+                        $purchaseItemTimestamp = $purchaseItem['pagado_en'] !== null ? strtotime((string)$purchaseItem['pagado_en']) : null;
+                        if ($purchaseItemTimestamp === null || $timestamp > $purchaseItemTimestamp) {
+                            $purchaseItem['pagado_en'] = $createdDate->format('Y-m-d H:i:s');
+                            $purchaseItem['pagado_en_formatted'] = $formattedDate;
+                        }
+                        $courseTimestamp = $course['pagado_en'] !== null ? strtotime((string)$course['pagado_en']) : null;
+                        if ($courseTimestamp === null || $timestamp > $courseTimestamp) {
+                            $course['pagado_en'] = $createdDate->format('Y-m-d H:i:s');
+                            $course['pagado_en_formatted'] = $formattedDate;
+                        }
+                    } catch (Throwable $dateException) {
+                        $purchaseItem['pagado_en'] = $createdAt;
+                        $purchaseItem['pagado_en_formatted'] = $createdAt;
+                        if ($course['pagado_en'] === null) {
+                            $course['pagado_en'] = $createdAt;
+                            $course['pagado_en_formatted'] = $createdAt;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!empty($courses)) {
+            uasort($courses, static function (array $left, array $right): int {
+                return strcmp(strtolower((string)($left['nombre_curso'] ?? '')), strtolower((string)($right['nombre_curso'] ?? '')));
+            });
+        }
 
         $stmtWorkers = $pdo->prepare(
             'SELECT u.id_usuario, u.nombre, u.apellido, u.email
@@ -490,6 +736,29 @@ SQL;
         );
         $stmtWorkers->execute([$userId]);
         $workersOptions = $stmtWorkers->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($courses as &$course) {
+            $courseDisponibles = (int)($course['disponibles'] ?? 0);
+            $course['disponibles'] = $courseDisponibles;
+            $course['asignados'] = (int)($course['asignados'] ?? 0);
+            $course['cantidad'] = (int)($course['cantidad'] ?? 0);
+            $courseHasSlots = !empty($workersOptions) && $courseDisponibles > 0 && $course['tipo_curso'] === 'capacitacion';
+
+            $course['can_assign'] = $courseHasSlots;
+
+            foreach ($course['purchase_items'] as &$purchaseItem) {
+                $purchaseItem['disponibles'] = (int)($purchaseItem['disponibles'] ?? 0);
+                $purchaseItem['asignados'] = (int)($purchaseItem['asignados'] ?? 0);
+                $purchaseItem['cantidad'] = (int)($purchaseItem['cantidad'] ?? 0);
+                $purchaseItem['can_assign'] = $courseHasSlots && $purchaseItem['disponibles'] > 0;
+            }
+            unset($purchaseItem);
+
+            $course['purchase_items'] = array_values($course['purchase_items']);
+        }
+        unset($course);
+
+        $cursosComprados = array_values($courses);
     } else {
         if ($comprasAvailable && $compraItemsAvailable) {
             $items = [];
@@ -744,13 +1013,17 @@ $configActive = 'mis_cursos';
                                         <?php if ($hasPurchaseItems): ?>
                                             <?php foreach ($purchaseItems as $purchaseItem): ?>
                                                 <?php
-                                                $purchaseItemId = (int)($purchaseItem['id_item'] ?? 0);
-                                                if ($purchaseItemId <= 0) {
+                                                $purchaseItemToken = (string)($purchaseItem['id_item'] ?? '');
+                                                if ($purchaseItemToken === '') {
                                                     continue;
                                                 }
-                                                $panelId = 'assign-panel-' . $purchaseItemId;
-                                                $selectAllId = 'assign-select-all-' . $purchaseItemId;
-                                                $formId = 'assign-form-' . $purchaseItemId;
+                                                $purchaseItemSlug = preg_replace('/[^a-zA-Z0-9_-]/', '-', $purchaseItemToken);
+                                                if ($purchaseItemSlug === '') {
+                                                    $purchaseItemSlug = 'item-' . substr(md5($purchaseItemToken), 0, 8);
+                                                }
+                                                $panelId = 'assign-panel-' . $purchaseItemSlug;
+                                                $selectAllId = 'assign-select-all-' . $purchaseItemSlug;
+                                                $formId = 'assign-form-' . $purchaseItemSlug;
                                                 $availableSlots = isset($purchaseItem['disponibles']) ? (int)$purchaseItem['disponibles'] : max(0, (int)($purchaseItem['cantidad'] ?? 0));
                                                 $maxSelectable = min($availableSlots, count($availableWorkers));
                                                 $purchaseAssigned = $purchaseItem['asignaciones'] ?? [];
@@ -790,7 +1063,7 @@ $configActive = 'mis_cursos';
                                                             <div class="assign-panel shadow-sm">
                                                                 <form method="POST" class="assign-workers-form" id="<?php echo htmlspecialchars($formId, ENT_QUOTES, 'UTF-8'); ?>" data-available="<?php echo (int)$availableSlots; ?>">
                                                                     <input type="hidden" name="action" value="assign_workers">
-                                                                    <input type="hidden" name="item_id" value="<?php echo $purchaseItemId; ?>">
+                                                                    <input type="hidden" name="item_id" value="<?php echo htmlspecialchars($purchaseItemToken, ENT_QUOTES, 'UTF-8'); ?>">
                                                                     <div class="assign-panel__stats d-flex flex-wrap gap-3 align-items-center small text-muted mb-3">
                                                                         <span>Cupos disponibles: <strong data-remaining-count><?php echo (int)$availableSlots; ?></strong></span>
                                                                         <span>Seleccionados: <strong data-selected-count>0</strong></span>
@@ -817,7 +1090,7 @@ $configActive = 'mis_cursos';
                                                                             if ($workerEmail !== '' && $workerName !== $workerEmail) {
                                                                                 $workerLabel .= ' (' . $workerEmail . ')';
                                                                             }
-                                                                            $inputId = 'assign-worker-' . $purchaseItemId . '-' . $workerId;
+                                                                            $inputId = 'assign-worker-' . $purchaseItemSlug . '-' . $workerId;
                                                                             ?>
                                                                             <div class="form-check form-check-sm mb-2">
                                                                                 <input class="form-check-input assign-worker-checkbox" type="checkbox" name="worker_ids[]" value="<?php echo $workerId; ?>" id="<?php echo htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8'); ?>">
