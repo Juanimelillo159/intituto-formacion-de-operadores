@@ -156,3 +156,136 @@ try {
     ]);
     exit;
 }
+<?php
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+header('Content-Type: application/json; charset=UTF-8');
+
+require_once __DIR__ . '/../sbd.php'; // Debe exponer $con (PDO)
+
+$raw = file_get_contents('php://input');
+$data = json_decode($raw, true);
+$idToken = $data['credential'] ?? '';
+
+if (!$idToken) {
+    echo json_encode(['success' => false, 'message' => 'Token faltante.']); exit;
+}
+
+$clientId = getenv('GOOGLE_CLIENT_ID') ?: (defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : '');
+if (!$clientId || $clientId === 'TU_CLIENT_ID_DE_GOOGLE') {
+    echo json_encode(['success' => false, 'message' => 'Client ID no configurado.']); exit;
+}
+
+// --- Verificación del ID token ---
+function verifyWithLibrary($idToken, $clientId) {
+    if (class_exists('\Google_Client')) {
+        $client = new \Google_Client(['client_id' => $clientId]);
+        $payload = $client->verifyIdToken($idToken);
+        if ($payload && ($payload['aud'] ?? null) === $clientId) {
+            return $payload;
+        }
+    }
+    return null;
+}
+
+function verifyWithTokenInfo($idToken, $clientId) {
+    $ch = curl_init('https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($idToken));
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10]);
+    $out  = curl_exec($ch);
+    $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http !== 200) return null;
+    $payload = json_decode($out, true);
+    if (!is_array($payload)) return null;
+
+    if (($payload['aud'] ?? null) !== $clientId) return null;
+    if (!in_array($payload['iss'] ?? '', ['https://accounts.google.com','accounts.google.com'], true)) return null;
+    if (($payload['exp'] ?? 0) < time()) return null;
+
+    return $payload;
+}
+
+$payload = verifyWithLibrary($idToken, $clientId) ?: verifyWithTokenInfo($idToken, $clientId);
+if (!$payload) {
+    echo json_encode(['success' => false, 'message' => 'No pudimos validar el token de Google.']); exit;
+}
+
+$email         = strtolower(trim($payload['email'] ?? ''));
+$emailVerified = filter_var($payload['email_verified'] ?? false, FILTER_VALIDATE_BOOLEAN);
+$googleSub     = $payload['sub'] ?? null;
+$given         = $payload['given_name'] ?? null;
+$family        = $payload['family_name'] ?? null;
+$name          = $payload['name'] ?? null;
+
+if (!$email || !$emailVerified) {
+    echo json_encode(['success' => false, 'message' => 'Tu cuenta de Google no tiene un correo verificado.']); exit;
+}
+
+try {
+    $con->beginTransaction();
+
+    $stmt = $con->prepare('SELECT id_usuario, email, id_permiso, verificado FROM usuarios WHERE email = :email LIMIT 1');
+    $stmt->bindValue(':email', $email);
+    $stmt->execute();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($user) {
+        $id = (int)$user['id_usuario'];
+
+        $upd = $con->prepare('UPDATE usuarios
+            SET google_sub = COALESCE(google_sub, :sub),
+                verificado = 1,
+                nombre = COALESCE(NULLIF(nombre, \'\'), :nombre),
+                apellido = COALESCE(NULLIF(apellido, \'\'), :apellido),
+                id_estado = :estado
+            WHERE id_usuario = :id');
+        $upd->bindValue(':sub', $googleSub);
+        $upd->bindValue(':nombre', $given ?: ($name ?: null));
+        $upd->bindValue(':apellido', $family ?: null);
+        $upd->bindValue(':estado', 2, PDO::PARAM_INT); // 2 = logueado
+        $upd->bindValue(':id', $id, PDO::PARAM_INT);
+        $upd->execute();
+
+        $_SESSION['usuario'] = $id;
+        $_SESSION['email']   = $email;
+        $_SESSION['permiso'] = (int)$user['id_permiso'];
+    } else {
+        // Crear usuario nuevo (registro con Google)
+        $permiso = 2; // default
+        $rand    = bin2hex(random_bytes(24)); // password inutilizable
+        $hash    = password_hash($rand, PASSWORD_DEFAULT);
+
+        $ins = $con->prepare('INSERT INTO usuarios (email, clave, id_estado, id_permiso, verificado, google_sub, nombre, apellido)
+                              VALUES (:email, :clave, :estado, :permiso, 1, :sub, :nombre, :apellido)');
+        $ins->bindValue(':email', $email);
+        $ins->bindValue(':clave', $hash);
+        $ins->bindValue(':estado', 2, PDO::PARAM_INT);
+        $ins->bindValue(':permiso', $permiso, PDO::PARAM_INT);
+        $ins->bindValue(':sub', $googleSub);
+        $ins->bindValue(':nombre', $given ?: ($name ?: null));
+        $ins->bindValue(':apellido', $family ?: null);
+        $ins->execute();
+
+        $id = (int)$con->lastInsertId();
+        $_SESSION['usuario'] = $id;
+        $_SESSION['email']   = $email;
+        $_SESSION['permiso'] = $permiso;
+
+        // Si querés forzar aceptar TyC o completar datos, podés setear un flag:
+        // $_SESSION['first_google_login'] = 1;
+    }
+
+    $_SESSION['mis_cursos_alert'] = [
+        'icon' => 'success',
+        'title' => 'Sesión iniciada con Google',
+        'message' => 'Acceso completado correctamente.'
+    ];
+
+    $con->commit();
+
+    echo json_encode(['success' => true, 'redirect' => '../mis_cursos.php']);
+} catch (Throwable $e) {
+    if ($con->inTransaction()) $con->rollBack();
+    error_log('Google Auth error: ' . $e->getMessage());
+    echo json_encode(['success' => false, 'message' => 'No pudimos iniciar sesión con Google.']);
+}
