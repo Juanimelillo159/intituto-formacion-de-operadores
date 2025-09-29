@@ -82,9 +82,160 @@ try {
 
     $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $con->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+    $usuarioId = (int)($_SESSION['id_usuario'] ?? $_SESSION['usuario'] ?? 0);
 
     // Fallback para acciones cuando el submit se hace por JS
     $accion = $_POST['__accion'] ?? '';
+
+    if ($accion === 'guardar_certificado') {
+        header('Content-Type: application/json; charset=utf-8');
+        $responseCode = 200;
+        $payload = ['success' => false, 'message' => ''];
+        try {
+            if (!isset($_SESSION['id_usuario']) && !isset($_SESSION['usuario'])) {
+                $responseCode = 401;
+                throw new RuntimeException('Debés iniciar sesión para continuar.');
+            }
+            $usuarioId = (int)($_SESSION['id_usuario'] ?? $_SESSION['usuario'] ?? 0);
+            if ($usuarioId <= 0) {
+                $responseCode = 401;
+                throw new RuntimeException('Sesión no válida.');
+            }
+            $cursoId = (int)($_POST['id_curso'] ?? 0);
+            if ($cursoId <= 0) {
+                throw new InvalidArgumentException('Certificación inválida.');
+            }
+            $cursoStmt = $con->prepare('SELECT id_curso FROM cursos WHERE id_curso = :id LIMIT 1');
+            $cursoStmt->execute([':id' => $cursoId]);
+            if (!$cursoStmt->fetch()) {
+                throw new InvalidArgumentException('No encontramos la certificación seleccionada.');
+            }
+
+            $archivo = $_FILES['certificado_pdf'] ?? null;
+            if (!is_array($archivo) || ($archivo['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                throw new InvalidArgumentException('Necesitamos el PDF completo para continuar.');
+            }
+            $tmpName = (string)$archivo['tmp_name'];
+            if (!is_uploaded_file($tmpName)) {
+                throw new RuntimeException('Archivo inválido.');
+            }
+            $maxSize = 10 * 1024 * 1024;
+            $fileSize = (int)$archivo['size'];
+            if ($fileSize > $maxSize) {
+                throw new InvalidArgumentException('El archivo supera el tamaño máximo permitido (10 MB).');
+            }
+            $mime = '';
+            if (class_exists('finfo')) {
+                $finfo = new finfo(FILEINFO_MIME_TYPE);
+                if ($finfo) {
+                    $mime = (string)$finfo->file($tmpName);
+                }
+            }
+            if ($mime === '' && function_exists('mime_content_type')) {
+                $mime = (string)@mime_content_type($tmpName);
+            }
+            $filenameLower = strtolower((string)($archivo['name'] ?? ''));
+            $hasPdfExtension = substr($filenameLower, -4) === '.pdf';
+            if ($mime !== 'application/pdf' && !$hasPdfExtension) {
+                throw new InvalidArgumentException('Solo se permiten archivos PDF.');
+            }
+
+            $uploadDir = __DIR__ . '/../uploads/certificados';
+            if (!is_dir($uploadDir)) {
+                if (!mkdir($uploadDir, 0755, true) && !is_dir($uploadDir)) {
+                    throw new RuntimeException('No pudimos preparar la carpeta de certificados.');
+                }
+            }
+
+            $nombreArchivo = 'cert_' . date('YmdHis') . '_' . bin2hex(random_bytes(6)) . '.pdf';
+            $destinoAbs = $uploadDir . '/' . $nombreArchivo;
+            $destinoRel = 'uploads/certificados/' . $nombreArchivo;
+            if (!move_uploaded_file($tmpName, $destinoAbs)) {
+                throw new RuntimeException('No pudimos guardar el archivo en el servidor.');
+            }
+
+            $certId = (int)($_POST['id_certificado'] ?? 0);
+            $certRow = null;
+            if ($certId > 0) {
+                $certStmt = $con->prepare('SELECT id_certificado, pdf_path FROM certificados WHERE id_certificado = :id AND id_usuario = :usuario LIMIT 1');
+                $certStmt->execute([':id' => $certId, ':usuario' => $usuarioId]);
+                $certRow = $certStmt->fetch();
+                if (!$certRow) {
+                    $certId = 0;
+                    $certRow = null;
+                }
+            }
+
+            $estadoNuevo = 'pendiente_revision';
+            $mensajeNuevo = 'Tu formulario fue enviado y nuestro equipo lo está revisando. Te avisaremos por email cuando se apruebe.';
+            $alertaNueva = 'alert alert-warning';
+
+            $con->beginTransaction();
+            if ($certId > 0) {
+                $update = $con->prepare('UPDATE certificados SET pdf_nombre = :nombre, pdf_path = :ruta, pdf_mime = :mime, pdf_tamano = :tamano, estado = :estado, observaciones = NULL, pago_metodo = NULL, pago_estado = NULL, pago_monto = NULL, pago_moneda = NULL, pago_referencia = NULL, pago_comprobante_path = NULL, pago_comprobante_nombre = NULL, pago_comprobante_mime = NULL, pago_comprobante_tamano = NULL, actualizado_en = NOW() WHERE id_certificado = :id');
+                $update->execute([
+                    ':nombre' => (string)($archivo['name'] ?? $nombreArchivo),
+                    ':ruta' => $destinoRel,
+                    ':mime' => 'application/pdf',
+                    ':tamano' => $fileSize,
+                    ':estado' => $estadoNuevo,
+                    ':id' => $certId,
+                ]);
+            } else {
+                $insert = $con->prepare('INSERT INTO certificados (id_usuario, id_curso, pdf_nombre, pdf_path, pdf_mime, pdf_tamano, estado, creado_en) VALUES (:usuario, :curso, :nombre, :ruta, :mime, :tamano, :estado, NOW())');
+                $insert->execute([
+                    ':usuario' => $usuarioId,
+                    ':curso' => $cursoId,
+                    ':nombre' => (string)($archivo['name'] ?? $nombreArchivo),
+                    ':ruta' => $destinoRel,
+                    ':mime' => 'application/pdf',
+                    ':tamano' => $fileSize,
+                    ':estado' => $estadoNuevo,
+                ]);
+                $certId = (int)$con->lastInsertId();
+            }
+            $con->commit();
+
+            if ($certRow && !empty($certRow['pdf_path'])) {
+                $oldPath = __DIR__ . '/../' . ltrim((string)$certRow['pdf_path'], '/');
+                if (is_file($oldPath) && realpath($oldPath) !== realpath($destinoAbs)) {
+                    @unlink($oldPath);
+                }
+            }
+
+            $payload['success'] = true;
+            $payload['message'] = '¡Formulario recibido! Lo revisaremos a la brevedad.';
+            $payload['certificado'] = [
+                'id' => $certId,
+                'estado' => $estadoNuevo,
+                'pdfNombre' => (string)($archivo['name'] ?? $nombreArchivo),
+                'pdfUrl' => '../' . $destinoRel,
+                'mensaje' => $mensajeNuevo,
+                'puedePagar' => false,
+                'pagoRegistrado' => false,
+                'alertClass' => $alertaNueva,
+                'pagoEstado' => null,
+                'pagoMetodo' => null,
+                'pagoMonto' => null,
+                'pagoMoneda' => null,
+                'pagoBloqueado' => true,
+                'plantilla' => '../assets/docs/plantilla-certificacion.pdf',
+                'comprobanteUrl' => null,
+            ];
+        } catch (Throwable $exception) {
+            if (isset($destinoAbs) && isset($destinoRel) && is_file($destinoAbs)) {
+                @unlink($destinoAbs);
+            }
+            if (!isset($responseCode) || $responseCode === 200) {
+                $responseCode = $exception instanceof InvalidArgumentException ? 422 : 500;
+            }
+            $payload['success'] = false;
+            $payload['message'] = $exception->getMessage();
+        }
+        http_response_code($responseCode);
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
     $checkoutIsCrearOrden = isset($_POST['crear_orden']) || ($accion === 'crear_orden');
 
@@ -128,6 +279,25 @@ try {
         if ($checkoutCursoId <= 0) {
             throw new InvalidArgumentException('Curso inválido.');
         }
+        if ($checkoutTipo === 'certificacion' && $usuarioId > 0) {
+            try {
+                $usrStmt = $con->prepare('SELECT nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais FROM usuarios WHERE id_usuario = :id LIMIT 1');
+                $usrStmt->execute([':id' => $usuarioId]);
+                $usrRow = $usrStmt->fetch();
+                if ($usrRow) {
+                    if ($nombreInscrito === '') { $nombreInscrito = (string)$usrRow['nombre']; }
+                    if ($apellidoInscrito === '') { $apellidoInscrito = (string)$usrRow['apellido']; }
+                    if ($emailInscrito === '') { $emailInscrito = (string)$usrRow['email']; }
+                    if ($telefonoInscrito === '') { $telefonoInscrito = (string)$usrRow['telefono']; }
+                    if ($dniInscrito === '') { $dniInscrito = (string)$usrRow['dni']; }
+                    if ($direccionInsc === '') { $direccionInsc = (string)$usrRow['direccion']; }
+                    if ($ciudadInsc === '') { $ciudadInsc = (string)$usrRow['ciudad']; }
+                    if ($provinciaInsc === '') { $provinciaInsc = (string)$usrRow['provincia']; }
+                    if ($paisInsc === '') { $paisInsc = (string)$usrRow['pais']; }
+                }
+            } catch (Throwable $ignored) {
+            }
+        }
         if ($nombreInscrito === '' || $apellidoInscrito === '' || $emailInscrito === '' || $telefonoInscrito === '') {
             throw new InvalidArgumentException('Completá los datos obligatorios del inscripto.');
         }
@@ -140,6 +310,30 @@ try {
         $metodosPermitidos = ['transferencia', 'mercado_pago'];
         if (!in_array($metodoPago, $metodosPermitidos, true)) {
             throw new InvalidArgumentException('Método de pago inválido.');
+        }
+
+        $certificadoRow = null;
+        if ($checkoutTipo === 'certificacion') {
+            if ($usuarioId <= 0) {
+                throw new RuntimeException('Sesión inválida para la certificación.');
+            }
+            $certificadoId = (int)($_POST['id_certificado'] ?? 0);
+            if ($certificadoId <= 0) {
+                throw new InvalidArgumentException('Primero debés enviar el formulario de certificación.');
+            }
+            $certificadoStmt = $con->prepare('SELECT * FROM certificados WHERE id_certificado = :id AND id_usuario = :usuario LIMIT 1');
+            $certificadoStmt->execute([':id' => $certificadoId, ':usuario' => $usuarioId]);
+            $certificadoRow = $certificadoStmt->fetch();
+            if (!$certificadoRow) {
+                throw new RuntimeException('No encontramos tu solicitud de certificación.');
+            }
+            $estadoCert = strtolower((string)$certificadoRow['estado']);
+            if (!in_array($estadoCert, ['aprobado', 'pago_pendiente_confirmacion', 'pagado'], true)) {
+                throw new InvalidArgumentException('Tu formulario todavía no fue aprobado para realizar el pago.');
+            }
+            if ($estadoCert === 'pagado' || strtolower((string)($certificadoRow['pago_estado'] ?? '')) === 'pagado') {
+                throw new InvalidArgumentException('Ya registramos el pago de esta certificación.');
+            }
         }
 
         $cursoStmt = $con->prepare("SELECT id_curso, nombre_curso FROM cursos WHERE id_curso = :id LIMIT 1");
@@ -284,6 +478,25 @@ try {
             $checkoutUploadMoved = true;
         }
 
+        if ($checkoutTipo === 'certificacion' && $certificadoRow) {
+            $estadoDespuesPago = 'pago_pendiente_confirmacion';
+            $pagoEstado = 'pendiente';
+            $updateCertificado = $con->prepare('UPDATE certificados SET estado = :estado, pago_metodo = :metodo, pago_estado = :pago_estado, pago_monto = :monto, pago_moneda = :moneda, pago_referencia = :referencia, pago_comprobante_path = :comprobante_path, pago_comprobante_nombre = :comprobante_nombre, pago_comprobante_mime = :comprobante_mime, pago_comprobante_tamano = :comprobante_tamano, actualizado_en = NOW() WHERE id_certificado = :id');
+            $updateCertificado->execute([
+                ':estado' => $estadoDespuesPago,
+                ':metodo' => $metodoPago,
+                ':pago_estado' => $pagoEstado,
+                ':monto' => $precioFinal,
+                ':moneda' => $monedaPrecio,
+                ':referencia' => 'insc-' . $idInscripcion,
+                ':comprobante_path' => $checkoutUploadRel,
+                ':comprobante_nombre' => $comprobanteNombreOriginal,
+                ':comprobante_mime' => $comprobanteMime,
+                ':comprobante_tamano' => $comprobanteTamano,
+                ':id' => (int)$certificadoRow['id_certificado'],
+            ]);
+        }
+
         $con->commit();
 
         $_SESSION['checkout_success'] = [
@@ -291,6 +504,7 @@ try {
             'metodo' => $metodoPago,
             'tipo' => $checkoutTipo,
             'id_curso' => $checkoutCursoId,
+            'certificado' => $checkoutTipo === 'certificacion' && $certificadoRow ? (int)$certificadoRow['id_certificado'] : null,
         ];
 
         log_cursos('checkout_crear_orden_ok', [

@@ -113,6 +113,35 @@ CREATE TABLE `checkout_pagos` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `certificados`
+--
+
+CREATE TABLE `certificados` (
+  `id_certificado` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `id_curso` int(11) NOT NULL,
+  `pdf_nombre` varchar(255) NOT NULL,
+  `pdf_path` varchar(255) NOT NULL,
+  `pdf_mime` varchar(120) DEFAULT NULL,
+  `pdf_tamano` int(10) UNSIGNED DEFAULT NULL,
+  `estado` varchar(40) NOT NULL DEFAULT 'pendiente_revision',
+  `observaciones` varchar(255) DEFAULT NULL,
+  `pago_metodo` varchar(40) DEFAULT NULL,
+  `pago_estado` varchar(40) DEFAULT NULL,
+  `pago_monto` decimal(12,2) DEFAULT NULL,
+  `pago_moneda` varchar(10) DEFAULT NULL,
+  `pago_referencia` varchar(120) DEFAULT NULL,
+  `pago_comprobante_path` varchar(255) DEFAULT NULL,
+  `pago_comprobante_nombre` varchar(255) DEFAULT NULL,
+  `pago_comprobante_mime` varchar(120) DEFAULT NULL,
+  `pago_comprobante_tamano` int(10) UNSIGNED DEFAULT NULL,
+  `creado_en` datetime NOT NULL DEFAULT current_timestamp(),
+  `actualizado_en` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `cursos`
 --
 
@@ -341,6 +370,14 @@ ALTER TABLE `checkout_pagos`
   ADD KEY `idx_checkout_pagos_inscripcion` (`id_inscripcion`);
 
 --
+-- Indices de la tabla `certificados`
+--
+ALTER TABLE `certificados`
+  ADD PRIMARY KEY (`id_certificado`),
+  ADD KEY `idx_certificados_usuario` (`id_usuario`),
+  ADD KEY `idx_certificados_curso` (`id_curso`);
+
+--
 -- Indices de la tabla `cursos`
 --
 ALTER TABLE `cursos`
@@ -415,6 +452,12 @@ ALTER TABLE `checkout_mercadopago`
 --
 ALTER TABLE `checkout_pagos`
   MODIFY `id_pago` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `certificados`
+--
+ALTER TABLE `certificados`
+  MODIFY `id_certificado` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT de la tabla `cursos`

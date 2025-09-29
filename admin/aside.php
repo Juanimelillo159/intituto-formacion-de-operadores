@@ -13,7 +13,7 @@
     <!-- Navbar -->
 
 
-    <!-- Main Sidebar Container -->F
+    <!-- Main Sidebar Container -->
     <aside class="main-sidebar sidebar-dark-primary elevation-4">
       <!-- Brand Logo -->
       <a href="admin.php" class="brand-link">
@@ -67,6 +67,12 @@
                   </a>
                 </li>
               </ul>
+            </li>
+            <li class="nav-item">
+              <a href="certificaciones.php" class="nav-link">
+                <i class="fas fa-solid fa-certificate"></i>
+                <p>Certificaciones</p>
+              </a>
             </li>
             <!-- imagenes del carrusel -->
             <li class="nav-item">

@@ -35,6 +35,21 @@ try {
         throw new InvalidArgumentException('El método de pago seleccionado es inválido para esta operación.');
     }
 
+    $usuarioId = (int)($_SESSION['id_usuario'] ?? $_SESSION['usuario'] ?? 0);
+    $tipoCheckoutRaw = strtolower(trim((string)($_POST['tipo_checkout'] ?? ($_POST['tipo'] ?? 'curso'))));
+    if ($tipoCheckoutRaw === 'capacitaciones') {
+        $tipoCheckoutRaw = 'capacitacion';
+    } elseif ($tipoCheckoutRaw === 'certificaciones') {
+        $tipoCheckoutRaw = 'certificacion';
+    }
+    if (!in_array($tipoCheckoutRaw, ['curso', 'capacitacion', 'certificacion'], true)) {
+        $tipoCheckoutRaw = 'curso';
+    }
+    $esCertificacion = ($tipoCheckoutRaw === 'certificacion');
+    if ($esCertificacion && $usuarioId <= 0) {
+        throw new RuntimeException('Sesión no válida. Volvé a iniciar sesión.');
+    }
+
     $cursoId = (int) ($_POST['id_curso'] ?? 0);
     $nombre = trim((string) ($_POST['nombre_insc'] ?? ''));
     $apellido = trim((string) ($_POST['apellido_insc'] ?? ''));
@@ -46,6 +61,26 @@ try {
     $provincia = trim((string) ($_POST['prov_insc'] ?? ''));
     $pais = trim((string) ($_POST['pais_insc'] ?? 'Argentina'));
     $aceptaTyC = isset($_POST['acepta_tyc']);
+
+    if ($esCertificacion && $usuarioId > 0) {
+        try {
+            $usrStmt = $con->prepare('SELECT nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais FROM usuarios WHERE id_usuario = :id LIMIT 1');
+            $usrStmt->execute([':id' => $usuarioId]);
+            $usrRow = $usrStmt->fetch();
+            if ($usrRow) {
+                if ($nombre === '') { $nombre = (string)$usrRow['nombre']; }
+                if ($apellido === '') { $apellido = (string)$usrRow['apellido']; }
+                if ($email === '') { $email = (string)$usrRow['email']; }
+                if ($telefono === '') { $telefono = (string)$usrRow['telefono']; }
+                if ($dni === '') { $dni = (string)$usrRow['dni']; }
+                if ($direccion === '') { $direccion = (string)$usrRow['direccion']; }
+                if ($ciudad === '') { $ciudad = (string)$usrRow['ciudad']; }
+                if ($provincia === '') { $provincia = (string)$usrRow['provincia']; }
+                if ($pais === '') { $pais = (string)$usrRow['pais']; }
+            }
+        } catch (Throwable $ignored) {
+        }
+    }
 
     if ($cursoId <= 0) {
         throw new InvalidArgumentException('Curso inválido.');
@@ -83,6 +118,27 @@ try {
 
     if ($precioFinal <= 0) {
         throw new RuntimeException('Aún no hay un precio vigente para este curso.');
+    }
+
+    $certificadoRow = null;
+    if ($esCertificacion) {
+        $certificadoId = (int)($_POST['id_certificado'] ?? 0);
+        if ($certificadoId <= 0) {
+            throw new InvalidArgumentException('Necesitamos validar tu formulario antes de iniciar el pago.');
+        }
+        $certificadoStmt = $con->prepare('SELECT * FROM certificados WHERE id_certificado = :id AND id_usuario = :usuario LIMIT 1');
+        $certificadoStmt->execute([':id' => $certificadoId, ':usuario' => $usuarioId]);
+        $certificadoRow = $certificadoStmt->fetch();
+        if (!$certificadoRow) {
+            throw new RuntimeException('No encontramos tu solicitud de certificación.');
+        }
+        $estadoCert = strtolower((string)$certificadoRow['estado']);
+        if (!in_array($estadoCert, ['aprobado', 'pago_pendiente_confirmacion', 'pagado'], true)) {
+            throw new InvalidArgumentException('Tu formulario aún no fue aprobado para iniciar el pago.');
+        }
+        if ($estadoCert === 'pagado' || strtolower((string)($certificadoRow['pago_estado'] ?? '')) === 'pagado') {
+            throw new InvalidArgumentException('Esta certificación ya registra un pago.');
+        }
     }
 
     $con->beginTransaction();
@@ -152,8 +208,13 @@ try {
             'id_inscripcion' => $inscripcionId,
             'id_curso' => $cursoId,
             'email' => $email,
+            'tipo_checkout' => $tipoCheckoutRaw,
         ],
     ];
+
+    if ($esCertificacion && $certificadoRow) {
+        $preferenceRequest['metadata']['id_certificado'] = (int)$certificadoRow['id_certificado'];
+    }
 
     if ($email !== '') {
         $preferenceRequest['payer'] = ['email' => $email];
@@ -235,6 +296,19 @@ try {
         ':external' => $externalReference,
         ':payload' => checkout_encode_payload($payloadData),
     ]);
+
+    if ($esCertificacion && $certificadoRow) {
+        $updateCertificado = $con->prepare('UPDATE certificados SET estado = :estado, pago_metodo = :metodo, pago_estado = :pago_estado, pago_monto = :monto, pago_moneda = :moneda, pago_referencia = :referencia, pago_comprobante_path = NULL, pago_comprobante_nombre = NULL, pago_comprobante_mime = NULL, pago_comprobante_tamano = NULL, actualizado_en = NOW() WHERE id_certificado = :id');
+        $updateCertificado->execute([
+            ':estado' => 'pago_pendiente_confirmacion',
+            ':metodo' => 'mercado_pago',
+            ':pago_estado' => 'pendiente',
+            ':monto' => $precioFinal,
+            ':moneda' => strtoupper($moneda),
+            ':referencia' => $externalReference,
+            ':id' => (int)$certificadoRow['id_certificado'],
+        ]);
+    }
 
     $con->commit();
 
