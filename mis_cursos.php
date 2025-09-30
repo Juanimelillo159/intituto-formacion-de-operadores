@@ -1230,6 +1230,7 @@ SQL;
 
 
 $configActive = 'mis_cursos';
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -1320,6 +1321,7 @@ $configActive = 'mis_cursos';
                         <div class="course-card__header">
                             <div class="course-card__headline d-flex align-items-start justify-content-between gap-3 flex-wrap">
                                 <div class="course-card__info">
+
                                     <h2 class="h5 mb-1"><?php echo htmlspecialchars($curso['nombre_curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></h2>
                                     <?php if (!empty($curso['nombre_modalidad'])): ?>
                                         <div class="text-muted small">Modalidad: <?php echo htmlspecialchars($curso['nombre_modalidad'], ENT_QUOTES, 'UTF-8'); ?></div>
@@ -1574,6 +1576,7 @@ $configActive = 'mis_cursos';
                                     <p class="text-muted small mb-0">Todav&iacute;a no ten&eacute;s compras con cupos disponibles para asignar.</p>
                                 </div>
                             <?php endif; ?>
+
                         <?php endif; ?>
                     </div>
                 </div>
@@ -1583,6 +1586,7 @@ $configActive = 'mis_cursos';
 <?php endif; ?>
 
             </div>
+
 
 
             </div>
