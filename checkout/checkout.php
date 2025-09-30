@@ -43,6 +43,13 @@ $st = $con->prepare("SELECT * FROM cursos WHERE id_curso = :id");
 $st->execute([':id' => $id_curso]);
 $curso = $st->fetch(PDO::FETCH_ASSOC);
 
+$cursoNombre = null;
+$cursoDescripcion = null;
+if ($curso) {
+    $cursoNombre = (string)($curso['nombre_certificacion'] ?? $curso['nombre_curso'] ?? '');
+    $cursoDescripcion = (string)($curso['descripcion'] ?? $curso['descripcion_curso'] ?? '');
+}
+
 $precio_vigente = null;
 if ($curso) {
     $pv = $con->prepare("
@@ -181,10 +188,18 @@ $flash_error   = $_SESSION['checkout_error'] ?? null;
 unset($_SESSION['checkout_success'], $_SESSION['checkout_error']);
 
 $checkoutSubtitle = 'Seguí los pasos para reservar tu lugar en la capacitación elegida.';
+$notFoundMessage = 'No pudimos encontrar la capacitación seleccionada. Volvé al listado e intentá nuevamente.';
+$stepHelper = 'Detalles del curso';
+$summaryTitle = 'Resumen del curso';
+$priceHelper = 'El equipo se pondrá en contacto para coordinar disponibilidad, medios de pago y comenzar tu proceso.';
 if ($tipo_checkout === 'curso') {
     $checkoutSubtitle = 'Seguí los pasos para confirmar tu inscripción.';
 } elseif ($tipo_checkout === 'certificacion') {
     $checkoutSubtitle = 'Completá la solicitud y el pago para finalizar tu certificación.';
+    $notFoundMessage = 'No pudimos encontrar la certificación seleccionada. Volvé al listado e intentá nuevamente.';
+    $stepHelper = 'Detalles de la certificación';
+    $summaryTitle = 'Resumen de la certificación';
+    $priceHelper = 'Revisaremos la documentación y coordinaremos los pasos para avanzar con la certificación.';
 }
 ?>
 <!DOCTYPE html>
@@ -213,10 +228,10 @@ include '../head.php';
                         <div class="checkout-header">
                             <h1>Finalizá tu inscripción</h1>
                             <p><?php echo h($checkoutSubtitle); ?></p>
-                            <?php if ($curso): ?>
+                            <?php if ($curso && $cursoNombre !== null && $cursoNombre !== ''): ?>
                                 <div class="checkout-course-name">
                                     <i class="fas fa-graduation-cap"></i>
-                                    <?php echo h($curso['nombre_curso']); ?>
+                                    <?php echo h($cursoNombre); ?>
                                 </div>
                             <?php endif; ?>
                         </div>
@@ -224,7 +239,7 @@ include '../head.php';
                         <?php if (!$curso): ?>
                             <div class="checkout-content">
                                 <div class="alert alert-danger checkout-alert mb-0" role="alert">
-                                    No pudimos encontrar la capacitación seleccionada. Volvé al listado e intentá nuevamente.
+                                    <?php echo h($notFoundMessage); ?>
                                 </div>
                             </div>
                         <?php else: ?>
@@ -233,7 +248,7 @@ include '../head.php';
                                     <div class="step-index">1</div>
                                     <div class="step-label">
                                         Resumen
-                                        <span class="step-helper">Detalles del curso</span>
+                                        <span class="step-helper"><?php echo h($stepHelper); ?></span>
                                     </div>
                                 </div>
                                 <div class="checkout-step" data-step="2">
@@ -329,10 +344,10 @@ include '../head.php';
                                         <div class="row g-4 align-items-stretch">
                                             <div class="col-lg-7">
                                                 <div class="summary-card h-100">
-                                                    <h5>Resumen del curso</h5>
+                                                    <h5><?php echo h($summaryTitle); ?></h5>
                                                     <div class="summary-item">
                                                         <strong>Nombre</strong>
-                                                        <span><?php echo h($curso['nombre_curso']); ?></span>
+                                                        <span><?php echo h($cursoNombre ?? ($curso['nombre_curso'] ?? '')); ?></span>
                                                     </div>
                                                     <div class="summary-item">
                                                         <strong>Duración</strong>
@@ -343,7 +358,7 @@ include '../head.php';
                                                         <span><?php echo h($curso['complejidad'] ?? 'Intermedio'); ?></span>
                                                     </div>
                                                     <div class="summary-description mt-3">
-                                                        <?php echo nl2br(h($curso['descripcion_curso'] ?? '')); ?>
+                                                        <?php echo nl2br(h($cursoDescripcion ?? ($curso['descripcion_curso'] ?? ''))); ?>
                                                     </div>
                                                 </div>
                                             </div>
@@ -361,7 +376,7 @@ include '../head.php';
                                                         <?php endif; ?>
                                                     </div>
                                                     <div class="small text-muted mt-3">
-                                                        El equipo se pondrá en contacto para coordinar disponibilidad, medios de pago y comenzar tu proceso.
+                                                        <?php echo h($priceHelper); ?>
                                                     </div>
                                                 </div>
                                             </div>
@@ -377,16 +392,21 @@ include '../head.php';
 
                                     <div class="step-panel" data-step="2">
                                         <?php if ($tipo_checkout === 'certificacion'): ?>
-                                            <input type="hidden" name="nombre_insc" value="<?php echo h($certificacionData['nombre'] ?? $prefillNombre); ?>">
-                                            <input type="hidden" name="apellido_insc" value="<?php echo h($certificacionData['apellido'] ?? $prefillApellido); ?>">
-                                            <input type="hidden" name="email_insc" value="<?php echo h($certificacionData['email'] ?? $prefillEmail); ?>">
-                                            <input type="hidden" name="tel_insc" value="<?php echo h($certificacionData['telefono'] ?? $prefillTelefono); ?>">
-                                            <input type="hidden" name="dni_insc" value="<?php echo h($certificacionData['dni'] ?? $prefillDni); ?>">
-                                            <input type="hidden" name="dir_insc" value="<?php echo h($certificacionData['direccion'] ?? $prefillDireccion); ?>">
-                                            <input type="hidden" name="ciu_insc" value="<?php echo h($certificacionData['ciudad'] ?? $prefillCiudad); ?>">
-                                            <input type="hidden" name="prov_insc" value="<?php echo h($certificacionData['provincia'] ?? $prefillProvincia); ?>">
-                                            <input type="hidden" name="pais_insc" value="<?php echo h($certificacionData['pais'] ?? $prefillPais); ?>">
-
+                                            <?php
+                                            $certNombreValue = $certificacionData['nombre'] ?? $prefillNombre;
+                                            $certApellidoValue = $certificacionData['apellido'] ?? $prefillApellido;
+                                            $certEmailValue = $certificacionData['email'] ?? $prefillEmail;
+                                            $certTelefonoValue = $certificacionData['telefono'] ?? $prefillTelefono;
+                                            $certDniValue = $certificacionData['dni'] ?? $prefillDni;
+                                            $certDireccionValue = $certificacionData['direccion'] ?? $prefillDireccion;
+                                            $certCiudadValue = $certificacionData['ciudad'] ?? $prefillCiudad;
+                                            $certProvinciaValue = $certificacionData['provincia'] ?? $prefillProvincia;
+                                            $certPaisValue = $certificacionData['pais'] ?? $prefillPais;
+                                            $certInputsReadonly = $certificacionAllowSubmit ? '' : 'readonly';
+                                            $certDatosHelper = $certificacionAllowSubmit
+                                                ? 'Actualizá tus datos si es necesario antes de enviar la solicitud.'
+                                                : 'Estos son los datos que utilizaste en tu solicitud.';
+                                            ?>
                                             <?php if ($certificacionEstado !== null): ?>
                                                 <div class="alert alert-info checkout-alert mb-4" role="alert">
                                                     <div class="d-flex align-items-start gap-2">
@@ -424,31 +444,45 @@ include '../head.php';
                                                 <div class="col-lg-5">
                                                     <div class="summary-card h-100">
                                                         <h5>Datos del solicitante</h5>
-                                                        <p class="mb-3 small text-muted">Utilizaremos estos datos de tu perfil para validar tu certificación.</p>
-                                                        <?php
-                                                        $nombreMostrar = $certificacionData['nombre'] ?? $prefillNombre;
-                                                        $apellidoMostrar = $certificacionData['apellido'] ?? $prefillApellido;
-                                                        $emailMostrar = $certificacionData['email'] ?? $prefillEmail;
-                                                        $telefonoMostrar = $certificacionData['telefono'] ?? $prefillTelefono;
-                                                        ?>
-                                                        <ul class="list-unstyled mb-0">
-                                                            <li><strong>Nombre:</strong> <?php echo h($nombreMostrar); ?> <?php echo h($apellidoMostrar); ?></li>
-                                                            <li><strong>Email:</strong> <?php echo h($emailMostrar); ?></li>
-                                                            <li><strong>Teléfono:</strong> <?php echo $telefonoMostrar ? h($telefonoMostrar) : 'No informado'; ?></li>
-                                                            <?php if ($prefillDni || (!empty($certificacionData['dni']))): ?>
-                                                                <li><strong>DNI:</strong> <?php echo h($certificacionData['dni'] ?? $prefillDni); ?></li>
-                                                            <?php endif; ?>
-                                                            <?php if ($prefillDireccion || (!empty($certificacionData['direccion']))): ?>
-                                                                <li><strong>Dirección:</strong> <?php echo h($certificacionData['direccion'] ?? $prefillDireccion); ?></li>
-                                                            <?php endif; ?>
-                                                            <?php if ($prefillCiudad || (!empty($certificacionData['ciudad']))): ?>
-                                                                <li><strong>Ciudad:</strong> <?php echo h($certificacionData['ciudad'] ?? $prefillCiudad); ?></li>
-                                                            <?php endif; ?>
-                                                            <?php if ($prefillProvincia || (!empty($certificacionData['provincia']))): ?>
-                                                                <li><strong>Provincia:</strong> <?php echo h($certificacionData['provincia'] ?? $prefillProvincia); ?></li>
-                                                            <?php endif; ?>
-                                                            <li><strong>País:</strong> <?php echo h($certificacionData['pais'] ?? $prefillPais); ?></li>
-                                                        </ul>
+                                                        <p class="mb-3 small text-muted"><?php echo h($certDatosHelper); ?></p>
+                                                        <div class="row g-3">
+                                                            <div class="col-12">
+                                                                <label for="cert_nombre" class="form-label required-field">Nombre</label>
+                                                                <input type="text" class="form-control" id="cert_nombre" name="nombre_insc" autocomplete="given-name" value="<?php echo h($certNombreValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?>>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <label for="cert_apellido" class="form-label required-field">Apellido</label>
+                                                                <input type="text" class="form-control" id="cert_apellido" name="apellido_insc" autocomplete="family-name" value="<?php echo h($certApellidoValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?>>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <label for="cert_email" class="form-label required-field">Email</label>
+                                                                <input type="email" class="form-control" id="cert_email" name="email_insc" autocomplete="email" value="<?php echo h($certEmailValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?>>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <label for="cert_telefono" class="form-label">Teléfono</label>
+                                                                <input type="text" class="form-control" id="cert_telefono" name="tel_insc" autocomplete="tel" value="<?php echo h($certTelefonoValue); ?>" <?php echo $certInputsReadonly; ?>>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label for="cert_dni" class="form-label">DNI</label>
+                                                                <input type="text" class="form-control" id="cert_dni" name="dni_insc" value="<?php echo h($certDniValue); ?>" <?php echo $certInputsReadonly; ?>>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label for="cert_pais" class="form-label">País</label>
+                                                                <input type="text" class="form-control" id="cert_pais" name="pais_insc" value="<?php echo h($certPaisValue); ?>" <?php echo $certInputsReadonly; ?>>
+                                                            </div>
+                                                            <div class="col-12">
+                                                                <label for="cert_direccion" class="form-label">Dirección</label>
+                                                                <input type="text" class="form-control" id="cert_direccion" name="dir_insc" autocomplete="address-line1" value="<?php echo h($certDireccionValue); ?>" <?php echo $certInputsReadonly; ?>>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label for="cert_ciudad" class="form-label">Ciudad</label>
+                                                                <input type="text" class="form-control" id="cert_ciudad" name="ciu_insc" autocomplete="address-level2" value="<?php echo h($certCiudadValue); ?>" <?php echo $certInputsReadonly; ?>>
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label for="cert_provincia" class="form-label">Provincia</label>
+                                                                <input type="text" class="form-control" id="cert_provincia" name="prov_insc" autocomplete="address-level1" value="<?php echo h($certProvinciaValue); ?>" <?php echo $certInputsReadonly; ?>>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -712,6 +746,30 @@ include '../head.php';
                             goToStep(2);
                             showAlert('warning', 'Términos y Condiciones', 'Debés aceptar los Términos y Condiciones para continuar.');
                             return false;
+                        }
+                        if (certificacionAllowSubmit) {
+                            const requiredCert = [
+                                { id: 'cert_nombre', label: 'Nombre' },
+                                { id: 'cert_apellido', label: 'Apellido' },
+                                { id: 'cert_email', label: 'Email' }
+                            ];
+                            const missingCert = requiredCert.find(field => {
+                                const el = document.getElementById(field.id);
+                                return !el || !el.value || el.value.trim() === '';
+                            });
+                            if (missingCert) {
+                                goToStep(2);
+                                showAlert('error', 'Faltan datos', `Completá el campo <strong>${missingCert.label}</strong> para continuar.`);
+                                return false;
+                            }
+                            const certEmailEl = document.getElementById('cert_email');
+                            const certEmail = certEmailEl ? certEmailEl.value.trim() : '';
+                            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                            if (!emailPattern.test(certEmail)) {
+                                goToStep(2);
+                                showAlert('error', 'Email inválido', 'Ingresá un correo electrónico válido.');
+                                return false;
+                            }
                         }
                         return true;
                     }
