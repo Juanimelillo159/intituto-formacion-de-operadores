@@ -216,6 +216,25 @@ SQL;
 
                 foreach ($workerIds as $workerId) {
                     $seatId = array_shift($availableQueue);
+                    try {
+                    if (!isset($stmtInsertAsigCap)) {
+                        $stmtInsertAsigCap = $pdo->prepare("
+                            INSERT INTO asignaciones_cursos
+                                (id_asignado, id_asignado_por, id_curso, tipo_curso, id_checkout_capacitacion, id_checkout_certificacion, id_estado, observaciones)
+                            VALUES
+                                (:id_asignado, :id_asignado_por, :id_curso, 'capacitacion', :id_checkout_cap, NULL, :id_estado, NULL)
+                        ");
+                    }
+                    $stmtInsertAsigCap->execute([
+                        ':id_asignado'      => $workerId,
+                        ':id_asignado_por'  => $userId,      // RRHH logueado
+                        ':id_curso'         => $courseId,
+                        ':id_checkout_cap'  => $seatId,      // la fila de checkout_capacitaciones que acabás de actualizar
+                        ':id_estado'        => $assignedStateId, // 2 en tu código
+                    ]);
+                } catch (Throwable $eAsigCap) {
+                    error_log('mis_cursos insert asignacion CAP: ' . $eAsigCap->getMessage());
+                }
                     if ($seatId === null) {
                         break;
                     }
@@ -413,6 +432,27 @@ SQL;
                 $firstDestAbs = null; // guardamos el primer destino para copiar a los demás
 
                 foreach ($workerIds as $workerId) {
+                    // Registrar en asignaciones_cursos (CERT)
+                    try {
+                        if (!isset($stmtInsertAsigCert)) {
+                            $stmtInsertAsigCert = $pdo->prepare("
+                                INSERT INTO asignaciones_cursos
+                                    (id_asignado, id_asignado_por, id_curso, tipo_curso, id_checkout_capacitacion, id_checkout_certificacion, id_estado, observaciones)
+                                VALUES
+                                    (:id_asignado, :id_asignado_por, :id_curso, 'certificacion', NULL, :id_checkout_cert, :id_estado, NULL)
+                            ");
+                        }
+                        $stmtInsertAsigCert->execute([
+                            ':id_asignado'       => $workerId,
+                            ':id_asignado_por'   => $userId,         // RRHH logueado
+                            ':id_curso'          => $courseId,
+                            ':id_checkout_cert'  => $seatId,         // la fila de checkout_certificaciones que acabás de actualizar
+                            ':id_estado'         => $assignedStateId, // 2 en tu código
+                        ]);
+                    } catch (Throwable $eAsigCert) {
+                        error_log('mis_cursos insert asignacion CERT: ' . $eAsigCert->getMessage());
+                    }
+
                     $seatId = array_shift($availableQueue);
                     if ($seatId === null) break;
 
@@ -648,6 +688,8 @@ try {
     $checkoutCapacitacionesAvailable = $tableExists($pdo, 'checkout_capacitaciones');
     $checkoutCertificacionesAvailable = $tableExists($pdo, 'checkout_certificaciones');
     $estadosInscripcionesAvailable = $tableExists($pdo, 'estados_inscripciones');
+    $asignacionesCursosAvailable = $tableExists($pdo, 'asignaciones_cursos');
+
 
     if ($isHrManager) {
         $courses = [];
@@ -1123,8 +1165,62 @@ SQL;
             $cursosComprados = array_values($items);
         } else {
             $cursosComprados = [];
-        }
+        } 
     }
+    if ($asignacionesCursosAvailable) {
+    $sqlAsignadas = "
+        SELECT
+            a.id_asignacion,
+            a.id_curso,
+            a.tipo_curso,           -- 'capacitacion' | 'certificacion'
+            a.creado_en,
+            c.nombre_curso
+        FROM asignaciones_cursos a
+        INNER JOIN cursos c ON c.id_curso = a.id_curso
+        WHERE a.id_asignado = :usuario
+          AND a.id_estado IN (1,2)    -- ajustá a tus estados válidos para “visible”
+        ORDER BY a.creado_en DESC, a.id_asignacion DESC
+    ";
+    $stmtAsignadas = $pdo->prepare($sqlAsignadas);
+    $stmtAsignadas->bindValue(':usuario', $userId, PDO::PARAM_INT);
+    $stmtAsignadas->execute();
+
+    $asignadas = [];
+    while ($row = $stmtAsignadas->fetch(PDO::FETCH_ASSOC)) {
+        // Formato compatible con las tarjetas que ya renderizás
+        $fechaFmt = null;
+        if (!empty($row['creado_en'])) {
+            try {
+                $fechaFmt = (new DateTimeImmutable($row['creado_en']))->format('d/m/Y H:i');
+            } catch (Throwable $e) {
+                $fechaFmt = $row['creado_en'];
+            }
+        }
+        $asignadas[] = [
+            'id_item'             => (int)$row['id_asignacion'],
+            'id_curso'            => (int)$row['id_curso'],
+            'tipo_curso'          => (string)$row['tipo_curso'],
+            'nombre_curso'        => $row['nombre_curso'] ?: ('Curso #' . (int)$row['id_curso']),
+            'nombre_modalidad'    => null,
+            'pagado_en'           => $row['creado_en'],
+            'pagado_en_formatted' => $fechaFmt,
+            'moneda'              => null,
+            'precio_unitario'     => null,
+            'cantidad'            => 1,
+            'inscripcion'         => [
+                'estado' => 'Asignado',
+                'clase'  => 'bg-info text-dark',
+                'progreso' => null,
+            ],
+            'origen'              => 'asignado',
+        ];
+    }
+
+    // Mergeá con lo que ya tengas cargado (compras propias), o reemplazá si no querés mezclar
+    if (!empty($asignadas)) {
+        $cursosComprados = array_merge($asignadas, $cursosComprados);
+    }
+}
 } catch (Throwable $exception) {
     $errorDetails = $exception->getMessage();
     error_log('mis_cursos load: ' . $errorDetails);
@@ -1199,7 +1295,14 @@ $configActive = 'mis_cursos';
     ?>
 
     <?php foreach ($sections as $sectionTitle => $lista): ?>
-        <h2 class="h4 mb-3"><?php echo htmlspecialchars($sectionTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
+         <?php
+            $sectionKey = strtolower($sectionTitle);
+            $isCap = strpos($sectionKey, 'capacit') !== false;
+            $sectionClass = $isCap ? 'section--cap' : 'section--cert';
+            ?>
+            <div class="section-header <?php echo $sectionClass; ?>">
+            <h2><?php echo htmlspecialchars($sectionTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
+            </div>
         <div class="mis-cursos-grid row row-cols-1 row-cols-md-2 g-4 mb-5">
             <?php foreach ($lista as $curso): ?>
                 <?php
@@ -1232,8 +1335,11 @@ $configActive = 'mis_cursos';
                                 </div>
                             </div>
                             <div class="course-card__chips d-flex flex-wrap gap-2">
-                                <span class="course-chip">
-                                    Comprado el <?php echo htmlspecialchars($curso['pagado_en_formatted'] ?? 'Sin fecha', ENT_QUOTES, 'UTF-8'); ?>
+                                <span class="course-chip"> <?php if (($curso['origen'] ?? '') === 'asignado'): ?>
+                                        Asignado el <?php echo htmlspecialchars($curso['pagado_en_formatted'] ?? 'Sin fecha', ENT_QUOTES, 'UTF-8'); ?>
+                                    <?php else: ?>
+                                        Comprado el <?php echo htmlspecialchars($curso['pagado_en_formatted'] ?? 'Sin fecha', ENT_QUOTES, 'UTF-8'); ?>
+                                    <?php endif; ?>
                                 </span>
                                 <?php if ($precioLabel !== null): ?>
                                     <span class="course-chip course-chip--accent"><?php echo htmlspecialchars($precioLabel, ENT_QUOTES, 'UTF-8'); ?></span>
@@ -1478,59 +1584,13 @@ $configActive = 'mis_cursos';
 
             </div>
 
-            <!-- Sidebar fija “por fuera” (solo desktop) -->
-            <div class="d-none d-xl-block position-fixed sidebar-outside">
-                <?php include 'config_sidebar.php'; ?>
+
             </div>
         </div>
     </div>
 </main>
 
 <?php include 'footer.php'; ?>
-
-<!-- CSS para la sidebar fija “por fuera” -->
-<style>
-.assigned-workers__section-header {
-  align-items: center;
-}
-
-.assigned-workers__toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.assigned-workers__toggle::after {
-  content: "\25BC";
-  font-size: 0.75rem;
-  line-height: 1;
-  transition: transform 0.2s ease;
-}
-
-.assigned-workers__toggle:not(.collapsed)::after {
-  transform: rotate(180deg);
-}
-
-.assigned-workers__scroll {
-  max-height: 220px;
-  overflow-y: auto;
-  padding-right: 0.5rem;
-}
-@media (min-width: 1200px) {
-  .sidebar-outside {
-    left: 24px;      /* separación del borde izquierdo */
-    top: 120px;      /* ajustá según la altura de tu navbar/header */
-    width: 280px;    /* ancho de la sidebar */
-    z-index: 1020;
-  }
-  /* Evitar que el contenido interno de la sidebar desborde */
-  .sidebar-outside .config-card,
-  .sidebar-outside .card,
-  .sidebar-outside > * {
-    max-width: 100%;
-  }
-}
-</style>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
