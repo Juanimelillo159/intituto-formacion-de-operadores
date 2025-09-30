@@ -113,9 +113,137 @@
     box-shadow: 0 12px 25px rgba(67,56,202,0.25);
 }
 
+.mis-cursos-content {
+    margin-top: 1.5rem;
+}
+
+.mis-cursos-grid {
+    margin-top: 1.5rem;
+}
+
+.course-card {
+    padding: 2rem;
+    border-radius: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.08);
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.course-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 26px 40px rgba(15, 23, 42, 0.12);
+}
+
+.course-card__headline {
+    row-gap: .75rem;
+}
+
+.course-card__status .badge {
+    padding: .5rem .9rem;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: .85rem;
+}
+
+.course-card__chips {
+    gap: .65rem;
+}
+
+.course-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: .35rem .75rem;
+    border-radius: 999px;
+    background: rgba(13, 110, 253, 0.08);
+    color: #0f172a;
+    font-size: .85rem;
+    font-weight: 600;
+    letter-spacing: .01em;
+}
+
+.course-chip--accent {
+    background: rgba(67, 56, 202, 0.14);
+    color: #312e81;
+}
+
+.course-card__progress {
+    height: 8px;
+    background-color: #e2e8f0;
+    border-radius: 999px;
+}
+
+.course-card__progress .progress-bar {
+    border-radius: 999px;
+}
+
+.course-card__section + .course-card__section {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1.5rem;
+}
+
+.assigned-workers {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.assigned-workers__item {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    padding: .85rem .95rem;
+    background: #f8fafc;
+}
+
+.assigned-workers__header .badge {
+    font-size: .75rem;
+    padding: .35rem .65rem;
+    border-radius: 999px;
+}
+
+.assign-panel {
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    background: #ffffff;
+    padding: 1.25rem;
+}
+
+.assign-panel__stats span {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+}
+
+.assign-panel__stats strong {
+    color: #0f172a;
+}
+
+.assign-workers-list {
+    border-color: #e2e8f0;
+}
+
+@media (max-width: 575.98px) {
+    .assigned-workers {
+        grid-template-columns: 1fr;
+    }
+}
+
 @media (max-width: 767.98px) {
     .config-card {
         padding: 1.75rem 1.35rem;
+    }
+
+    .course-card {
+        padding: 1.6rem 1.35rem;
+        gap: 1.25rem;
+    }
+
+    .course-card__chips {
+        gap: .45rem;
     }
 
     .config-tabs {

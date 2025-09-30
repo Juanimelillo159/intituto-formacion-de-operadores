@@ -1,10 +1,17 @@
 <?php
 declare(strict_types=1);
 
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+/* define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('DB_NAME') ?: 'formacionoperadores');
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: '');
+define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4'); */
+
+
+define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1:3306');
+define('DB_NAME', getenv('DB_NAME') ?: 'u910416176_formacionopera');
+define('DB_USER', getenv('DB_USER') ?: 'u910416176_formacionopera');
+define('DB_PASS', getenv('DB_PASS') ?: '8wO;T@NIyT');
 define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4');
 
 // TODO: Cambiar APP_URL cuando publiques el sitio.
@@ -18,6 +25,11 @@ define('SMTP_USER', getenv('SMTP_USER') ?: 'pruebas@institutodeoperadores.com');
 define('SMTP_PASS', getenv('SMTP_PASS') ?: 'Ju4ni159@');
 define('SMTP_FROM_EMAIL', getenv('SMTP_FROM_EMAIL') ?: 'pruebas@institutodeoperadores.com');
 define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'Instituto de Operadores');
+
+// Google OAuth
+define('GOOGLE_CLIENT_ID', getenv('GOOGLE_CLIENT_ID') ?: '949222209259-qtbapafr0vd1isvc0op1oo4tg6rmdmu0.apps.googleusercontent.com');
+
+
 
 function getPdo(): PDO
 {
