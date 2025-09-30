@@ -2,7 +2,36 @@
 session_start();
 require_once '../sbd.php';
 
-if (!isset($_SESSION['id_usuario']) && !isset($_SESSION['usuario'])) {
+function checkout_get_session_user_id(): int
+{
+    if (isset($_SESSION['id_usuario']) && is_numeric($_SESSION['id_usuario'])) {
+        $id = (int)$_SESSION['id_usuario'];
+        if ($id > 0) {
+            return $id;
+        }
+    }
+
+    if (!isset($_SESSION['usuario'])) {
+        return 0;
+    }
+
+    $sessionUsuario = $_SESSION['usuario'];
+
+    if (is_numeric($sessionUsuario)) {
+        $id = (int)$sessionUsuario;
+        return $id > 0 ? $id : 0;
+    }
+
+    if (is_array($sessionUsuario) && isset($sessionUsuario['id_usuario']) && is_numeric($sessionUsuario['id_usuario'])) {
+        $id = (int)$sessionUsuario['id_usuario'];
+        return $id > 0 ? $id : 0;
+    }
+
+    return 0;
+}
+
+$currentUserId = checkout_get_session_user_id();
+if ($currentUserId <= 0) {
     $_SESSION['login_mensaje'] = 'Debés iniciar sesión para completar tu inscripción.';
     $_SESSION['login_tipo'] = 'warning';
     header('Location: ../login.php');
@@ -90,8 +119,7 @@ $certificacionAllowSubmit = true;
 $certificacionSubmitLabel = 'Enviar solicitud';
 
 if ($tipo_checkout === 'certificacion' && $curso) {
-    $usuarioId = (int)($_SESSION['id_usuario'] ?? 0);
-    if ($usuarioId > 0) {
+    if ($currentUserId > 0) {
         $certStmt = $con->prepare('
             SELECT cc.*
               FROM checkout_certificaciones cc
@@ -102,7 +130,7 @@ if ($tipo_checkout === 'certificacion' && $curso) {
         ');
         $certStmt->execute([
             ':curso' => $id_curso,
-            ':usuario' => $usuarioId,
+            ':usuario' => $currentUserId,
         ]);
         $certificacionData = $certStmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
@@ -138,15 +166,42 @@ if (isset($_SESSION['usuario']) && is_array($_SESSION['usuario'])) {
     $sessionUsuario = $_SESSION['usuario'];
 }
 
-$prefillNombre = (string)($certificacionData['nombre'] ?? ($sessionUsuario['nombre'] ?? ''));
-$prefillApellido = (string)($certificacionData['apellido'] ?? ($sessionUsuario['apellido'] ?? ''));
-$prefillEmail = (string)($certificacionData['email'] ?? ($sessionUsuario['email'] ?? ''));
-$prefillTelefono = (string)($certificacionData['telefono'] ?? ($sessionUsuario['telefono'] ?? ''));
-$prefillDni = (string)($sessionUsuario['dni'] ?? '');
-$prefillDireccion = (string)($sessionUsuario['direccion'] ?? '');
-$prefillCiudad = (string)($sessionUsuario['ciudad'] ?? '');
-$prefillProvincia = (string)($sessionUsuario['provincia'] ?? '');
-$prefillPais = (string)($sessionUsuario['pais'] ?? 'Argentina');
+$usuarioPerfil = $sessionUsuario;
+if ($currentUserId > 0) {
+    $usuarioPerfil['id_usuario'] = $currentUserId;
+    $camposPerfil = ['nombre', 'apellido', 'email', 'telefono', 'dni', 'direccion', 'ciudad', 'provincia', 'pais'];
+    $faltaPerfil = false;
+    foreach ($camposPerfil as $campoPerfil) {
+        if (!isset($usuarioPerfil[$campoPerfil]) || trim((string)$usuarioPerfil[$campoPerfil]) === '') {
+            $faltaPerfil = true;
+            break;
+        }
+    }
+
+    if ($faltaPerfil) {
+        $perfilStmt = $con->prepare('
+            SELECT nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais
+              FROM usuarios
+             WHERE id_usuario = :id
+             LIMIT 1
+        ');
+        $perfilStmt->execute([':id' => $currentUserId]);
+        $perfilRow = $perfilStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        if ($perfilRow) {
+            $usuarioPerfil = array_merge($usuarioPerfil, $perfilRow);
+        }
+    }
+}
+
+$prefillNombre = (string)($certificacionData['nombre'] ?? ($usuarioPerfil['nombre'] ?? ($sessionUsuario['nombre'] ?? '')));
+$prefillApellido = (string)($certificacionData['apellido'] ?? ($usuarioPerfil['apellido'] ?? ($sessionUsuario['apellido'] ?? '')));
+$prefillEmail = (string)($certificacionData['email'] ?? ($usuarioPerfil['email'] ?? ($sessionUsuario['email'] ?? '')));
+$prefillTelefono = (string)($certificacionData['telefono'] ?? ($usuarioPerfil['telefono'] ?? ($sessionUsuario['telefono'] ?? '')));
+$prefillDni = (string)($certificacionData['dni'] ?? ($usuarioPerfil['dni'] ?? ''));
+$prefillDireccion = (string)($certificacionData['direccion'] ?? ($usuarioPerfil['direccion'] ?? ''));
+$prefillCiudad = (string)($certificacionData['ciudad'] ?? ($usuarioPerfil['ciudad'] ?? ''));
+$prefillProvincia = (string)($certificacionData['provincia'] ?? ($usuarioPerfil['provincia'] ?? ''));
+$prefillPais = (string)($certificacionData['pais'] ?? ($usuarioPerfil['pais'] ?? 'Argentina'));
 if ($tipo_checkout !== 'certificacion') {
     $prefillNombre = '';
     $prefillApellido = '';

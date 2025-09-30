@@ -76,6 +76,34 @@ function registrar_historico_certificacion(PDO $con, int $idCertificacion, int $
     ]);
 }
 
+function obtener_usuario_id_de_sesion(): int
+{
+    if (isset($_SESSION['id_usuario']) && is_numeric($_SESSION['id_usuario'])) {
+        $id = (int)$_SESSION['id_usuario'];
+        if ($id > 0) {
+            return $id;
+        }
+    }
+
+    if (!isset($_SESSION['usuario'])) {
+        return 0;
+    }
+
+    $sessionUsuario = $_SESSION['usuario'];
+
+    if (is_numeric($sessionUsuario)) {
+        $id = (int)$sessionUsuario;
+        return $id > 0 ? $id : 0;
+    }
+
+    if (is_array($sessionUsuario) && isset($sessionUsuario['id_usuario']) && is_numeric($sessionUsuario['id_usuario'])) {
+        $id = (int)$sessionUsuario['id_usuario'];
+        return $id > 0 ? $id : 0;
+    }
+
+    return 0;
+}
+
 /* =================== MAIN FLOW ================== */
 $checkoutUploadAbs = null;
 $checkoutUploadTmp = null;
@@ -113,7 +141,7 @@ try {
         $checkoutCursoId = (int)($_POST['id_curso'] ?? 0);
 
         try {
-            $usuarioId = (int)($_SESSION['id_usuario'] ?? 0);
+            $usuarioId = obtener_usuario_id_de_sesion();
             if ($usuarioId <= 0) {
                 throw new RuntimeException('Debés iniciar sesión para completar la solicitud.');
             }
@@ -490,7 +518,7 @@ try {
             if (!$certificacionRow) {
                 throw new RuntimeException('No encontramos la solicitud de certificación.');
             }
-            $usuarioId = (int)($_SESSION['id_usuario'] ?? 0);
+            $usuarioId = obtener_usuario_id_de_sesion();
             if ($usuarioId > 0 && (int)$certificacionRow['creado_por'] !== $usuarioId) {
                 throw new RuntimeException('No tenés autorización para pagar esta certificación.');
             }

@@ -12,6 +12,34 @@ require_once __DIR__ . '/mercadopago_common.php';
 use MercadoPago\Client\Preference\PreferenceClient;
 use MercadoPago\Exceptions\MPApiException;
 
+function mp_get_session_user_id(): int
+{
+    if (isset($_SESSION['id_usuario']) && is_numeric($_SESSION['id_usuario'])) {
+        $id = (int)$_SESSION['id_usuario'];
+        if ($id > 0) {
+            return $id;
+        }
+    }
+
+    if (!isset($_SESSION['usuario'])) {
+        return 0;
+    }
+
+    $sessionUsuario = $_SESSION['usuario'];
+
+    if (is_numeric($sessionUsuario)) {
+        $id = (int)$sessionUsuario;
+        return $id > 0 ? $id : 0;
+    }
+
+    if (is_array($sessionUsuario) && isset($sessionUsuario['id_usuario']) && is_numeric($sessionUsuario['id_usuario'])) {
+        $id = (int)$sessionUsuario['id_usuario'];
+        return $id > 0 ? $id : 0;
+    }
+
+    return 0;
+}
+
 $registrarHistoricoCert = function (PDO $con, int $idCertificacion, int $estado): void {
     $hist = $con->prepare('
         INSERT INTO historico_estado_certificaciones (id_certificacion, id_estado)
@@ -27,7 +55,8 @@ $responseCode = 200;
 $response = ['success' => false, 'message' => ''];
 
 try {
-    if (!isset($_SESSION['id_usuario']) && !isset($_SESSION['usuario'])) {
+    $currentUserId = mp_get_session_user_id();
+    if ($currentUserId <= 0) {
         $responseCode = 401;
         throw new RuntimeException('Debés iniciar sesión para continuar.');
     }
@@ -93,8 +122,7 @@ try {
         if (!$certificacionRow) {
             throw new RuntimeException('No encontramos la certificación registrada.');
         }
-        $usuarioId = (int)($_SESSION['id_usuario'] ?? 0);
-        if ($usuarioId > 0 && (int)$certificacionRow['creado_por'] !== $usuarioId) {
+        if ($currentUserId > 0 && (int)$certificacionRow['creado_por'] !== $currentUserId) {
             throw new RuntimeException('No tenés autorización para pagar esta certificación.');
         }
         $estadoCert = (int)$certificacionRow['id_estado'];
