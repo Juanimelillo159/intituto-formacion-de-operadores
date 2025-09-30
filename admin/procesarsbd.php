@@ -137,11 +137,65 @@ try {
             }
             $aceptaTyC = isset($_POST['acepta_tyc']) ? 1 : 0;
 
-            if ($nombreInscrito === '' || $apellidoInscrito === '' || $emailInscrito === '' || $telefonoInscrito === '') {
-                throw new InvalidArgumentException('Completá los datos obligatorios de contacto.');
+            if (isset($_SESSION['usuario']) && is_array($_SESSION['usuario'])) {
+                $usuarioSesion = $_SESSION['usuario'];
+                if ($nombreInscrito === '' && !empty($usuarioSesion['nombre'])) {
+                    $nombreInscrito = trim((string)$usuarioSesion['nombre']);
+                }
+                if ($apellidoInscrito === '' && !empty($usuarioSesion['apellido'])) {
+                    $apellidoInscrito = trim((string)$usuarioSesion['apellido']);
+                }
+                if ($emailInscrito === '' && !empty($usuarioSesion['email'])) {
+                    $emailInscrito = trim((string)$usuarioSesion['email']);
+                }
+                if ($telefonoInscrito === '' && !empty($usuarioSesion['telefono'])) {
+                    $telefonoInscrito = trim((string)$usuarioSesion['telefono']);
+                }
+                if ($dniInscrito === '' && !empty($usuarioSesion['dni'])) {
+                    $dniInscrito = trim((string)$usuarioSesion['dni']);
+                }
+                if ($direccionInsc === '' && !empty($usuarioSesion['direccion'])) {
+                    $direccionInsc = trim((string)$usuarioSesion['direccion']);
+                }
+                if ($ciudadInsc === '' && !empty($usuarioSesion['ciudad'])) {
+                    $ciudadInsc = trim((string)$usuarioSesion['ciudad']);
+                }
+                if ($provinciaInsc === '' && !empty($usuarioSesion['provincia'])) {
+                    $provinciaInsc = trim((string)$usuarioSesion['provincia']);
+                }
+                if ($paisInsc === '' && !empty($usuarioSesion['pais'])) {
+                    $paisInsc = trim((string)$usuarioSesion['pais']);
+                }
+            }
+
+            if ($nombreInscrito === '' || $apellidoInscrito === '' || $emailInscrito === '') {
+                $usuarioStmt = $con->prepare('SELECT nombre, apellido, email, telefono FROM usuarios WHERE id_usuario = :id LIMIT 1');
+                $usuarioStmt->execute([':id' => $usuarioId]);
+                $usuarioRow = $usuarioStmt->fetch();
+                if ($usuarioRow) {
+                    if ($nombreInscrito === '' && !empty($usuarioRow['nombre'])) {
+                        $nombreInscrito = trim((string)$usuarioRow['nombre']);
+                    }
+                    if ($apellidoInscrito === '' && !empty($usuarioRow['apellido'])) {
+                        $apellidoInscrito = trim((string)$usuarioRow['apellido']);
+                    }
+                    if ($emailInscrito === '' && !empty($usuarioRow['email'])) {
+                        $emailInscrito = trim((string)$usuarioRow['email']);
+                    }
+                    if ($telefonoInscrito === '' && !empty($usuarioRow['telefono'])) {
+                        $telefonoInscrito = trim((string)$usuarioRow['telefono']);
+                    }
+                }
+            }
+
+            if ($nombreInscrito === '' || $apellidoInscrito === '' || $emailInscrito === '') {
+                throw new InvalidArgumentException('Completá los datos obligatorios de contacto en tu perfil para continuar.');
             }
             if (!filter_var($emailInscrito, FILTER_VALIDATE_EMAIL)) {
                 throw new InvalidArgumentException('Ingresá un correo electrónico válido.');
+            }
+            if ($telefonoInscrito === '') {
+                $telefonoInscrito = null;
             }
             if ($aceptaTyC !== 1) {
                 throw new InvalidArgumentException('Debés aceptar los Términos y Condiciones.');

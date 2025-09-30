@@ -167,7 +167,7 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                             </div>
                         </div>
 
-                        <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo isset($cert['id_curso']) ? (int)$cert['id_curso'] : 0; ?>">
+                        <a class="enroll-button" href="checkout/checkout.php?id_certificacion=<?php echo isset($cert['id_curso']) ? (int)$cert['id_curso'] : 0; ?>&tipo=certificacion">
                             <i class="fa-solid fa-paper-plane me-2"></i> Solicitar certificación
                         </a>
                     </div>

@@ -376,70 +376,37 @@ include '../head.php';
                                     </div>
 
                                     <div class="step-panel" data-step="2">
-                                        <div class="row g-3">
-                                            <div class="col-md-6">
-                                                <label for="nombre" class="form-label required-field">Nombre</label>
-                                                <input type="text" class="form-control" id="nombre" name="nombre_insc" placeholder="Nombre" autocomplete="given-name" value="<?php echo h($prefillNombre); ?>">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="apellido" class="form-label required-field">Apellido</label>
-                                                <input type="text" class="form-control" id="apellido" name="apellido_insc" placeholder="Apellido" autocomplete="family-name" value="<?php echo h($prefillApellido); ?>">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="email" class="form-label required-field">Email</label>
-                                                <input type="email" class="form-control" id="email" name="email_insc" placeholder="correo@dominio.com" autocomplete="email" value="<?php echo h($prefillEmail); ?>">
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label for="telefono" class="form-label required-field">Teléfono</label>
-                                                <input type="text" class="form-control" id="telefono" name="tel_insc" placeholder="+54 11 5555-5555" autocomplete="tel" value="<?php echo h($prefillTelefono); ?>">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label for="dni" class="form-label">DNI</label>
-                                                <input type="text" class="form-control" id="dni" name="dni_insc" placeholder="Documento" value="<?php echo h($certificacionData['dni'] ?? $prefillDni); ?>">
-                                            </div>
-                                            <div class="col-md-8">
-                                                <label for="direccion" class="form-label">Dirección</label>
-                                                <input type="text" class="form-control" id="direccion" name="dir_insc" placeholder="Calle y número" autocomplete="address-line1" value="<?php echo h($certificacionData['direccion'] ?? $prefillDireccion); ?>">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label for="ciudad" class="form-label">Ciudad</label>
-                                                <input type="text" class="form-control" id="ciudad" name="ciu_insc" autocomplete="address-level2" value="<?php echo h($certificacionData['ciudad'] ?? $prefillCiudad); ?>">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label for="provincia" class="form-label">Provincia</label>
-                                                <input type="text" class="form-control" id="provincia" name="prov_insc" autocomplete="address-level1" value="<?php echo h($certificacionData['provincia'] ?? $prefillProvincia); ?>">
-                                            </div>
-                                            <div class="col-md-4">
-                                                <label for="pais" class="form-label">País</label>
-                                                <input type="text" class="form-control" id="pais" name="pais_insc" value="<?php echo h($certificacionData['pais'] ?? $prefillPais); ?>" autocomplete="country-name">
-                                            </div>
-                                        </div>
-                                        <div class="terms-check mt-4">
-                                            <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1" <?php echo (!empty($certificacionData) && (int)$certificacionData['acepta_tyc'] === 1) ? 'checked' : ''; ?>>
-                                            <label class="form-check-label" for="acepta">
-                                                Confirmo que los datos ingresados son correctos y acepto los <a href="#" target="_blank" rel="noopener">Términos y Condiciones</a>.
-                                            </label>
-                                        </div>
                                         <?php if ($tipo_checkout === 'certificacion'): ?>
-                                            <div class="certificacion-status mt-4">
-                                                <?php if ($certificacionEstado !== null): ?>
-                                                    <div class="alert alert-info checkout-alert mb-3" role="alert">
-                                                        <div class="d-flex align-items-start gap-2">
-                                                            <i class="fas fa-info-circle mt-1"></i>
-                                                            <div>
-                                                                <strong>Estado de tu solicitud:</strong>
-                                                                <div class="small mt-1"><?php echo h(checkout_certificacion_estado_label($certificacionEstado)); ?>.</div>
-                                                                <?php if (!empty($certificacionData['observaciones'])): ?>
-                                                                    <div class="small text-muted mt-1"><?php echo nl2br(h($certificacionData['observaciones'])); ?></div>
-                                                                <?php endif; ?>
-                                                            </div>
+                                            <input type="hidden" name="nombre_insc" value="<?php echo h($certificacionData['nombre'] ?? $prefillNombre); ?>">
+                                            <input type="hidden" name="apellido_insc" value="<?php echo h($certificacionData['apellido'] ?? $prefillApellido); ?>">
+                                            <input type="hidden" name="email_insc" value="<?php echo h($certificacionData['email'] ?? $prefillEmail); ?>">
+                                            <input type="hidden" name="tel_insc" value="<?php echo h($certificacionData['telefono'] ?? $prefillTelefono); ?>">
+                                            <input type="hidden" name="dni_insc" value="<?php echo h($certificacionData['dni'] ?? $prefillDni); ?>">
+                                            <input type="hidden" name="dir_insc" value="<?php echo h($certificacionData['direccion'] ?? $prefillDireccion); ?>">
+                                            <input type="hidden" name="ciu_insc" value="<?php echo h($certificacionData['ciudad'] ?? $prefillCiudad); ?>">
+                                            <input type="hidden" name="prov_insc" value="<?php echo h($certificacionData['provincia'] ?? $prefillProvincia); ?>">
+                                            <input type="hidden" name="pais_insc" value="<?php echo h($certificacionData['pais'] ?? $prefillPais); ?>">
+
+                                            <?php if ($certificacionEstado !== null): ?>
+                                                <div class="alert alert-info checkout-alert mb-4" role="alert">
+                                                    <div class="d-flex align-items-start gap-2">
+                                                        <i class="fas fa-info-circle mt-1"></i>
+                                                        <div>
+                                                            <strong>Estado de tu solicitud:</strong>
+                                                            <div class="small mt-1"><?php echo h(checkout_certificacion_estado_label($certificacionEstado)); ?>.</div>
+                                                            <?php if (!empty($certificacionData['observaciones'])): ?>
+                                                                <div class="small text-muted mt-1"><?php echo nl2br(h($certificacionData['observaciones'])); ?></div>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </div>
-                                                <?php endif; ?>
-                                                <div class="documentacion-card">
-                                                    <div class="summary-card">
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <div class="row g-4 align-items-stretch">
+                                                <div class="col-lg-7">
+                                                    <div class="summary-card h-100">
                                                         <h5>Documentación requerida</h5>
-                                                        <p class="mb-2">Descargá, completá y cargá el formulario en PDF para que nuestro equipo lo revise.</p>
+                                                        <p class="mb-3">Descargá el formulario, completalo y volvé a subirlo en formato PDF para que nuestro equipo pueda revisarlo.</p>
                                                         <a class="btn btn-outline-light btn-sm mb-3" href="../assets/pdf/solicitud_certificacion.pdf" target="_blank" rel="noopener">
                                                             <i class="fas fa-file-download me-2"></i>Descargar formulario
                                                         </a>
@@ -454,7 +421,45 @@ include '../head.php';
                                                         <div class="upload-label">Formato requerido: PDF. Tamaño máximo 10 MB.</div>
                                                     </div>
                                                 </div>
+                                                <div class="col-lg-5">
+                                                    <div class="summary-card h-100">
+                                                        <h5>Datos del solicitante</h5>
+                                                        <p class="mb-3 small text-muted">Utilizaremos estos datos de tu perfil para validar tu certificación.</p>
+                                                        <?php
+                                                        $nombreMostrar = $certificacionData['nombre'] ?? $prefillNombre;
+                                                        $apellidoMostrar = $certificacionData['apellido'] ?? $prefillApellido;
+                                                        $emailMostrar = $certificacionData['email'] ?? $prefillEmail;
+                                                        $telefonoMostrar = $certificacionData['telefono'] ?? $prefillTelefono;
+                                                        ?>
+                                                        <ul class="list-unstyled mb-0">
+                                                            <li><strong>Nombre:</strong> <?php echo h($nombreMostrar); ?> <?php echo h($apellidoMostrar); ?></li>
+                                                            <li><strong>Email:</strong> <?php echo h($emailMostrar); ?></li>
+                                                            <li><strong>Teléfono:</strong> <?php echo $telefonoMostrar ? h($telefonoMostrar) : 'No informado'; ?></li>
+                                                            <?php if ($prefillDni || (!empty($certificacionData['dni']))): ?>
+                                                                <li><strong>DNI:</strong> <?php echo h($certificacionData['dni'] ?? $prefillDni); ?></li>
+                                                            <?php endif; ?>
+                                                            <?php if ($prefillDireccion || (!empty($certificacionData['direccion']))): ?>
+                                                                <li><strong>Dirección:</strong> <?php echo h($certificacionData['direccion'] ?? $prefillDireccion); ?></li>
+                                                            <?php endif; ?>
+                                                            <?php if ($prefillCiudad || (!empty($certificacionData['ciudad']))): ?>
+                                                                <li><strong>Ciudad:</strong> <?php echo h($certificacionData['ciudad'] ?? $prefillCiudad); ?></li>
+                                                            <?php endif; ?>
+                                                            <?php if ($prefillProvincia || (!empty($certificacionData['provincia']))): ?>
+                                                                <li><strong>Provincia:</strong> <?php echo h($certificacionData['provincia'] ?? $prefillProvincia); ?></li>
+                                                            <?php endif; ?>
+                                                            <li><strong>País:</strong> <?php echo h($certificacionData['pais'] ?? $prefillPais); ?></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
                                             </div>
+
+                                            <div class="terms-check mt-4">
+                                                <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1" <?php echo (!empty($certificacionData) && (int)$certificacionData['acepta_tyc'] === 1) ? 'checked' : ''; ?>>
+                                                <label class="form-check-label" for="acepta">
+                                                    Confirmo que la información es correcta y acepto los <a href="#" target="_blank" rel="noopener">Términos y Condiciones</a>.
+                                                </label>
+                                            </div>
+
                                             <div class="nav-actions">
                                                 <button type="button" class="btn btn-outline-light btn-rounded" data-prev="1">
                                                     <i class="fas fa-arrow-left me-2"></i>
@@ -472,6 +477,50 @@ include '../head.php';
                                                 </div>
                                             </div>
                                         <?php else: ?>
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label for="nombre" class="form-label required-field">Nombre</label>
+                                                    <input type="text" class="form-control" id="nombre" name="nombre_insc" placeholder="Nombre" autocomplete="given-name" value="<?php echo h($prefillNombre); ?>">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="apellido" class="form-label required-field">Apellido</label>
+                                                    <input type="text" class="form-control" id="apellido" name="apellido_insc" placeholder="Apellido" autocomplete="family-name" value="<?php echo h($prefillApellido); ?>">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="email" class="form-label required-field">Email</label>
+                                                    <input type="email" class="form-control" id="email" name="email_insc" placeholder="correo@dominio.com" autocomplete="email" value="<?php echo h($prefillEmail); ?>">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="telefono" class="form-label required-field">Teléfono</label>
+                                                    <input type="text" class="form-control" id="telefono" name="tel_insc" placeholder="+54 11 5555-5555" autocomplete="tel" value="<?php echo h($prefillTelefono); ?>">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label for="dni" class="form-label">DNI</label>
+                                                    <input type="text" class="form-control" id="dni" name="dni_insc" placeholder="Documento" value="<?php echo h($certificacionData['dni'] ?? $prefillDni); ?>">
+                                                </div>
+                                                <div class="col-md-8">
+                                                    <label for="direccion" class="form-label">Dirección</label>
+                                                    <input type="text" class="form-control" id="direccion" name="dir_insc" placeholder="Calle y número" autocomplete="address-line1" value="<?php echo h($certificacionData['direccion'] ?? $prefillDireccion); ?>">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label for="ciudad" class="form-label">Ciudad</label>
+                                                    <input type="text" class="form-control" id="ciudad" name="ciu_insc" autocomplete="address-level2" value="<?php echo h($certificacionData['ciudad'] ?? $prefillCiudad); ?>">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label for="provincia" class="form-label">Provincia</label>
+                                                    <input type="text" class="form-control" id="provincia" name="prov_insc" autocomplete="address-level1" value="<?php echo h($certificacionData['provincia'] ?? $prefillProvincia); ?>">
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label for="pais" class="form-label">País</label>
+                                                    <input type="text" class="form-control" id="pais" name="pais_insc" value="<?php echo h($certificacionData['pais'] ?? $prefillPais); ?>" autocomplete="country-name">
+                                                </div>
+                                            </div>
+                                            <div class="terms-check mt-4">
+                                                <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1" <?php echo (!empty($certificacionData) && (int)$certificacionData['acepta_tyc'] === 1) ? 'checked' : ''; ?>>
+                                                <label class="form-check-label" for="acepta">
+                                                    Confirmo que los datos ingresados son correctos y acepto los <a href="#" target="_blank" rel="noopener">Términos y Condiciones</a>.
+                                                </label>
+                                            </div>
                                             <div class="nav-actions">
                                                 <button type="button" class="btn btn-outline-light btn-rounded" data-prev="1">
                                                     <i class="fas fa-arrow-left me-2"></i>
@@ -657,6 +706,15 @@ include '../head.php';
                     }
                 }
                 if (step === 2) {
+                    if (checkoutType === 'certificacion') {
+                        const terms = document.getElementById('acepta');
+                        if (!terms || !terms.checked) {
+                            goToStep(2);
+                            showAlert('warning', 'Términos y Condiciones', 'Debés aceptar los Términos y Condiciones para continuar.');
+                            return false;
+                        }
+                        return true;
+                    }
                     const required = [
                         { id: 'nombre', label: 'Nombre' },
                         { id: 'apellido', label: 'Apellido' },
@@ -672,7 +730,8 @@ include '../head.php';
                         showAlert('error', 'Faltan datos', `Completá el campo <strong>${missing.label}</strong> para continuar.`);
                         return false;
                     }
-                    const email = document.getElementById('email').value.trim();
+                    const emailInput = document.getElementById('email');
+                    const email = emailInput ? emailInput.value.trim() : '';
                     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (!emailPattern.test(email)) {
                         goToStep(2);
@@ -680,7 +739,7 @@ include '../head.php';
                         return false;
                     }
                     const terms = document.getElementById('acepta');
-                    if (!terms.checked) {
+                    if (!terms || !terms.checked) {
                         goToStep(2);
                         showAlert('warning', 'Términos y Condiciones', 'Debés aceptar los Términos y Condiciones para continuar.');
                         return false;
