@@ -16,6 +16,10 @@ if ($userId <= 0) {
     exit;
 }
 
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$page = $page > 0 ? $page : 1;
+$perPage = 5;
+
 $page_title = 'Historial de compras | Instituto de Formacion';
 $page_description = 'Compras realizadas con tu cuenta del Instituto.';
 $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.css">';
@@ -139,6 +143,15 @@ try {
 } catch (Throwable $exception) {
     $errorMessage = 'No pudimos cargar tu historial en este momento.';
 }
+
+$totalCompras = count($compras);
+$totalPages = (int)ceil($totalCompras / $perPage);
+if ($totalPages > 0 && $page > $totalPages) {
+    $page = $totalPages;
+}
+$offset = ($page - 1) * $perPage;
+$paginatedCompras = $totalCompras > 0 ? array_slice($compras, $offset, $perPage) : [];
+$scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php'));
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -178,12 +191,14 @@ try {
 
                 <?php else: ?>
 
+
                     <!-- Vista combinada -->
                     <div class="config-card shadow mb-4 text-start">
                         <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center border-bottom pb-2 mb-3 gap-2">
                             <div>
                                 <h5 class="mb-0">Movimientos recientes</h5>
                                 <span class="text-muted small">Ordenado por fecha</span>
+
                             </div>
                             <div class="w-100 w-md-auto">
                                 <input id="recentSearch" type="text" class="form-control form-control-sm" placeholder="Buscar curso...">
@@ -308,6 +323,7 @@ try {
                                     </tbody>
                                 </table>
                             </div>
+
                             <div id="certPager" class="d-flex justify-content-between align-items-center mt-2"></div>
                         <?php endif; ?>
                     </div>

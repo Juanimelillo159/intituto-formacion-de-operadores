@@ -167,9 +167,9 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                             </div>
                         </div>
 
-                        <button class="enroll-button" onclick="solicitarCertificacion()">
+                        <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo isset($cert['id_curso']) ? (int)$cert['id_curso'] : 0; ?>">
                             <i class="fa-solid fa-paper-plane me-2"></i> Solicitar certificación
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -181,9 +181,6 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function solicitarCertificacion() {
-            alert('Flujo de solicitud de certificación - Conectar con tu backend.');
-        }
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.content-wrapper, .details-card').forEach((el, i) => {
                 el.style.opacity = '0';

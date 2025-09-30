@@ -1,5 +1,25 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (!isset($asset_base_path)) {
+    $documentRoot = isset($_SERVER['DOCUMENT_ROOT'])
+        ? rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/')
+        : '';
+
+    $currentDir = str_replace('\\', '/', realpath(__DIR__));
+
+    if ($documentRoot !== '' && strpos($currentDir, $documentRoot) === 0) {
+        $relativeProjectPath = trim(substr($currentDir, strlen($documentRoot)), '/');
+    } else {
+        $relativeProjectPath = isset($_SERVER['SCRIPT_NAME'])
+            ? trim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/')
+            : '';
+    }
+
+    $calculatedBase = $relativeProjectPath === '' ? '' : '/' . $relativeProjectPath;
+    $asset_base_path = $calculatedBase;
+}
+
+$normalized_asset_base = rtrim($asset_base_path, '/');
 ?>
 <head>
   <meta charset="UTF-8">
@@ -11,16 +31,9 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-  <link rel="stylesheet" href="admin/css/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
-  <link rel="stylesheet" href="admin/css/sweetalert2/sweetalert2.min.css">
+    <link rel="stylesheet" href="<?php echo $normalized_asset_base; ?>/assets/styles/style.css">
 
-  <!-- Tus estilos -->
-  <link rel="stylesheet" href="assets/styles/style.css">
-  <?= isset($page_styles) ? $page_styles : '' ?>
-
-  <!-- Iconos -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <?= isset($page_styles) ? $page_styles : '' ?>
 
   <!-- Google Identity Services (solo si se pide) -->
   <?php if (!empty($include_google_auth)): ?>
@@ -30,6 +43,16 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
     <script src="https://accounts.google.com/gsi/client" async defer></script>
   <?php endif; ?>
 
-  <!-- Favicon -->
-  <link rel="shortcut icon" href="assets/iconos/icono.png" type="image/png">
+
+    <!-- Condicional: solo carga si se pide -->
+    <?php if (!empty($include_google_auth)): ?>
+        <script>
+            window.googleClientId = '<?php echo htmlspecialchars($googleClientId, ENT_QUOTES, 'UTF-8'); ?>';
+        </script>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <?php endif; ?>
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="<?php echo $normalized_asset_base; ?>/assets/iconos/icono.png" type="image/png">
+
 </head>
