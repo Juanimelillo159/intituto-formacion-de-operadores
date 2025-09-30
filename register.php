@@ -12,30 +12,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$email = trim((string)($_POST['email'] ?? ''));
-$password = (string)($_POST['password'] ?? '');
-$nombre = trim((string)($_POST['nombre'] ?? ''));
+$email    = trim((string)($_POST['email'] ?? ''));
+$password = (string)($_POST['password'] ?? $_POST['clave'] ?? '');
+$nombre   = trim((string)($_POST['nombre'] ?? ''));
 $apellido = trim((string)($_POST['apellido'] ?? ''));
 $telefono = trim((string)($_POST['telefono'] ?? ''));
 
+// Validaciones básicas
 if ($email === '' || $password === '' || $nombre === '' || $apellido === '' || $telefono === '') {
     http_response_code(400);
     echo json_encode(['ok' => false, 'message' => 'Email, contrasena, nombre, apellido y telefono son obligatorios.']);
     exit;
 }
-
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'message' => 'Email invalido.']);
     exit;
 }
-
 if (strlen($password) < 8) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'message' => 'La contrasena debe tener al menos 8 caracteres.']);
     exit;
 }
-
 if (!preg_match('/^[0-9+()\s-]{6,}$/', $telefono)) {
     http_response_code(400);
     echo json_encode(['ok' => false, 'message' => 'El numero de telefono no es valido.']);
@@ -47,14 +45,26 @@ $pdo = getPdo();
 try {
     $pdo->beginTransaction();
 
+    // ¿Existe el email?
     $check = $pdo->prepare('SELECT id_usuario, verificado FROM usuarios WHERE email = ? LIMIT 1');
     $check->execute([$email]);
     $existing = $check->fetch();
 
-    $token = bin2hex(random_bytes(32));
+    $token     = bin2hex(random_bytes(32));
     $expiresAt = (new DateTimeImmutable('+24 hours'))->format('Y-m-d H:i:s');
 
+    // Construimos la base URL de forma segura si no tenés APP_URL
+    if (defined('APP_URL') && APP_URL) {
+        $baseUrl = rtrim((string)APP_URL, '/');
+    } else {
+        $scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host    = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $baseUrl = $scheme . '://' . $host;
+    }
+    $verificationLink = $baseUrl . '/verificar.php?token=' . urlencode($token);
+
     if ($existing) {
+        // Si ya está verificado, corto
         if ((int)$existing['verificado'] === 1) {
             $pdo->rollBack();
             http_response_code(409);
@@ -62,19 +72,30 @@ try {
             exit;
         }
 
+        // Usuario no verificado: renuevo token y actualizo datos
         $userId = (int)$existing['id_usuario'];
-        $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ?, id_permiso = 2, nombre = ?, apellido = ?, telefono = ? WHERE id_usuario = ?');
-        $updateToken->execute([$token, $expiresAt, $nombre, $apellido, $telefono, $userId]);
+        $upd = $pdo->prepare('
+            UPDATE usuarios
+               SET token_verificacion = ?,
+                   token_expiracion   = ?,
+                   nombre             = ?,
+                   apellido           = ?,
+                   telefono           = ?
+             WHERE id_usuario = ?
+        ');
+        $upd->execute([$token, $expiresAt, $nombre, $apellido, $telefono, $userId]);
 
         $pdo->commit();
 
-        $verificationLink = APP_URL . '/verificar.php?token=' . urlencode($token);
-
-        try {
-            enviarCorreoVerificacion($email, $verificationLink);
-        } catch (Throwable $exception) {
-            http_response_code(500);
-            echo json_encode(['ok' => false, 'message' => 'No pudimos enviar el correo de verificacion.']);
+        // Envío mail (chequeando retorno)
+        [$sent, $err] = enviarCorreoVerificacion($email, $verificationLink);
+        if (!$sent) {
+            // NO borramos el usuario: queda pendiente
+            error_log('[register] Falla SMTP (existing user): ' . ($err ?? 'desconocido'));
+            echo json_encode([
+                'ok' => false,
+                'message' => 'Tu cuenta existe pero aún no pudimos enviar el correo de verificación. Probá más tarde o revisá SPAM.'
+            ]);
             exit;
         }
 
@@ -82,42 +103,39 @@ try {
         exit;
     }
 
+    // Usuario nuevo
     $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-    $insert = $pdo->prepare('INSERT INTO usuarios (email, clave, id_estado, id_permiso, verificado, nombre, apellido, telefono) VALUES (?, ?, 1, 2, 0, ?, ?, ?)');
-    $insert->execute([$email, $passwordHash, $nombre, $apellido, $telefono]);
+    // id_estado=1 (activo/pendiente) | id_permiso=2 (si ese es tu "usuario base")
+    $ins = $pdo->prepare('
+        INSERT INTO usuarios (email, clave, id_estado, id_permiso, verificado, nombre, apellido, telefono, token_verificacion, token_expiracion)
+        VALUES (?, ?, 1, 2, 0, ?, ?, ?, ?, ?)
+    ');
+    $ins->execute([$email, $passwordHash, $nombre, $apellido, $telefono, $token, $expiresAt]);
     $userId = (int)$pdo->lastInsertId();
 
-    $updateToken = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ?, id_permiso = 2, nombre = ?, apellido = ?, telefono = ? WHERE id_usuario = ?');
-    $updateToken->execute([$token, $expiresAt, $nombre, $apellido, $telefono, $userId]);
-
     $pdo->commit();
-} catch (Throwable $exception) {
+
+} catch (Throwable $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
-
+    error_log('[register] DB error: ' . $e->getMessage());
     http_response_code(500);
     echo json_encode(['ok' => false, 'message' => 'Ocurrio un error al crear la cuenta.']);
     exit;
 }
 
-$verificationLink = APP_URL . '/verificar.php?token=' . urlencode($token);
-
-try {
-    enviarCorreoVerificacion($email, $verificationLink);
-} catch (Throwable $exception) {
-    try {
-        $cleanup = $pdo->prepare('DELETE FROM usuarios WHERE id_usuario = ?');
-        $cleanup->execute([$userId]);
-    } catch (Throwable $cleanupException) {
-        // No hacemos nada adicional; si falla el borrado, simplemente dejamos el registro pendiente.
-    }
-
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'message' => 'No pudimos enviar el correo de verificacion.']);
+// Envío mail de verificación (para usuario nuevo)
+[$sent, $err] = enviarCorreoVerificacion($email, $verificationLink);
+if (!$sent) {
+    // NO borramos al usuario: que quede pendiente y pueda reintentar
+    error_log('[register] Falla SMTP (new user): ' . ($err ?? 'desconocido'));
+    echo json_encode([
+        'ok' => false,
+        'message' => 'Tu cuenta fue creada, pero no pudimos enviar el correo de verificacion. Probá más tarde o revisá SPAM.'
+    ]);
     exit;
 }
 
 echo json_encode(['ok' => true, 'message' => 'Revisa tu correo para activar tu cuenta.']);
-

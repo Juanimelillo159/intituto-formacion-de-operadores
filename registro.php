@@ -46,7 +46,7 @@ $include_google_auth = true;
             <?php endif; ?>
 
             <!-- Formulario clásico: names alineados con admin/registro.php -->
-            <form method="POST" action="admin/registro.php" id="form-registro" novalidate>
+            <form method="POST" action="register.php" id="form-registro" novalidate>
               <div class="row g-3">
                 <div class="col-12 col-sm-6">
                   <label for="nombre" class="form-label">Nombre</label>
