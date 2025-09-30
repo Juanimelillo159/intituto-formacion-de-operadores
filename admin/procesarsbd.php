@@ -201,12 +201,14 @@ try {
                 throw new InvalidArgumentException('Debés aceptar los Términos y Condiciones.');
             }
 
-            $cursoStmt = $con->prepare('SELECT id_curso, nombre_curso FROM cursos WHERE id_curso = :id LIMIT 1');
+            $cursoStmt = $con->prepare('SELECT id_curso, nombre_curso, nombre_certificacion FROM cursos WHERE id_curso = :id LIMIT 1');
             $cursoStmt->execute([':id' => $checkoutCursoId]);
             $cursoRow = $cursoStmt->fetch();
             if (!$cursoRow) {
                 throw new RuntimeException('No encontramos la certificación seleccionada.');
             }
+
+            $cursoNombre = (string)($cursoRow['nombre_certificacion'] ?? $cursoRow['nombre_curso'] ?? '');
 
             $precioStmt = $con->prepare('
               SELECT precio, moneda
@@ -388,13 +390,25 @@ try {
                 'id' => $certificacionId,
             ];
 
+            $_SESSION['certificacion_gracias'] = [
+                'id_certificacion' => $certificacionId,
+                'id_curso' => $checkoutCursoId,
+                'curso_nombre' => $cursoNombre,
+                'nombre' => $nombreInscrito,
+                'apellido' => $apellidoInscrito,
+                'email' => $emailInscrito,
+                'telefono' => $telefonoInscrito,
+                'precio' => $precioFinal,
+                'moneda' => strtoupper($monedaPrecio),
+            ];
+
             log_cursos('checkout_crear_certificacion', [
                 'id_certificacion' => $certificacionId,
                 'id_curso' => $checkoutCursoId,
                 'usuario' => $usuarioId,
             ]);
 
-            header('Location: ../checkout/checkout.php?id_certificacion=' . $checkoutCursoId . '&tipo=certificacion');
+            header('Location: ../checkout/gracias_certificacion.php?certificacion=' . $certificacionId);
             exit;
         } catch (Throwable $certException) {
             if ($con->inTransaction()) {

@@ -5,30 +5,56 @@ require_once 'sbd.php';
 $page_title = "Certificación | Instituto de Formación";
 $page_description = "Página de certificación del Instituto de Formación de Operadores";
 
-$id_certificacion = $_GET['id_certificacion'] ?? null;
+$id_certificacion = isset($_GET['id_certificacion']) ? (int)$_GET['id_certificacion'] : 0;
+if ($id_certificacion <= 0 && isset($_GET['id_curso'])) {
+    $id_certificacion = (int) $_GET['id_curso'];
+}
 
-/* Ajusta nombres de tabla/campos si difiere tu esquema */
-$sql_item = $con->prepare("
-  SELECT * 
-  FROM cursos c 
-  WHERE c.id_curso = :id
-");
-$sql_item->bindParam(':id', $id_certificacion);
-$sql_item->execute();
-$cert = $sql_item->fetch(PDO::FETCH_ASSOC);
+$cert = null;
+$modalidades = [];
 
-$sql_mods = $con->prepare("
-  SELECT m.id_modalidad AS modalidad_id, m.nombre_modalidad AS modalidad_nombre
-  FROM curso_modalidad cm 
-  JOIN modalidades m ON cm.id_modalidad = m.id_modalidad 
-  WHERE cm.id_curso = :id
-");
-$sql_mods->bindParam(':id', $id_certificacion);
-$sql_mods->execute();
-$modalidades = $sql_mods->fetchAll(PDO::FETCH_ASSOC);
+if ($id_certificacion > 0) {
+    /* Ajusta nombres de tabla/campos si difiere tu esquema */
+    $sql_item = $con->prepare(
+        "SELECT *
+         FROM cursos c
+         WHERE c.id_curso = :id"
+    );
+    $sql_item->execute([':id' => $id_certificacion]);
+    $cert = $sql_item->fetch(PDO::FETCH_ASSOC) ?: null;
+
+    if ($cert) {
+        $sql_mods = $con->prepare(
+            "SELECT m.id_modalidad AS modalidad_id, m.nombre_modalidad AS modalidad_nombre
+             FROM curso_modalidad cm
+             JOIN modalidades m ON cm.id_modalidad = m.id_modalidad
+             WHERE cm.id_curso = :id"
+        );
+        $sql_mods->execute([':id' => $id_certificacion]);
+        $modalidades = $sql_mods->fetchAll(PDO::FETCH_ASSOC);
+    }
+}
 
 $modalidad_nombres = array_map(fn($v) => htmlspecialchars($v['modalidad_nombre']), $modalidades);
 $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
+
+if (!$cert) {
+    http_response_code(404);
+}
+
+$certNombre = htmlspecialchars($cert['nombre_certificacion'] ?? $cert['nombre_curso'] ?? 'Certificación');
+$certDescripcion = nl2br(htmlspecialchars($cert['descripcion'] ?? 'Pronto publicaremos la información detallada de esta certificación.'));
+$certRequisitos = nl2br(htmlspecialchars($cert['requisitos_evaluacion'] ?? 'Revisaremos tu perfil y la documentación para confirmar los requisitos.'));
+$certDuracion = htmlspecialchars($cert['plazo'] ?? 'A definir');
+$certNivelBruto = strtolower($cert['complejidad'] ?? '');
+$certNivel = htmlspecialchars($cert['complejidad'] ?? 'Intermedio');
+$certBadgeClass = 'badge-intermediate';
+if (strpos($certNivelBruto, 'principiante') !== false || strpos($certNivelBruto, 'básico') !== false || strpos($certNivelBruto, 'basico') !== false) {
+    $certBadgeClass = 'badge-beginner';
+} elseif (strpos($certNivelBruto, 'avanzado') !== false || strpos($certNivelBruto, 'experto') !== false) {
+    $certBadgeClass = 'badge-advanced';
+}
+$enlaceCheckoutId = $cert ? (int) $cert['id_curso'] : max($id_certificacion, 0);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -51,18 +77,18 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
             <div class="col-lg-8">
                 <div class="content-wrapper">
                     <div class="course-header">
-                        <h1 class="course-title"><i class="fa-solid fa-award me-2"></i><?php echo htmlspecialchars($cert["nombre_certificacion"] ?? "Certificación"); ?></h1>
+                        <h1 class="course-title"><i class="fa-solid fa-award me-2"></i><?php echo $certNombre; ?></h1>
                         <p class="course-subtitle">Información clave de esta certificación</p>
                     </div>
                     <div class="course-content">
                         <h2 class="section-title"><i class="fa-solid fa-shield-check"></i>Descripción de la Certificación</h2>
                         <div class="course-description">
-                            <p class="mb-0"><?php echo nl2br(htmlspecialchars($cert['descripcion'] ?? 'Texto de prueba de la certificación.')); ?></p>
+                            <p class="mb-0"><?php echo $certDescripcion; ?></p>
                         </div>
 
                         <h3 class="section-title"><i class="fa-solid fa-list-check"></i>Requisitos de Evaluación</h3>
                         <div class="objectives-list">
-                            <p class="mb-0"><?php echo nl2br(htmlspecialchars($cert['requisitos_evaluacion'] ?? 'Criterios de evaluación de ejemplo.')); ?></p>
+                            <p class="mb-0"><?php echo $certRequisitos; ?></p>
                         </div>
 
                         <!-- Acordeón (uno a la vez) -->
@@ -128,7 +154,7 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                             <div class="detail-icon"><i class="fa-regular fa-clock"></i></div>
                             <div class="detail-content">
                                 <div class="detail-label">Duración / Plazo</div>
-                                <div class="detail-value"><?php echo htmlspecialchars($cert["plazo"] ?? "A definir"); ?></div>
+                                <div class="detail-value"><?php echo $certDuracion; ?></div>
                             </div>
                         </div>
 
@@ -137,16 +163,7 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                             <div class="detail-content">
                                 <div class="detail-label">Nivel</div>
                                 <div class="detail-value">
-                                    <?php
-                                    $nivel = strtolower($cert["complejidad"] ?? '');
-                                    $badge_class = 'badge-intermediate';
-                                    if (strpos($nivel, 'principiante') !== false || strpos($nivel, 'básico') !== false || strpos($nivel, 'basico') !== false) {
-                                        $badge_class = 'badge-beginner';
-                                    } elseif (strpos($nivel, 'avanzado') !== false || strpos($nivel, 'experto') !== false) {
-                                        $badge_class = 'badge-advanced';
-                                    }
-                                    ?>
-                                    <span class="badge-level <?php echo $badge_class; ?>"><?php echo htmlspecialchars($cert["complejidad"] ?? "Intermedio"); ?></span>
+                                    <span class="badge-level <?php echo $certBadgeClass; ?>"><?php echo $certNivel; ?></span>
                                 </div>
                             </div>
                         </div>
@@ -167,9 +184,21 @@ $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
                             </div>
                         </div>
 
-                        <a class="enroll-button" href="checkout/checkout.php?id_certificacion=<?php echo isset($cert['id_curso']) ? (int)$cert['id_curso'] : 0; ?>&tipo=certificacion">
-                            <i class="fa-solid fa-paper-plane me-2"></i> Solicitar certificación
-                        </a>
+                        <?php if ($cert): ?>
+                            <a class="enroll-button" href="checkout/checkout.php?id_certificacion=<?php echo $enlaceCheckoutId; ?>&tipo=certificacion">
+                                <i class="fa-solid fa-paper-plane me-2"></i> Solicitar certificación
+                            </a>
+                        <?php else: ?>
+                            <div class="alert alert-warning mt-3" role="alert">
+                                <div class="d-flex align-items-start gap-2">
+                                    <i class="fa-solid fa-triangle-exclamation mt-1"></i>
+                                    <div>
+                                        <strong>No encontramos la certificación seleccionada.</strong>
+                                        <div class="small mt-1">Volvé al catálogo e intentá nuevamente.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

@@ -50,7 +50,7 @@ $cursos = $sql->fetchAll(mode: PDO::FETCH_ASSOC);
             </a>
 
             <a class="btn btn-secondary btn-pill d-inline-flex align-items-center"
-              href="certificacion.php?id_curso=<?php echo urlencode($curso['id_curso']); ?>">
+              href="certificacion.php?id_certificacion=<?php echo urlencode($curso['id_curso']); ?>">
               <i class="bi bi-circle me-2"></i> Certificaci&oacute;n
             </a>
           </div>
