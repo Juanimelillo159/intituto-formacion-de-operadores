@@ -145,17 +145,28 @@ if (!function_exists('checkout_get_base_url')) {
             }
         }
 
+        $forwardedProto = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''));
+        $forwardedSsl = strtolower((string) ($_SERVER['HTTP_X_FORWARDED_SSL'] ?? ''));
         $https = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
-            || ((string) ($_SERVER['SERVER_PORT'] ?? '') === '443');
+            || ((string) ($_SERVER['SERVER_PORT'] ?? '') === '443')
+            || $forwardedProto === 'https'
+            || $forwardedSsl === 'on';
         $scheme = $https ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+
+        $host = $_SERVER['HTTP_HOST']
+            ?? $_SERVER['HTTP_X_FORWARDED_HOST']
+            ?? $_SERVER['SERVER_NAME']
+            ?? 'localhost';
+
+        $host = trim((string) $host);
         if ($host === '') {
             $host = 'localhost';
         }
+
         if (!preg_match('#^https?://#i', $host)) {
-            $host = ltrim($host, '/');
-            $host = $scheme . '://' . $host;
+            $host = $scheme . '://' . ltrim($host, '/');
         }
+
         return rtrim($host, '/');
     }
 }
