@@ -244,11 +244,6 @@ try {
                    apellido = :apellido,
                    email = :email,
                    telefono = :telefono,
-                   dni = :dni,
-                   direccion = :direccion,
-                   ciudad = :ciudad,
-                   provincia = :provincia,
-                   pais = :pais,
                    acepta_tyc = 1
              WHERE id_certificacion = :id
         ');
@@ -260,11 +255,6 @@ try {
             ':apellido' => $apellido,
             ':email' => $email,
             ':telefono' => $telefono,
-            ':dni' => $dni !== '' ? $dni : null,
-            ':direccion' => $direccion !== '' ? $direccion : null,
-            ':ciudad' => $ciudad !== '' ? $ciudad : null,
-            ':provincia' => $provincia !== '' ? $provincia : null,
-            ':pais' => $pais !== '' ? $pais : 'Argentina',
             ':id' => (int)$certificacionRow['id_certificacion'],
         ]);
         $registrarHistoricoCert($con, (int)$certificacionRow['id_certificacion'], 3);

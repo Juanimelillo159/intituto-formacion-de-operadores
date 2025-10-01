@@ -89,13 +89,21 @@ LEFT JOIN checkout_capacitaciones cap ON p.id_capacitacion = cap.id_capacitacion
 LEFT JOIN checkout_certificaciones cert ON p.id_certificacion = cert.id_certificacion
 LEFT JOIN cursos cur_cap ON cap.id_curso = cur_cap.id_curso
 LEFT JOIN cursos cur_cert ON cert.id_curso = cur_cert.id_curso
-WHERE (p.id_capacitacion = :id OR p.id_certificacion = :id OR cap.id_capacitacion = :id OR cert.id_certificacion = :id)
+WHERE (
+        (p.id_capacitacion IS NOT NULL AND p.id_capacitacion = :id_cap)
+        OR (p.id_certificacion IS NOT NULL AND p.id_certificacion = :id_cert)
+        OR (cap.id_capacitacion IS NOT NULL AND cap.id_capacitacion = :id_cap)
+        OR (cert.id_certificacion IS NOT NULL AND cert.id_certificacion = :id_cert)
+    )
 ORDER BY p.id_pago DESC
 LIMIT 1
 SQL;
 
         $st = $con->prepare($sqlDetalle);
-        $st->execute([':id' => $manualOrderId]);
+        $st->execute([
+            ':id_cap' => $manualOrderId,
+            ':id_cert' => $manualOrderId,
+        ]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
             throw new RuntimeException('No encontramos la inscripción generada.');

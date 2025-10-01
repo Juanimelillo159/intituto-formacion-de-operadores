@@ -335,12 +335,7 @@ try {
                            pdf_nombre = :pdf_nombre,
                            pdf_mime = :pdf_mime,
                            observaciones = :obs,
-                           id_estado = 1,
-                           dni = :dni,
-                           direccion = :direccion,
-                           ciudad = :ciudad,
-                           provincia = :provincia,
-                           pais = :pais
+                           id_estado = 1
                      WHERE id_certificacion = :id
                 ');
                 $update->execute([
@@ -355,11 +350,6 @@ try {
                     ':pdf_nombre' => $pdfNombreOriginal,
                     ':pdf_mime' => 'application/pdf',
                     ':obs' => $observacionesBase,
-                    ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
-                    ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
-                    ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
-                    ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
-                    ':pais' => $paisInsc,
                     ':id' => $certificacionId,
                 ]);
             } else {
@@ -367,11 +357,11 @@ try {
                     INSERT INTO checkout_certificaciones (
                         creado_por, acepta_tyc, precio_total, moneda, id_curso,
                         pdf_path, pdf_nombre, pdf_mime, observaciones, id_estado,
-                        nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais
+                        nombre, apellido, email, telefono
                     ) VALUES (
                         :usuario, :acepta, :precio, :moneda, :curso,
                         :pdf_path, :pdf_nombre, :pdf_mime, NULL, 1,
-                        :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais
+                        :nombre, :apellido, :email, :telefono
                     )
                 ');
                 $insert->execute([
@@ -387,11 +377,6 @@ try {
                     ':apellido' => $apellidoInscrito,
                     ':email' => $emailInscrito,
                     ':telefono' => $telefonoInscrito,
-                    ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
-                    ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
-                    ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
-                    ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
-                    ':pais' => $paisInsc,
                 ]);
                 $certificacionId = (int)$con->lastInsertId();
             }
@@ -716,29 +701,19 @@ try {
                        apellido = :apellido,
                        email = :email,
                        telefono = :telefono,
-                       dni = :dni,
-                       direccion = :direccion,
-                       ciudad = :ciudad,
-                       provincia = :provincia,
-                       pais = :pais,
                        acepta_tyc = 1
-                 WHERE id_certificacion = :id
-            ');
-            $upCert->execute([
-                ':precio' => $precioFinal,
-                ':moneda' => $monedaPrecio,
-                ':obs' => $observacionesCert,
-                ':nombre' => $nombreInscrito,
-                ':apellido' => $apellidoInscrito,
-                ':email' => $emailInscrito,
-                ':telefono' => $telefonoInscrito,
-                ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
-                ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
-                ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
-                ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
-                ':pais' => $paisInsc,
-                ':id' => (int)$certificacionRow['id_certificacion'],
-            ]);
+             WHERE id_certificacion = :id
+        ');
+        $upCert->execute([
+            ':precio' => $precioFinal,
+            ':moneda' => $monedaPrecio,
+            ':obs' => $observacionesCert,
+            ':nombre' => $nombreInscrito,
+            ':apellido' => $apellidoInscrito,
+            ':email' => $emailInscrito,
+            ':telefono' => $telefonoInscrito,
+            ':id' => (int)$certificacionRow['id_certificacion'],
+        ]);
             registrar_historico_certificacion($con, (int)$certificacionRow['id_certificacion'], 3);
         }
 
