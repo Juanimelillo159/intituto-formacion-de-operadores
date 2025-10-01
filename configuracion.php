@@ -239,10 +239,11 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
 
 <?php include 'footer.php'; ?>
 
-<script src="/AdminLTE-3.2.0/plugins/jquery/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
 
 
