@@ -1,29 +1,57 @@
 <?php
 declare(strict_types=1);
 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/enviar.php';
 
-header('Content-Type: application/json; charset=UTF-8');
+function resendRequestWantsJson(): bool
+{
+    $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+    if ($accept !== '' && stripos($accept, 'application/json') !== false) {
+        return true;
+    }
+
+    $requestedWith = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+    if ($requestedWith !== '' && strcasecmp($requestedWith, 'xmlhttprequest') === 0) {
+        return true;
+    }
+
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? ($_SERVER['HTTP_CONTENT_TYPE'] ?? '');
+    return $contentType !== '' && stripos($contentType, 'application/json') !== false;
+}
+
+function resendRespond(bool $ok, string $message, int $status = 200, string $type = 'info'): void
+{
+    if (resendRequestWantsJson()) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode(['ok' => $ok, 'message' => $message], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $_SESSION['login_mensaje'] = $message;
+    $_SESSION['login_tipo'] = $type;
+
+    header('Location: login.php');
+    exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['ok' => false, 'message' => 'Metodo no permitido.']);
-    exit;
+    resendRespond(false, 'Metodo no permitido.', 405, 'danger');
 }
 
 $email = trim((string)($_POST['email'] ?? ''));
 
 if ($email === '') {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'message' => 'Email es obligatorio.']);
-    exit;
+    resendRespond(false, 'Email es obligatorio.', 400, 'danger');
 }
 
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    http_response_code(400);
-    echo json_encode(['ok' => false, 'message' => 'Email invalido.']);
-    exit;
+    resendRespond(false, 'Email invalido.', 400, 'danger');
 }
 
 $pdo = getPdo();
@@ -40,20 +68,28 @@ try {
         $update = $pdo->prepare('UPDATE usuarios SET token_verificacion = ?, token_expiracion = ? WHERE id_usuario = ?');
         $update->execute([$token, $expiresAt, (int)$user['id_usuario']]);
 
-        $verificationLink = APP_URL . '/verificar.php?token=' . urlencode($token);
-
-        try {
-            enviarCorreoVerificacion($email, $verificationLink);
-        } catch (Throwable $exception) {
-            http_response_code(500);
-            echo json_encode(['ok' => false, 'message' => 'No pudimos enviar el correo de verificacion.']);
-            exit;
+        if (defined('APP_URL') && APP_URL) {
+            $baseUrl = rtrim((string)APP_URL, '/');
+        } else {
+            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $baseUrl = $scheme . '://' . $host;
         }
+
+        $verificationLink = $baseUrl . '/verificar.php?token=' . urlencode($token);
+
+        [$sent, $err] = enviarCorreoVerificacion($email, $verificationLink);
+        if (!$sent) {
+            error_log('[reenviar_verificacion] Falla SMTP: ' . ($err ?? 'desconocido'));
+            resendRespond(false, 'No pudimos enviar el correo de verificacion. Intentalo nuevamente.', 500, 'danger');
+        }
+
+        resendRespond(true, 'Te enviamos un nuevo correo de verificacion. Revisalo o revisa la carpeta de SPAM.', 200, 'success');
     }
 } catch (Throwable $exception) {
-    http_response_code(500);
-    echo json_encode(['ok' => false, 'message' => 'Ocurrio un error al procesar la solicitud.']);
-    exit;
+    error_log('[reenviar_verificacion] Error: ' . $exception->getMessage());
+    resendRespond(false, 'Ocurrio un error al procesar la solicitud.', 500, 'danger');
 }
 
-echo json_encode(['ok' => true, 'message' => 'Si el email existe, te enviamos el enlace de verificacion.']);
+// Para evitar enumerar usuarios devolvemos mensaje neutro cuando no correspondia enviar correo
+resendRespond(true, 'Si el email existe, te enviamos el enlace de verificacion.', 200, 'info');
