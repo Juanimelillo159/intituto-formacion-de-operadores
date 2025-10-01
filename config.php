@@ -1,19 +1,19 @@
 <?php
 declare(strict_types=1);
 
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
+/* define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_NAME', getenv('DB_NAME') ?: 'formacionoperadores');
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: '');
-define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4');
+define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4'); */
 
 
-/* define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1:3306');
+define('DB_HOST', getenv('DB_HOST') ?: '127.0.0.1:3306');
 define('DB_NAME', getenv('DB_NAME') ?: 'u910416176_formacionopera');
 define('DB_USER', getenv('DB_USER') ?: 'u910416176_formacionopera');
 define('DB_PASS', getenv('DB_PASS') ?: '8wO;T@NIyT');
 define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4');
- */
+
 // TODO: Cambiar APP_URL cuando publiques el sitio.
 define('APP_URL', rtrim(getenv('APP_URL') ?: 'http://localhost/intituto-formacion-de-operadores', '/'));
 
