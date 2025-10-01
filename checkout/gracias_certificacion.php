@@ -33,7 +33,7 @@ if (!$data && $certificacionId > 0) {
 
         $st = $con->prepare('
             SELECT cc.id_certificacion, cc.id_curso, cc.nombre, cc.apellido, cc.email, cc.telefono,
-                   cc.precio_total, cc.moneda, cc.id_estado, c.nombre_curso, c.nombre_certificacion
+                   cc.precio_total, cc.moneda, cc.id_estado, c.nombre_curso
               FROM checkout_certificaciones cc
          LEFT JOIN cursos c ON c.id_curso = cc.id_curso
              WHERE cc.id_certificacion = :id

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1:3306
--- Tiempo de generación: 29-09-2025 a las 20:02:15
+-- Tiempo de generación: 01-10-2025 a las 01:57:44
 -- Versión del servidor: 11.8.3-MariaDB-log
 -- Versión de PHP: 7.2.34
 
@@ -166,7 +166,8 @@ INSERT INTO `checkout_mercadopago` (`id_mp`, `id_pago`, `preference_id`, `init_p
 
 CREATE TABLE `checkout_pagos` (
   `id_pago` int(11) NOT NULL,
-  `id_inscripcion` int(11) NOT NULL,
+  `id_certificacion` int(11) DEFAULT NULL,
+  `id_capacitacion` int(11) DEFAULT NULL,
   `metodo` varchar(40) NOT NULL,
   `estado` varchar(30) NOT NULL DEFAULT 'pendiente',
   `monto` decimal(12,2) NOT NULL DEFAULT 0.00,
@@ -184,36 +185,39 @@ CREATE TABLE `checkout_pagos` (
 -- Volcado de datos para la tabla `checkout_pagos`
 --
 
-INSERT INTO `checkout_pagos` (`id_pago`, `id_inscripcion`, `metodo`, `estado`, `monto`, `moneda`, `comprobante_path`, `comprobante_nombre`, `comprobante_mime`, `comprobante_tamano`, `observaciones`, `creado_en`, `actualizado_en`) VALUES
-(3, 6, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 15:04:26', '2025-09-23 15:04:26'),
-(4, 7, 'transferencia', 'pendiente', 120000.00, 'ARS', 'uploads/comprobantes/comp_20250923200550_ca34f49565cb480f.pdf', 'EBOOK_200_PROMPTS_MDEV1.pdf', 'application/pdf', 2881165, NULL, '2025-09-23 15:05:50', '2025-09-23 15:05:50'),
-(17, 20, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:19:27', '2025-09-23 20:19:27'),
-(19, 22, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:23:09', '2025-09-23 20:23:09'),
-(20, 23, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:27:49', '2025-09-23 20:27:49'),
-(21, 24, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:28:18', '2025-09-23 20:28:18'),
-(22, 25, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:29:37', '2025-09-23 20:29:37'),
-(25, 28, 'transferencia', 'pendiente', 120000.00, 'ARS', 'uploads/comprobantes/comp_20250924185633_5bd0174a6d752794.pdf', 'Instructivo-tablero-CPEC-actualizado.pdf', 'application/pdf', 1677309, 'comprobante', '2025-09-24 13:56:33', '2025-09-24 13:56:33');
-
--- --------------------------------------------------------
+INSERT INTO `checkout_pagos` (`id_pago`, `id_certificacion`, `id_capacitacion`, `metodo`, `estado`, `monto`, `moneda`, `comprobante_path`, `comprobante_nombre`, `comprobante_mime`, `comprobante_tamano`, `observaciones`, `creado_en`, `actualizado_en`) VALUES
+(3, 6, 0, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 15:04:26', '2025-09-23 15:04:26'),
+(4, 7, 0, 'transferencia', 'pendiente', 120000.00, 'ARS', 'uploads/comprobantes/comp_20250923200550_ca34f49565cb480f.pdf', 'EBOOK_200_PROMPTS_MDEV1.pdf', 'application/pdf', 2881165, NULL, '2025-09-23 15:05:50', '2025-09-23 15:05:50'),
+(17, 20, 0, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:19:27', '2025-09-23 20:19:27'),
+(19, 22, 0, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:23:09', '2025-09-23 20:23:09'),
+(20, 23, 0, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:27:49', '2025-09-23 20:27:49'),
+(21, 24, 0, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:28:18', '2025-09-23 20:28:18'),
+(22, 25, 0, 'mercado_pago', 'pendiente', 120000.00, 'ARS', NULL, NULL, NULL, NULL, NULL, '2025-09-23 20:29:37', '2025-09-23 20:29:37'),
+(25, 28, 0, 'transferencia', 'pendiente', 120000.00, 'ARS', 'uploads/comprobantes/comp_20250924185633_5bd0174a6d752794.pdf', 'Instructivo-tablero-CPEC-actualizado.pdf', 'application/pdf', 1677309, 'comprobante', '2025-09-24 13:56:33', '2025-09-24 13:56:33');
 
 --
--- Estructura de tabla para la tabla `complejidad`
+-- Disparadores `checkout_pagos`
 --
-
-CREATE TABLE `complejidad` (
-  `id_complejidad` int(11) NOT NULL,
-  `nombre_complejidad` varchar(100) NOT NULL,
-  `descripcion_complejidad` varchar(200) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Volcado de datos para la tabla `complejidad`
---
-
-INSERT INTO `complejidad` (`id_complejidad`, `nombre_complejidad`, `descripcion_complejidad`) VALUES
-(1, 'Principiante', 'Nivel para personas que están empezando y tienen conocimientos básicos.'),
-(2, 'Intermedio', 'Nivel para personas con conocimientos previos y habilidades intermedias.'),
-(3, 'Avanzado', 'Nivel para personas con experiencia significativa y habilidades avanzadas.');
+DELIMITER $$
+CREATE TRIGGER `trg_checkout_pagos_bi` BEFORE INSERT ON `checkout_pagos` FOR EACH ROW BEGIN
+  IF ( (NEW.id_certificacion IS NULL AND NEW.id_capacitacion IS NULL)
+       OR (NEW.id_certificacion IS NOT NULL AND NEW.id_capacitacion IS NOT NULL) ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Debe existir exactamente una: id_certificacion O id_capacitacion';
+  END IF;
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `trg_checkout_pagos_bu` BEFORE UPDATE ON `checkout_pagos` FOR EACH ROW BEGIN
+  IF ( (NEW.id_certificacion IS NULL AND NEW.id_capacitacion IS NULL)
+       OR (NEW.id_certificacion IS NOT NULL AND NEW.id_capacitacion IS NOT NULL) ) THEN
+    SIGNAL SQLSTATE '45000'
+      SET MESSAGE_TEXT = 'Debe existir exactamente una: id_certificacion O id_capacitacion';
+  END IF;
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -394,9 +398,9 @@ CREATE TABLE `estados_inscripciones` (
 --
 
 INSERT INTO `estados_inscripciones` (`id_estado`, `nombre_estado`) VALUES
+(1, 'pendiente'),
 (2, 'aprobado'),
 (3, 'pagado'),
-(1, 'pendiente'),
 (4, 'rechazado');
 
 -- --------------------------------------------------------
@@ -505,7 +509,7 @@ CREATE TABLE `recuperaciones_contrasena` (
 --
 
 INSERT INTO `recuperaciones_contrasena` (`id_reset`, `id_usuario`, `token`, `expiracion`, `utilizado`, `creado_en`, `usado_en`) VALUES
-(2, 37, '0575af7b7a9cf5b9a0c9097c8eae1c965033de538772a6e467e99bd8e5d45ff4', '2025-09-19 00:04:27', 1, '2025-09-18 18:04:27', '2025-09-18 18:24:22');
+(1, 0, 'cf82c84e1f0a5e449903e13bcfd52f68f1a46578ce1e9f59ce64d2d54beb39a2', '2025-09-30 05:51:58', 1, '2025-09-30 04:51:58', '2025-09-30 04:52:53');
 
 -- --------------------------------------------------------
 
@@ -533,12 +537,14 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`id_usuario`, `email`, `nombre`, `apellido`, `telefono`, `clave`, `id_estado`, `id_permiso`, `token_verificacion`, `token_expiracion`, `verificado`, `google_sub`) VALUES
+(1, 'pruebas@institutodeoperadores.com', 'Pruebas', 'Melillo', NULL, '$2y$10$G5oCy7VKVCfM0lcW9q/Ig.tETnIh3Gy9X5UmiPLiWBC8cm/E6Ffwa', 2, 2, NULL, NULL, 1, '104201308450167003224'),
 (2, 'administracion@institutodeoperadores.com', '', '', NULL, '$2y$10$BOYvdEyEt4tDuXinuc1b3ek57vlRgcYZXmdn4AJsLZ5KcYJjajSma', 2, 1, NULL, NULL, 1, NULL),
 (3, 'pruebaa@mail.com', 'prueba', '1', NULL, '$2y$10$kCMOMQEBqP7zTcKGjq0iNuZmf5R5h6qPmHqmeUEqssB8XqDPeg05u', 1, 4, NULL, NULL, 0, NULL),
-(0, 'pruebas@institutodeoperadores.com', 'Pruebas', NULL, NULL, '$2y$10$XGcM6oGYz7Bm2xT4Ns3DpegOR6stc9POzJn25vTK230z6MVls2MZK', 1, 2, NULL, NULL, 1, '104201308450167003224'),
+(31, 'torus22129@gmail.com', 'aa', 'aaa', '03571319798', '$2y$10$CIOfT8hLcmHRckAql6fRIOYFtRcYPa11eo5Per2Y1tiq5YbyJAkTi', 1, 3, NULL, NULL, 1, NULL),
+(37, 'tomi22129@gmail.com', 'Tom', 'Rap', '+5222222', '$2y$10$2/wrIoDerHg3pwZ.YzI3hOW20tUP4pAcAsAU375Fpk.jbLHu3H0v6', 1, 3, NULL, NULL, 1, '116105777166954342116'),
 (39, 'tomasraptopulos@gmail.com', 'Tomas', 'Raptopulos', '571319798', '$2y$10$/oK3tHteDx3z/5VfxBsw6uO0mXQLupeijAu3Gy3k7wCvW4MfGahgK', 1, 4, NULL, NULL, 1, NULL),
-(37, 'tomi22129@gmail.com', 'Tom', 'Rap', '+5222222', '$2y$10$2/wrIoDerHg3pwZ.YzI3hOW20tUP4pAcAsAU375Fpk.jbLHu3H0v6', 2, 3, NULL, NULL, 1, '116105777166954342116'),
-(31, 'torus22129@gmail.com', '12', '12', NULL, '$2y$10$CIOfT8hLcmHRckAql6fRIOYFtRcYPa11eo5Per2Y1tiq5YbyJAkTi', 1, 3, NULL, NULL, 1, NULL);
+(41, 'juanimelillo@gmail.com', 'Juani', 'Melillo', NULL, '$2y$10$KfEzcYTP.yarL7uOLfRZJO1agR1gyKG8K6hNFPIxsq8AxQuvoBvDa', 1, 2, NULL, NULL, 1, '118284451710276177062'),
+(42, 'juanimellilo@gmail.com', NULL, NULL, NULL, '$2y$10$egI9cKpzeIFFxHj1x2dfTOqw9DVkP5ndiaqL8bHZNTvRQOYFzOEDm', 1, 2, NULL, NULL, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -558,11 +564,278 @@ CREATE TABLE `v_cursos_rrhh` (
 --
 
 --
+-- Indices de la tabla `banner`
+--
+ALTER TABLE `banner`
+  ADD PRIMARY KEY (`id_banner`);
+
+--
+-- Indices de la tabla `checkout_capacitaciones`
+--
+ALTER TABLE `checkout_capacitaciones`
+  ADD PRIMARY KEY (`id_capacitacion`),
+  ADD KEY `fk_checkout_creado_por` (`creado_por`),
+  ADD KEY `fk_checkout_id_curso` (`id_curso`),
+  ADD KEY `fk_checkout_id_estado` (`id_estado`);
+
+--
+-- Indices de la tabla `checkout_certificaciones`
+--
+ALTER TABLE `checkout_certificaciones`
+  ADD PRIMARY KEY (`id_certificacion`),
+  ADD KEY `fk_certificaciones_usuarios` (`creado_por`),
+  ADD KEY `fk_certificaciones_cursos` (`id_curso`),
+  ADD KEY `fk_certificaciones_estados` (`id_estado`);
+
+--
+-- Indices de la tabla `checkout_mercadopago`
+--
+ALTER TABLE `checkout_mercadopago`
+  ADD PRIMARY KEY (`id_mp`),
+  ADD KEY `fk_id_pago_checkout_pagos` (`id_pago`);
+
+--
+-- Indices de la tabla `checkout_pagos`
+--
+ALTER TABLE `checkout_pagos`
+  ADD PRIMARY KEY (`id_pago`),
+  ADD KEY `fk_pagos_certificacion` (`id_certificacion`),
+  ADD KEY `fk_pagos_capacitacion` (`id_capacitacion`);
+
+--
+-- Indices de la tabla `cursos`
+--
+ALTER TABLE `cursos`
+  ADD PRIMARY KEY (`id_curso`);
+
+--
+-- Indices de la tabla `curso_precio_hist`
+--
+ALTER TABLE `curso_precio_hist`
+  ADD KEY `FK_id_curso` (`id_curso`);
+
+--
+-- Indices de la tabla `empresa_trabajadores`
+--
+ALTER TABLE `empresa_trabajadores`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indices de la tabla `estado`
+--
+ALTER TABLE `estado`
+  ADD PRIMARY KEY (`id_estado`);
+
+--
+-- Indices de la tabla `estados_inscripciones`
+--
+ALTER TABLE `estados_inscripciones`
+  ADD PRIMARY KEY (`id_estado`);
+
+--
+-- Indices de la tabla `historico_estado_capacitaciones`
+--
+ALTER TABLE `historico_estado_capacitaciones`
+  ADD PRIMARY KEY (`id_historico`),
+  ADD KEY `fk_id_capacitaciones` (`id_capacitacion`),
+  ADD KEY `fk_id_estad__end` (`id_estado`);
+
+--
+-- Indices de la tabla `historico_estado_certificaciones`
+--
+ALTER TABLE `historico_estado_certificaciones`
+  ADD PRIMARY KEY (`id_historico`),
+  ADD KEY `fk_id_estado` (`id_estado`),
+  ADD KEY `fk_id_certificaciones` (`id_certificacion`);
+
+--
+-- Indices de la tabla `modalidades`
+--
+ALTER TABLE `modalidades`
+  ADD PRIMARY KEY (`id_modalidad`);
+
+--
+-- Indices de la tabla `permisos`
+--
+ALTER TABLE `permisos`
+  ADD PRIMARY KEY (`id_permiso`);
+
+--
+-- Indices de la tabla `recuperaciones_contrasena`
+--
+ALTER TABLE `recuperaciones_contrasena`
+  ADD PRIMARY KEY (`id_reset`),
+  ADD KEY `fk_id_usuario_usuarios_end` (`id_usuario`);
+
+--
 -- Indices de la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
+  ADD PRIMARY KEY (`id_usuario`),
   ADD UNIQUE KEY `uq_usuarios_email` (`email`),
-  ADD UNIQUE KEY `google_sub` (`google_sub`);
+  ADD UNIQUE KEY `google_sub` (`google_sub`),
+  ADD KEY `fk_id_estado_usuario` (`id_estado`),
+  ADD KEY `fk_permisos` (`id_permiso`);
+
+--
+-- AUTO_INCREMENT de las tablas volcadas
+--
+
+--
+-- AUTO_INCREMENT de la tabla `banner`
+--
+ALTER TABLE `banner`
+  MODIFY `id_banner` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT de la tabla `checkout_capacitaciones`
+--
+ALTER TABLE `checkout_capacitaciones`
+  MODIFY `id_capacitacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+
+--
+-- AUTO_INCREMENT de la tabla `checkout_certificaciones`
+--
+ALTER TABLE `checkout_certificaciones`
+  MODIFY `id_certificacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `checkout_mercadopago`
+--
+ALTER TABLE `checkout_mercadopago`
+  MODIFY `id_mp` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT de la tabla `checkout_pagos`
+--
+ALTER TABLE `checkout_pagos`
+  MODIFY `id_pago` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+
+--
+-- AUTO_INCREMENT de la tabla `cursos`
+--
+ALTER TABLE `cursos`
+  MODIFY `id_curso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT de la tabla `empresa_trabajadores`
+--
+ALTER TABLE `empresa_trabajadores`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT de la tabla `estado`
+--
+ALTER TABLE `estado`
+  MODIFY `id_estado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `estados_inscripciones`
+--
+ALTER TABLE `estados_inscripciones`
+  MODIFY `id_estado` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT de la tabla `historico_estado_capacitaciones`
+--
+ALTER TABLE `historico_estado_capacitaciones`
+  MODIFY `id_historico` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de la tabla `historico_estado_certificaciones`
+--
+ALTER TABLE `historico_estado_certificaciones`
+  MODIFY `id_historico` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `modalidades`
+--
+ALTER TABLE `modalidades`
+  MODIFY `id_modalidad` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de la tabla `permisos`
+--
+ALTER TABLE `permisos`
+  MODIFY `id_permiso` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT de la tabla `recuperaciones_contrasena`
+--
+ALTER TABLE `recuperaciones_contrasena`
+  MODIFY `id_reset` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT de la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  MODIFY `id_usuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `checkout_capacitaciones`
+--
+ALTER TABLE `checkout_capacitaciones`
+  ADD CONSTRAINT `fk_checkout_creado_por` FOREIGN KEY (`creado_por`) REFERENCES `usuarios` (`id_usuario`),
+  ADD CONSTRAINT `fk_checkout_id_curso` FOREIGN KEY (`id_curso`) REFERENCES `cursos` (`id_curso`),
+  ADD CONSTRAINT `fk_checkout_id_estado` FOREIGN KEY (`id_estado`) REFERENCES `estados_inscripciones` (`id_estado`);
+
+--
+-- Filtros para la tabla `checkout_certificaciones`
+--
+ALTER TABLE `checkout_certificaciones`
+  ADD CONSTRAINT `fk_certificaciones_cursos` FOREIGN KEY (`id_curso`) REFERENCES `cursos` (`id_curso`),
+  ADD CONSTRAINT `fk_certificaciones_estados` FOREIGN KEY (`id_estado`) REFERENCES `estados_inscripciones` (`id_estado`),
+  ADD CONSTRAINT `fk_certificaciones_usuarios` FOREIGN KEY (`creado_por`) REFERENCES `usuarios` (`id_usuario`);
+
+--
+-- Filtros para la tabla `checkout_mercadopago`
+--
+ALTER TABLE `checkout_mercadopago`
+  ADD CONSTRAINT `fk_id_pago_checkout_pagos` FOREIGN KEY (`id_pago`) REFERENCES `checkout_pagos` (`id_pago`);
+
+--
+-- Filtros para la tabla `checkout_pagos`
+--
+ALTER TABLE `checkout_pagos`
+  ADD CONSTRAINT `fk_pagos_capacitacion` FOREIGN KEY (`id_capacitacion`) REFERENCES `checkout_capacitacion` (`id_capacitacion`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_pagos_certificacion` FOREIGN KEY (`id_certificacion`) REFERENCES `checkout_certificacion` (`id_certificacion`) ON DELETE NO ACTION ON UPDATE CASCADE;
+
+--
+-- Filtros para la tabla `curso_precio_hist`
+--
+ALTER TABLE `curso_precio_hist`
+  ADD CONSTRAINT `FK_id_curso` FOREIGN KEY (`id_curso`) REFERENCES `cursos` (`id_curso`);
+
+--
+-- Filtros para la tabla `historico_estado_capacitaciones`
+--
+ALTER TABLE `historico_estado_capacitaciones`
+  ADD CONSTRAINT `fk_id_capacitaciones` FOREIGN KEY (`id_capacitacion`) REFERENCES `checkout_capacitaciones` (`id_capacitacion`),
+  ADD CONSTRAINT `fk_id_estad__end` FOREIGN KEY (`id_estado`) REFERENCES `estados_inscripciones` (`id_estado`);
+
+--
+-- Filtros para la tabla `historico_estado_certificaciones`
+--
+ALTER TABLE `historico_estado_certificaciones`
+  ADD CONSTRAINT `fk_id_certificaciones` FOREIGN KEY (`id_certificacion`) REFERENCES `checkout_certificaciones` (`id_certificacion`),
+  ADD CONSTRAINT `fk_id_estado` FOREIGN KEY (`id_estado`) REFERENCES `estados_inscripciones` (`id_estado`);
+
+--
+-- Filtros para la tabla `recuperaciones_contrasena`
+--
+ALTER TABLE `recuperaciones_contrasena`
+  ADD CONSTRAINT `fk_id_usuario_usuarios_end` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`);
+
+--
+-- Filtros para la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  ADD CONSTRAINT `fk_id_estado_usuario` FOREIGN KEY (`id_estado`) REFERENCES `estado` (`id_estado`),
+  ADD CONSTRAINT `fk_permisos` FOREIGN KEY (`id_permiso`) REFERENCES `permisos` (`id_permiso`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

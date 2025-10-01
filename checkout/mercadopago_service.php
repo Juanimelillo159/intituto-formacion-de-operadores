@@ -9,13 +9,31 @@ require_once __DIR__ . '/mercadopago_mailer.php';
  */
 function checkout_fetch_mp_order(PDO $con, array $lookup): ?array
 {
-    $baseSql = "SELECT mp.*, p.estado AS pago_estado, p.monto, p.moneda, p.id_inscripcion,
-                       i.nombre, i.apellido, i.email, i.telefono, i.dni, i.direccion, i.ciudad, i.provincia, i.pais,
-                       c.nombre_curso
+    $baseSql = "SELECT mp.*, p.estado AS pago_estado, p.monto, p.moneda,
+                       p.id_capacitacion, p.id_certificacion,
+                       COALESCE(cap.id_capacitacion, cert.id_certificacion) AS id_inscripcion,
+                       CASE
+                           WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'
+                           WHEN p.id_certificacion IS NOT NULL THEN 'certificacion'
+                           ELSE NULL
+                       END AS tipo_checkout,
+                       COALESCE(cap.nombre, cert.nombre) AS nombre,
+                       COALESCE(cap.apellido, cert.apellido) AS apellido,
+                       COALESCE(cap.email, cert.email) AS email,
+                       COALESCE(cap.telefono, cert.telefono) AS telefono,
+                       CASE WHEN p.id_capacitacion IS NOT NULL THEN cap.dni ELSE NULL END AS dni,
+                       CASE WHEN p.id_capacitacion IS NOT NULL THEN cap.direccion ELSE NULL END AS direccion,
+                       CASE WHEN p.id_capacitacion IS NOT NULL THEN cap.ciudad ELSE NULL END AS ciudad,
+                       CASE WHEN p.id_capacitacion IS NOT NULL THEN cap.provincia ELSE NULL END AS provincia,
+                       CASE WHEN p.id_capacitacion IS NOT NULL THEN cap.pais ELSE NULL END AS pais,
+                       COALESCE(cap.id_curso, cert.id_curso) AS id_curso,
+                       COALESCE(cur_cap.nombre_curso, cur_cert.nombre_curso, '') AS nombre_curso
                   FROM checkout_mercadopago mp
             INNER JOIN checkout_pagos p ON mp.id_pago = p.id_pago
-            INNER JOIN checkout_inscripciones i ON p.id_inscripcion = i.id_inscripcion
-            INNER JOIN cursos c ON i.id_curso = c.id_curso
+             LEFT JOIN checkout_capacitaciones cap ON p.id_capacitacion = cap.id_capacitacion
+             LEFT JOIN checkout_certificaciones cert ON p.id_certificacion = cert.id_certificacion
+             LEFT JOIN cursos cur_cap ON cap.id_curso = cur_cap.id_curso
+             LEFT JOIN cursos cur_cert ON cert.id_curso = cur_cert.id_curso
                  WHERE %s
               ORDER BY mp.id_mp DESC
                  LIMIT 1";
@@ -190,6 +208,13 @@ function checkout_sync_mp_payment(PDO $con, array $mpRow, ?array $paymentData, s
     $estadoPago = checkout_map_mp_status_to_estado($mpStatus);
 
     $payloadData = checkout_decode_payload($mpRow['payload'] ?? null);
+    if (!empty($payloadData['request']['metadata']['tipo_checkout']) && empty($mpRow['tipo_checkout'])) {
+        $tipoFromPayload = (string) $payloadData['request']['metadata']['tipo_checkout'];
+        $tipoFromPayload = strtolower(trim($tipoFromPayload));
+        if ($tipoFromPayload !== '') {
+            $mpRow['tipo_checkout'] = $tipoFromPayload;
+        }
+    }
     $payloadData['history'] = $payloadData['history'] ?? [];
     $payloadData['history'][] = [
         'source' => $source,
@@ -299,6 +324,7 @@ function checkout_sync_mp_payment(PDO $con, array $mpRow, ?array $paymentData, s
         if (!$alreadySent) {
             $orderData = [
                 'orden' => $mpRow['id_inscripcion'],
+                'tipo_checkout' => $mpRow['tipo_checkout'] ?? null,
                 'curso' => $mpRow['nombre_curso'],
                 'nombre' => $mpRow['nombre'],
                 'apellido' => $mpRow['apellido'],
@@ -329,6 +355,8 @@ function checkout_sync_mp_payment(PDO $con, array $mpRow, ?array $paymentData, s
     checkout_log_event('checkout_mp_sync', [
         'id_pago' => $mpRow['id_pago'],
         'mp_status' => $mpStatus,
+        'status_detail' => $statusDetail,
+        'payment_type' => $paymentType,
         'estado_pago' => $estadoPago,
         'source' => $source,
         'emails_sent' => $emailsSent,
