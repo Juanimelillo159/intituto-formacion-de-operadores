@@ -161,44 +161,72 @@ try {
 
     $con->beginTransaction();
 
-    $inscripcionStmt = $con->prepare(
-        "INSERT INTO checkout_inscripciones (
-            id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda
-        ) VALUES (
-            :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, 1, :precio, :moneda
-        )"
-    );
-    $inscripcionStmt->execute([
-        ':curso' => $cursoId,
-        ':nombre' => $nombre,
-        ':apellido' => $apellido,
-        ':email' => $email,
-        ':telefono' => $telefono,
-        ':dni' => $dni !== '' ? $dni : null,
-        ':direccion' => $direccion !== '' ? $direccion : null,
-        ':ciudad' => $ciudad !== '' ? $ciudad : null,
-        ':provincia' => $provincia !== '' ? $provincia : null,
-        ':pais' => $pais !== '' ? $pais : 'Argentina',
-        ':precio' => $precioFinal,
-        ':moneda' => strtoupper($moneda),
-    ]);
+    $capacitacionId = null;
+    $pagoId = 0;
+    $registroId = 0;
 
-    $inscripcionId = (int) $con->lastInsertId();
+    if ($tipoCheckoutRaw !== 'certificacion') {
+        $capacitacionStmt = $con->prepare(
+            "INSERT INTO checkout_capacitaciones (
+                creado_por, id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda
+            ) VALUES (
+                :creado_por, :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, 1, :precio, :moneda
+            )"
+        );
+        $capacitacionStmt->execute([
+            ':creado_por' => $currentUserId > 0 ? $currentUserId : null,
+            ':curso' => $cursoId,
+            ':nombre' => $nombre,
+            ':apellido' => $apellido,
+            ':email' => $email,
+            ':telefono' => $telefono,
+            ':dni' => $dni !== '' ? $dni : null,
+            ':direccion' => $direccion !== '' ? $direccion : null,
+            ':ciudad' => $ciudad !== '' ? $ciudad : null,
+            ':provincia' => $provincia !== '' ? $provincia : null,
+            ':pais' => $pais !== '' ? $pais : 'Argentina',
+            ':precio' => $precioFinal,
+            ':moneda' => strtoupper($moneda),
+        ]);
 
-    $pagoStmt = $con->prepare(
-        "INSERT INTO checkout_pagos (
-            id_inscripcion, metodo, estado, monto, moneda
-        ) VALUES (
-            :inscripcion, 'mercado_pago', 'pendiente', :monto, :moneda
-        )"
-    );
-    $pagoStmt->execute([
-        ':inscripcion' => $inscripcionId,
-        ':monto' => $precioFinal,
-        ':moneda' => strtoupper($moneda),
-    ]);
+        $capacitacionId = (int) $con->lastInsertId();
+        $registroId = $capacitacionId;
 
-    $pagoId = (int) $con->lastInsertId();
+        $pagoStmt = $con->prepare(
+            "INSERT INTO checkout_pagos (
+                id_capacitacion, metodo, estado, monto, moneda
+            ) VALUES (
+                :capacitacion, 'mercado_pago', 'pendiente', :monto, :moneda
+            )"
+        );
+        $pagoStmt->execute([
+            ':capacitacion' => $capacitacionId,
+            ':monto' => $precioFinal,
+            ':moneda' => strtoupper($moneda),
+        ]);
+
+        $pagoId = (int) $con->lastInsertId();
+    }
+
+    if ($tipoCheckoutRaw === 'certificacion' && $certificacionRow) {
+        $registroId = (int) $certificacionRow['id_certificacion'];
+
+        $pagoStmt = $con->prepare(
+            "INSERT INTO checkout_pagos (
+                id_certificacion, metodo, estado, monto, moneda
+            ) VALUES (
+                :certificacion, 'mercado_pago', 'pendiente', :monto, :moneda
+            )"
+        );
+        $pagoStmt->execute([
+            ':certificacion' => $registroId,
+            ':monto' => $precioFinal,
+            ':moneda' => strtoupper($moneda),
+        ]);
+
+        $pagoId = (int) $con->lastInsertId();
+
+    }
 
     if ($tipoCheckoutRaw === 'certificacion' && $certificacionRow) {
         $observacionesCert = 'Pago iniciado por Mercado Pago el ' . date('d/m/Y H:i');
@@ -246,7 +274,11 @@ try {
     $preferenceClient = new PreferenceClient();
 
     $baseUrl = checkout_get_base_url();
-    $externalReference = 'insc-' . $inscripcionId;
+    if ($registroId <= 0) {
+        throw new RuntimeException('No pudimos generar la orden de pago.');
+    }
+
+    $externalReference = 'insc-' . $registroId;
 
     $preferenceRequest = [
         'items' => [[
@@ -265,7 +297,8 @@ try {
         'external_reference' => $externalReference,
         'metadata' => [
             'id_pago' => $pagoId,
-            'id_inscripcion' => $inscripcionId,
+            'id_inscripcion' => $registroId,
+            'id_capacitacion' => $capacitacionId,
             'id_curso' => $cursoId,
             'email' => $email,
             'id_certificacion' => $certificacionRow ? (int) $certificacionRow['id_certificacion'] : null,
@@ -314,7 +347,7 @@ try {
                 $apiMessage = 'Mercado Pago API error: ' . implode(' - ', $details);
             }
         }
-        checkout_log_event('checkout_mp_preference_error', ['curso' => $cursoId, 'inscripcion' => $inscripcionId], $mpException);
+        checkout_log_event('checkout_mp_preference_error', ['curso' => $cursoId, 'registro' => $registroId], $mpException);
         throw new RuntimeException($apiMessage ?: 'No pudimos iniciar el pago con Mercado Pago.');
     }
 
@@ -357,7 +390,7 @@ try {
     $con->commit();
 
     checkout_log_event('checkout_mp_preference_creada', [
-        'inscripcion' => $inscripcionId,
+        'registro' => $registroId,
         'pago' => $pagoId,
         'preference_id' => $preferenceId,
         'monto' => $precioFinal,
@@ -367,7 +400,7 @@ try {
     $response['success'] = true;
     $response['init_point'] = $initPoint;
     $response['preference_id'] = $preferenceId;
-    $response['orden'] = $inscripcionId;
+    $response['orden'] = $registroId;
 } catch (Throwable $exception) {
     if ($responseCode === 200) {
         $responseCode = $exception instanceof InvalidArgumentException ? 400 : 500;

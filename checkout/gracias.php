@@ -62,16 +62,39 @@ if (!$mpParamsProvided && $manualOrderId > 0) {
         }
         $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-        $st = $con->prepare(
-            'SELECT i.id_inscripcion, i.nombre, i.apellido, i.email, i.telefono, i.precio_total, i.moneda,
-                    c.nombre_curso, p.metodo, p.estado
-               FROM checkout_inscripciones i
-          LEFT JOIN checkout_pagos p ON p.id_inscripcion = i.id_inscripcion
-          LEFT JOIN cursos c ON c.id_curso = i.id_curso
-              WHERE i.id_inscripcion = :id
-           ORDER BY p.id_pago DESC
-              LIMIT 1'
-        );
+        $sqlDetalle = <<<SQL
+SELECT
+    p.id_pago,
+    p.metodo,
+    p.estado,
+    p.monto,
+    p.moneda AS pago_moneda,
+    p.id_capacitacion,
+    p.id_certificacion,
+    COALESCE(cap.id_capacitacion, cert.id_certificacion) AS id_registro,
+    CASE
+        WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'
+        WHEN p.id_certificacion IS NOT NULL THEN 'certificacion'
+        ELSE NULL
+    END AS tipo_checkout,
+    COALESCE(cap.nombre, cert.nombre) AS nombre,
+    COALESCE(cap.apellido, cert.apellido) AS apellido,
+    COALESCE(cap.email, cert.email) AS email,
+    COALESCE(cap.telefono, cert.telefono) AS telefono,
+    COALESCE(cap.precio_total, cert.precio_total, p.monto) AS precio_total,
+    COALESCE(cap.moneda, cert.moneda, p.moneda) AS moneda_registro,
+    COALESCE(cur_cap.nombre_curso, cur_cert.nombre_certificacion, cur_cert.nombre_curso, '') AS nombre_curso
+FROM checkout_pagos p
+LEFT JOIN checkout_capacitaciones cap ON p.id_capacitacion = cap.id_capacitacion
+LEFT JOIN checkout_certificaciones cert ON p.id_certificacion = cert.id_certificacion
+LEFT JOIN cursos cur_cap ON cap.id_curso = cur_cap.id_curso
+LEFT JOIN cursos cur_cert ON cert.id_curso = cur_cert.id_curso
+WHERE (p.id_capacitacion = :id OR p.id_certificacion = :id OR cap.id_capacitacion = :id OR cert.id_certificacion = :id)
+ORDER BY p.id_pago DESC
+LIMIT 1
+SQL;
+
+        $st = $con->prepare($sqlDetalle);
         $st->execute([':id' => $manualOrderId]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
@@ -79,17 +102,22 @@ if (!$mpParamsProvided && $manualOrderId > 0) {
         }
 
         $orderData = [
-            'id_inscripcion' => (int) $row['id_inscripcion'],
+            'id_inscripcion' => (int) ($row['id_registro'] ?? 0),
+            'tipo_checkout' => $row['tipo_checkout'] ?? null,
             'nombre_curso' => $row['nombre_curso'] ?? '',
             'nombre' => $row['nombre'] ?? '',
             'apellido' => $row['apellido'] ?? '',
             'email' => $row['email'] ?? '',
             'telefono' => $row['telefono'] ?? '',
-            'monto' => isset($row['precio_total']) ? (float) $row['precio_total'] : 0.0,
-            'moneda' => $row['moneda'] ?? 'ARS',
+            'monto' => isset($row['precio_total']) ? (float) $row['precio_total'] : (isset($row['monto']) ? (float) $row['monto'] : 0.0),
+            'moneda' => $row['moneda_registro'] ?? ($row['pago_moneda'] ?? 'ARS'),
             'payment_type' => $row['metodo'] ?? $manualMetodo,
             'payment_id' => null,
         ];
+
+        if (!empty($orderData['tipo_checkout']) && in_array($orderData['tipo_checkout'], ['curso', 'capacitacion', 'certificacion'], true)) {
+            $tipoParam = $orderData['tipo_checkout'];
+        }
 
         $estadoPago = isset($row['estado']) && $row['estado'] !== '' ? (string) $row['estado'] : 'pendiente';
 
@@ -138,6 +166,10 @@ if (!$mpParamsProvided && $manualOrderId > 0) {
         $orderData = $sync['row'];
         $estadoPago = $sync['estado_pago'];
         $mpStatus = $sync['mp_status'];
+
+        if (!empty($orderData['tipo_checkout']) && in_array($orderData['tipo_checkout'], ['curso', 'capacitacion', 'certificacion'], true)) {
+            $tipoParam = $orderData['tipo_checkout'];
+        }
 
         if ($estadoPago === 'pagado') {
             $message = '¡Pago acreditado! Reservamos tu lugar y te contactaremos a la brevedad.';
