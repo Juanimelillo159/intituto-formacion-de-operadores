@@ -16,6 +16,7 @@ $estadoPago = null;
 $mpStatus = null;
 $message = null;
 $error = null;
+$errorDetail = null;
 $orderData = null;
 
 $manualFlash = $_SESSION['checkout_success'] ?? null;
@@ -176,6 +177,7 @@ SQL;
         $orderData = $sync['row'];
         $estadoPago = $sync['estado_pago'];
         $mpStatus = $sync['mp_status'];
+        $statusDetail = isset($orderData['status_detail']) ? (string) $orderData['status_detail'] : '';
 
         if (!empty($orderData['tipo_checkout']) && in_array($orderData['tipo_checkout'], ['curso', 'capacitacion', 'certificacion'], true)) {
             $tipoParam = $orderData['tipo_checkout'];
@@ -187,8 +189,10 @@ SQL;
             $message = 'Tu pago está en proceso. Te avisaremos por correo en cuanto tengamos la confirmación.';
         } elseif ($estadoPago === 'rechazado') {
             $error = 'El pago fue rechazado. Intentalo nuevamente o comunicate con nosotros para ayudarte.';
+            $errorDetail = checkout_mp_status_detail_message($statusDetail !== '' ? $statusDetail : $mpStatus);
         } elseif ($estadoPago === 'cancelado') {
             $error = 'El pago se canceló antes de completarse.';
+            $errorDetail = checkout_mp_status_detail_message($statusDetail !== '' ? $statusDetail : $mpStatus);
         } else {
             $message = 'Recibimos la actualización del estado de tu pago.';
         }
@@ -211,6 +215,56 @@ function checkout_estado_label(?string $estado): string
         'vencido' => 'Vencido',
         default => ucfirst((string) $estado),
     };
+}
+
+function checkout_mp_status_detail_message(?string $statusDetail): ?string
+{
+    if ($statusDetail === null) {
+        return null;
+    }
+
+    $detail = strtolower(trim($statusDetail));
+    if ($detail === '') {
+        return null;
+    }
+
+    $map = [
+        'cc_rejected_bad_filled_card_number' => 'Revisá el número de la tarjeta ingresado.',
+        'cc_rejected_bad_filled_date' => 'Revisá la fecha de vencimiento de la tarjeta.',
+        'cc_rejected_bad_filled_security_code' => 'Revisá el código de seguridad (CVV).',
+        'cc_rejected_bad_filled_other' => 'Revisá los datos de la tarjeta antes de volver a intentar.',
+        'cc_rejected_blacklist' => 'Mercado Pago bloqueó el pago por seguridad.',
+        'cc_rejected_call_for_authorize' => 'Tenés que comunicarte con el banco para autorizar el pago y volver a intentarlo.',
+        'cc_rejected_card_disabled' => 'La tarjeta no está habilitada para compras en línea o en el exterior.',
+        'cc_rejected_card_error' => 'El emisor no pudo procesar la tarjeta en este momento.',
+        'cc_rejected_duplicated_payment' => 'Ya existe un pago con la misma información.',
+        'cc_rejected_high_risk' => 'Mercado Pago rechazó el pago por medidas de seguridad.',
+        'cc_rejected_insufficient_amount' => 'No hay fondos suficientes en la tarjeta o medio de pago.',
+        'cc_rejected_invalid_installments' => 'La tarjeta no acepta la cantidad de cuotas seleccionadas.',
+        'cc_rejected_max_attempts' => 'Se alcanzó el número máximo de intentos con esta tarjeta.',
+        'cc_rejected_other_reason' => 'El pago fue rechazado por la entidad emisora.',
+        'cc_rejected_partial_payment' => 'La tarjeta no permite pagar el monto total.',
+        'rejected_by_bank' => 'El banco rechazó el pago. Podés comunicarte con ellos para más información.',
+        'rejected_high_risk' => 'Mercado Pago rechazó el pago por medidas de seguridad.',
+        'rejected_insufficient_amount' => 'No hay fondos suficientes para completar el pago.',
+        'rejected_other_reason' => 'Mercado Pago rechazó el pago. Probá con otro medio.',
+        'rejected_by_collector' => 'El comercio canceló el pago.',
+        'rejected_by_meli' => 'Mercado Pago canceló el pago por seguridad.',
+        'cancelled' => 'El pago fue cancelado antes de completarse.',
+        'pending_contingency' => 'Mercado Pago está procesando el pago. Te avisaremos cuando se acredite.',
+        'pending_review_manual' => 'Mercado Pago está revisando el pago manualmente.',
+        'pending_waiting_payment' => 'Estamos esperando la acreditación del pago.',
+    ];
+
+    if (isset($map[$detail])) {
+        return $map[$detail] . ' (código: ' . strtoupper($detail) . ')';
+    }
+
+    if (function_exists('str_starts_with') && str_starts_with($detail, 'cc_rejected_')) {
+        return 'Mercado Pago rechazó la tarjeta. Probá con otro medio de pago. (código: ' . strtoupper($detail) . ')';
+    }
+
+    return 'Código informado por Mercado Pago: ' . strtoupper($detail);
 }
 
 ?>
@@ -237,6 +291,9 @@ function checkout_estado_label(?string $estado): string
                                     <div>
                                         <strong>No pudimos confirmar el pago.</strong>
                                         <div class="small mt-1"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <?php if ($errorDetail): ?>
+                                            <div class="small mt-1 text-muted">Detalle informado por Mercado Pago: <?php echo htmlspecialchars($errorDetail, ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <?php endif; ?>
                                         <div class="small mt-1">Si abonaste correctamente, escribinos a <a href="mailto:<?php echo htmlspecialchars(checkout_mail_config()['admin_email'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(checkout_mail_config()['admin_email'], ENT_QUOTES, 'UTF-8'); ?></a>.</div>
                                     </div>
                                 </div>

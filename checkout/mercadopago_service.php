@@ -355,6 +355,8 @@ function checkout_sync_mp_payment(PDO $con, array $mpRow, ?array $paymentData, s
     checkout_log_event('checkout_mp_sync', [
         'id_pago' => $mpRow['id_pago'],
         'mp_status' => $mpStatus,
+        'status_detail' => $statusDetail,
+        'payment_type' => $paymentType,
         'estado_pago' => $estadoPago,
         'source' => $source,
         'emails_sent' => $emailsSent,
