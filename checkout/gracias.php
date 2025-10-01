@@ -90,10 +90,10 @@ LEFT JOIN checkout_certificaciones cert ON p.id_certificacion = cert.id_certific
 LEFT JOIN cursos cur_cap ON cap.id_curso = cur_cap.id_curso
 LEFT JOIN cursos cur_cert ON cert.id_curso = cur_cert.id_curso
 WHERE (
-        (p.id_capacitacion IS NOT NULL AND p.id_capacitacion = :id_cap)
-        OR (p.id_certificacion IS NOT NULL AND p.id_certificacion = :id_cert)
-        OR (cap.id_capacitacion IS NOT NULL AND cap.id_capacitacion = :id_cap)
-        OR (cert.id_certificacion IS NOT NULL AND cert.id_certificacion = :id_cert)
+        (p.id_capacitacion IS NOT NULL AND p.id_capacitacion = :id_cap_pago)
+        OR (p.id_certificacion IS NOT NULL AND p.id_certificacion = :id_cert_pago)
+        OR (cap.id_capacitacion IS NOT NULL AND cap.id_capacitacion = :id_cap_registro)
+        OR (cert.id_certificacion IS NOT NULL AND cert.id_certificacion = :id_cert_registro)
     )
 ORDER BY p.id_pago DESC
 LIMIT 1
@@ -101,8 +101,10 @@ SQL;
 
         $st = $con->prepare($sqlDetalle);
         $st->execute([
-            ':id_cap' => $manualOrderId,
-            ':id_cert' => $manualOrderId,
+            ':id_cap_pago' => $manualOrderId,
+            ':id_cert_pago' => $manualOrderId,
+            ':id_cap_registro' => $manualOrderId,
+            ':id_cert_registro' => $manualOrderId,
         ]);
         $row = $st->fetch(PDO::FETCH_ASSOC);
         if (!$row) {
