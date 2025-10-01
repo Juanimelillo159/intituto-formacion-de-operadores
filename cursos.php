@@ -5,7 +5,7 @@ require_once 'sbd.php';
 
 $sql = $con->prepare("SELECT * FROM cursos");
 $sql->execute();
-$cursos = $sql->fetchAll(PDO::FETCH_ASSOC);
+$cursos = $sql->fetchAll(mode: PDO::FETCH_ASSOC);
 ?>
 <div class="row row-cols-1 row-cols-md-3 g-4">
   <?php foreach ($cursos as $curso) { ?>
@@ -50,7 +50,7 @@ $cursos = $sql->fetchAll(PDO::FETCH_ASSOC);
             </a>
 
             <a class="btn btn-secondary btn-pill d-inline-flex align-items-center"
-              href="certificacion.php?id_curso=<?php echo urlencode($curso['id_curso']); ?>">
+              href="certificacion.php?id_certificacion=<?php echo urlencode($curso['id_curso']); ?>">
               <i class="bi bi-circle me-2"></i> Certificaci&oacute;n
             </a>
           </div>
