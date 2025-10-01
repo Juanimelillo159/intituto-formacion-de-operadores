@@ -169,7 +169,7 @@ if (isset($_SESSION['usuario']) && is_array($_SESSION['usuario'])) {
 $usuarioPerfil = $sessionUsuario;
 if ($currentUserId > 0) {
     $usuarioPerfil['id_usuario'] = $currentUserId;
-    $camposPerfil = ['nombre', 'apellido', 'email', 'telefono', 'dni', 'direccion', 'ciudad', 'provincia', 'pais'];
+    $camposPerfil = ['nombre', 'apellido', 'email', 'telefono', 'dni'];
     $faltaPerfil = false;
     foreach ($camposPerfil as $campoPerfil) {
         if (!isset($usuarioPerfil[$campoPerfil]) || trim((string)$usuarioPerfil[$campoPerfil]) === '') {
@@ -180,7 +180,7 @@ if ($currentUserId > 0) {
 
     if ($faltaPerfil) {
         $perfilStmt = $con->prepare('
-            SELECT nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais
+            SELECT nombre, apellido, email, telefono, dni
               FROM usuarios
              WHERE id_usuario = :id
              LIMIT 1

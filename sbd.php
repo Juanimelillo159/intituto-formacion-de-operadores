@@ -1,17 +1,17 @@
 <?php
 class Database
 {
-/*     private $hostname = "localhost";
+    private $hostname = "localhost";
     private $database = "formacionoperadores";
     private $username = "root";
     private $password = "";
-    private $charset = "utf8"; */
+    private $charset = "utf8";
 
-     private $hostname = "127.0.0.1:3306";
+     /* private $hostname = "127.0.0.1:3306";
         private $database = "u910416176_formacionopera";
         private $username = "u910416176_formacionopera";
         private $password = "8wO;T@NIyT";
-        private $charset = "utf8"; 
+        private $charset = "utf8";  */
 
     function conectar()
     {
