@@ -144,6 +144,7 @@ try {
     $errorMessage = 'No pudimos cargar tu historial en este momento.';
 }
 
+$compras = $combinado;
 $totalCompras = count($compras);
 $totalPages = (int)ceil($totalCompras / $perPage);
 if ($totalPages > 0 && $page > $totalPages) {

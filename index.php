@@ -16,6 +16,12 @@ $registro_tipo = isset($_SESSION['registro_tipo']) ? $_SESSION['registro_tipo'] 
 if ($registro_mensaje !== null) {
     unset($_SESSION['registro_mensaje'], $_SESSION['registro_tipo']);
 }
+
+$contacto_mensaje = isset($_SESSION['contacto_mensaje']) ? $_SESSION['contacto_mensaje'] : null;
+$contacto_tipo = isset($_SESSION['contacto_tipo']) ? $_SESSION['contacto_tipo'] : 'info';
+if ($contacto_mensaje !== null) {
+    unset($_SESSION['contacto_mensaje'], $_SESSION['contacto_tipo']);
+}
 ?>
 
 
@@ -184,6 +190,11 @@ if ($registro_mensaje !== null) {
         <h2 class="display-4 text-center mb-4">Asesoramiento gratuito</h2>
         <div class="row">
           <div class="col-md-6 p-5">
+            <?php if ($contacto_mensaje !== null): ?>
+              <div class="alert alert-<?php echo htmlspecialchars($contacto_tipo, ENT_QUOTES, 'UTF-8'); ?> text-center" role="alert">
+                <?php echo htmlspecialchars($contacto_mensaje, ENT_QUOTES, 'UTF-8'); ?>
+              </div>
+            <?php endif; ?>
             <form form action="enviar.php" method="POST">
               <div class="mb-3">
                 <input type="text" class="form-control" name="nombre" placeholder="Nombre" required>

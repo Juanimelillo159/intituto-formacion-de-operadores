@@ -274,22 +274,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['nombre'], $_POST['ema
     $telefono = trim((string)($_POST['telefono'] ?? ''));
     $mensaje  = trim((string)($_POST['mensaje'] ?? ''));
 
+    $contactWantsJson = static function (): bool {
+        $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+        if ($accept !== '' && stripos($accept, 'application/json') !== false) {
+            return true;
+        }
+
+        $requestedWith = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+        if ($requestedWith !== '' && strcasecmp($requestedWith, 'xmlhttprequest') === 0) {
+            return true;
+        }
+
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? ($_SERVER['HTTP_CONTENT_TYPE'] ?? '');
+        return $contentType !== '' && stripos($contentType, 'application/json') !== false;
+    };
+
+    $contactRespond = static function (bool $ok, string $message, string $type = 'info', int $status = 200, ?string $redirect = null) use ($contactWantsJson): void {
+        if ($contactWantsJson()) {
+            http_response_code($status);
+            header('Content-Type: application/json; charset=UTF-8');
+            echo json_encode(['ok' => $ok, 'message' => $message], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        $_SESSION['contacto_mensaje'] = $message;
+        $_SESSION['contacto_tipo'] = $type;
+
+        $target = $redirect ?? 'index.php#contacto';
+        header('Location: ' . $target);
+        exit;
+    };
+
     if ($nombre === '' || $email === '' || $mensaje === '') {
-        http_response_code(400);
-        echo 'Faltan datos requeridos.';
-        exit;
+        $contactRespond(false, 'Faltan datos requeridos.', 'danger', 400);
     }
+
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        http_response_code(400);
-        echo 'El correo proporcionado no es válido.';
-        exit;
+        $contactRespond(false, 'El correo proporcionado no es valido.', 'danger', 400);
     }
 
     [$ok, $err] = enviarCorreoContacto($nombre, $email, $telefono, $mensaje);
     if ($ok) {
-        echo "<script>window.location.href = '/confirmacion.php';</script>";
-    } else {
-        http_response_code(500);
-        echo 'El mensaje no pudo ser enviado.';
+        $contactRespond(true, 'Tu consulta fue enviada correctamente. Te contactaremos a la brevedad.', 'success', 200, 'confirmacion.php');
     }
+
+    error_log('[contacto] Falla SMTP: ' . ($err ?? 'desconocido'));
+    $contactRespond(false, 'El mensaje no pudo ser enviado. Intentalo mas tarde.', 'danger', 500);
 }
+
