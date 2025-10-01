@@ -1,3 +1,5 @@
 *
 !.gitignore
 !comprobantes/
+!certificaciones/
+!certificaciones/**
