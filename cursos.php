@@ -11,11 +11,7 @@ $cursos = $sql->fetchAll(mode: PDO::FETCH_ASSOC);
   <?php foreach ($cursos as $curso) { ?>
     <div class="col">
       <div class="card card-course h-100 position-relative d-flex flex-column">
-
-        <!-- Badge nivel arriba derecha (pon tu nivel real si lo tienes en BD) -->
-        <div class="position-absolute top-0 end-0 p-3">
-          <span class="level-badge">Intermedio</span>
-        </div>
+       
 
         <div class="card-body d-flex flex-column">
           <!-- Título -->
