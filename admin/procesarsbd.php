@@ -229,7 +229,7 @@ try {
                 throw new InvalidArgumentException('Debés aceptar los Términos y Condiciones.');
             }
 
-            $cursoStmt = $con->prepare('SELECT id_curso, nombre_curso, nombre_certificacion FROM cursos WHERE id_curso = :id LIMIT 1');
+            $cursoStmt = $con->prepare('SELECT * FROM cursos WHERE id_curso = :id LIMIT 1');
             $cursoStmt->execute([':id' => $checkoutCursoId]);
             $cursoRow = $cursoStmt->fetch();
             if (!$cursoRow) {
@@ -508,6 +508,8 @@ try {
             throw new InvalidArgumentException('Método de pago inválido.');
         }
 
+        $usuarioId = obtener_usuario_id_de_sesion();
+
         if ($checkoutTipo === 'certificacion') {
             if ($certificacionId <= 0) {
                 throw new RuntimeException('Necesitamos una certificación aprobada para continuar con el pago.');
@@ -518,7 +520,6 @@ try {
             if (!$certificacionRow) {
                 throw new RuntimeException('No encontramos la solicitud de certificación.');
             }
-            $usuarioId = obtener_usuario_id_de_sesion();
             if ($usuarioId > 0 && (int)$certificacionRow['creado_por'] !== $usuarioId) {
                 throw new RuntimeException('No tenés autorización para pagar esta certificación.');
             }
@@ -622,51 +623,84 @@ try {
 
         $con->beginTransaction();
 
-        $inscripcionStmt = $con->prepare("
-          INSERT INTO checkout_inscripciones (
-            id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda
-          ) VALUES (
-            :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, :acepta, :precio, :moneda
-          )
-        ");
-        $inscripcionStmt->execute([
-            ':curso' => $checkoutCursoId,
-            ':nombre' => $nombreInscrito,
-            ':apellido' => $apellidoInscrito,
-            ':email' => $emailInscrito,
-            ':telefono' => $telefonoInscrito,
-            ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
-            ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
-            ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
-            ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
-            ':pais' => $paisInsc,
-            ':acepta' => $aceptaTyC,
-            ':precio' => $precioFinal,
-            ':moneda' => $monedaPrecio,
-        ]);
+        $capacitacionId = null;
+        $pagoId = 0;
+        $registroId = 0;
 
-        $idInscripcion = (int)$con->lastInsertId();
+        if ($checkoutTipo !== 'certificacion') {
+            $capacitacionStmt = $con->prepare("
+              INSERT INTO checkout_capacitaciones (
+                creado_por, id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda
+              ) VALUES (
+                :creado_por, :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, :acepta, :precio, :moneda
+              )
+            ");
+            $capacitacionStmt->execute([
+                ':creado_por' => $usuarioId > 0 ? $usuarioId : null,
+                ':curso' => $checkoutCursoId,
+                ':nombre' => $nombreInscrito,
+                ':apellido' => $apellidoInscrito,
+                ':email' => $emailInscrito,
+                ':telefono' => $telefonoInscrito,
+                ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
+                ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
+                ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
+                ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
+                ':pais' => $paisInsc,
+                ':acepta' => $aceptaTyC,
+                ':precio' => $precioFinal,
+                ':moneda' => strtoupper($monedaPrecio),
+            ]);
 
-        $pagoStmt = $con->prepare("
-          INSERT INTO checkout_pagos (
-            id_inscripcion, metodo, estado, monto, moneda, comprobante_path, comprobante_nombre, comprobante_mime, comprobante_tamano, observaciones
-          ) VALUES (
-            :inscripcion, :metodo, 'pendiente', :monto, :moneda, :ruta, :nombre, :mime, :tamano, :obs
-          )
-        ");
-        $pagoStmt->execute([
-            ':inscripcion' => $idInscripcion,
-            ':metodo' => $metodoPago,
-            ':monto' => $precioFinal,
-            ':moneda' => $monedaPrecio,
-            ':ruta' => $checkoutUploadRel,
-            ':nombre' => $comprobanteNombreOriginal,
-            ':mime' => $comprobanteMime,
-            ':tamano' => $comprobanteTamano,
-            ':obs' => $observacionesPago !== '' ? $observacionesPago : null,
-        ]);
+            $capacitacionId = (int)$con->lastInsertId();
+            $registroId = $capacitacionId;
+
+            $pagoStmt = $con->prepare("
+              INSERT INTO checkout_pagos (
+                id_capacitacion, metodo, estado, monto, moneda, comprobante_path, comprobante_nombre, comprobante_mime, comprobante_tamano, observaciones
+              ) VALUES (
+                :capacitacion, :metodo, 'pendiente', :monto, :moneda, :ruta, :nombre, :mime, :tamano, :obs
+              )
+            ");
+            $pagoStmt->execute([
+                ':capacitacion' => $capacitacionId,
+                ':metodo' => $metodoPago,
+                ':monto' => $precioFinal,
+                ':moneda' => strtoupper($monedaPrecio),
+                ':ruta' => $checkoutUploadRel,
+                ':nombre' => $comprobanteNombreOriginal,
+                ':mime' => $comprobanteMime,
+                ':tamano' => $comprobanteTamano,
+                ':obs' => $observacionesPago !== '' ? $observacionesPago : null,
+            ]);
+
+            $pagoId = (int)$con->lastInsertId();
+        }
 
         if ($checkoutTipo === 'certificacion' && $certificacionRow) {
+            $registroId = (int)$certificacionRow['id_certificacion'];
+
+            $pagoStmt = $con->prepare("
+              INSERT INTO checkout_pagos (
+                id_certificacion, metodo, estado, monto, moneda, comprobante_path, comprobante_nombre, comprobante_mime, comprobante_tamano, observaciones
+              ) VALUES (
+                :certificacion, :metodo, 'pendiente', :monto, :moneda, :ruta, :nombre, :mime, :tamano, :obs
+              )
+            ");
+            $pagoStmt->execute([
+                ':certificacion' => $registroId,
+                ':metodo' => $metodoPago,
+                ':monto' => $precioFinal,
+                ':moneda' => strtoupper($monedaPrecio),
+                ':ruta' => $checkoutUploadRel,
+                ':nombre' => $comprobanteNombreOriginal,
+                ':mime' => $comprobanteMime,
+                ':tamano' => $comprobanteTamano,
+                ':obs' => $observacionesPago !== '' ? $observacionesPago : null,
+            ]);
+
+            $pagoId = (int)$con->lastInsertId();
+
             $observacionesCert = 'Pago iniciado por ' . ($metodoPago === 'mercado_pago' ? 'Mercado Pago' : 'transferencia bancaria') . ' el ' . date('d/m/Y H:i');
             $observacionesExistentes = trim((string)($certificacionRow['observaciones'] ?? ''));
             if ($observacionesExistentes !== '') {
@@ -708,6 +742,10 @@ try {
             registrar_historico_certificacion($con, (int)$certificacionRow['id_certificacion'], 3);
         }
 
+        if ($registroId <= 0) {
+            throw new RuntimeException('No pudimos registrar la inscripción.');
+        }
+
         if ($metodoPago === 'transferencia' && $checkoutUploadAbs !== null) {
             if (!move_uploaded_file($checkoutUploadTmp, $checkoutUploadAbs)) {
                 throw new RuntimeException('No se pudo guardar el comprobante de la transferencia.');
@@ -718,14 +756,14 @@ try {
         $con->commit();
 
         $_SESSION['checkout_success'] = [
-            'orden' => $idInscripcion,
+            'orden' => $registroId,
             'metodo' => $metodoPago,
             'tipo' => $checkoutTipo,
             'id_curso' => $checkoutCursoId,
         ];
 
         log_cursos('checkout_crear_orden_ok', [
-            'orden' => $idInscripcion,
+            'orden' => $registroId,
             'id_curso' => $checkoutCursoId,
             'metodo' => $metodoPago,
             'monto' => $precioFinal,
@@ -733,7 +771,7 @@ try {
         ]);
 
         $redirectQuery = [
-            'orden' => $idInscripcion,
+            'orden' => $registroId,
             'metodo' => $metodoPago,
         ];
         if ($checkoutTipo !== 'curso') {

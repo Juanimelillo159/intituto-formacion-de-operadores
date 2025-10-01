@@ -27,7 +27,7 @@ function checkout_fetch_mp_order(PDO $con, array $lookup): ?array
                        CASE WHEN p.id_capacitacion IS NOT NULL THEN cap.provincia ELSE NULL END AS provincia,
                        CASE WHEN p.id_capacitacion IS NOT NULL THEN cap.pais ELSE NULL END AS pais,
                        COALESCE(cap.id_curso, cert.id_curso) AS id_curso,
-                       COALESCE(cur_cap.nombre_curso, cur_cert.nombre_certificacion, cur_cert.nombre_curso, '') AS nombre_curso
+                       COALESCE(cur_cap.nombre_curso, cur_cert.nombre_curso, '') AS nombre_curso
                   FROM checkout_mercadopago mp
             INNER JOIN checkout_pagos p ON mp.id_pago = p.id_pago
              LEFT JOIN checkout_capacitaciones cap ON p.id_capacitacion = cap.id_capacitacion

@@ -83,7 +83,7 @@ SELECT
     COALESCE(cap.telefono, cert.telefono) AS telefono,
     COALESCE(cap.precio_total, cert.precio_total, p.monto) AS precio_total,
     COALESCE(cap.moneda, cert.moneda, p.moneda) AS moneda_registro,
-    COALESCE(cur_cap.nombre_curso, cur_cert.nombre_certificacion, cur_cert.nombre_curso, '') AS nombre_curso
+    COALESCE(cur_cap.nombre_curso, cur_cert.nombre_curso, '') AS nombre_curso
 FROM checkout_pagos p
 LEFT JOIN checkout_capacitaciones cap ON p.id_capacitacion = cap.id_capacitacion
 LEFT JOIN checkout_certificaciones cert ON p.id_certificacion = cert.id_certificacion
