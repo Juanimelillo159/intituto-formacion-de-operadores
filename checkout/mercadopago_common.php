@@ -136,13 +136,27 @@ if (!function_exists('checkout_get_base_url')) {
     {
         $configured = checkout_env('APP_BASE_URL') ?? checkout_env('BASE_URL');
         if ($configured) {
-            return rtrim($configured, '/');
+            $configured = trim($configured);
+            if ($configured !== '') {
+                if (!preg_match('#^https?://#i', $configured)) {
+                    $configured = 'https://' . ltrim($configured, '/');
+                }
+                return rtrim($configured, '/');
+            }
         }
+
         $https = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off')
             || ((string) ($_SERVER['SERVER_PORT'] ?? '') === '443');
         $scheme = $https ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        return $scheme . '://' . $host;
+        if ($host === '') {
+            $host = 'localhost';
+        }
+        if (!preg_match('#^https?://#i', $host)) {
+            $host = ltrim($host, '/');
+            $host = $scheme . '://' . $host;
+        }
+        return rtrim($host, '/');
     }
 }
 
