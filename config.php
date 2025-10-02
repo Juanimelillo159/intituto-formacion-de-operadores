@@ -18,13 +18,17 @@ define('DB_FALLBACK_CHARSET', getenv('DB_FALLBACK_CHARSET') ?: 'utf8mb4');
 // TODO: Cambiar APP_URL cuando publiques el sitio.
 $detectedAppUrl = '';
 
-if (!empty($_SERVER['HTTP_HOST'] ?? '')) {
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
-    if ($scriptDir === '/' || $scriptDir === '\' || $scriptDir === '.') {
+$host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+if ($host !== "") {
+    $https = isset($_SERVER['HTTPS']) ? $_SERVER['HTTPS'] : '';
+    $scheme = (!empty($https) && $https !== 'off') ? 'https' : 'http';
+    $scriptName = isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : '';
+    $scriptDir = dirname($scriptName);
+    $scriptDir = str_replace(chr(92), '/', $scriptDir);
+    if ($scriptDir === '/' || $scriptDir === '.') {
         $scriptDir = '';
     }
-    $detectedAppUrl = $scheme . '://' . $_SERVER['HTTP_HOST'] . $scriptDir;
+    $detectedAppUrl = $scheme . '://' . $host . $scriptDir;
 }
 
 define('APP_URL', rtrim(getenv('APP_URL') ?: ($detectedAppUrl !== '' ? $detectedAppUrl : 'http://localhost/intituto-formacion-de-operadores'), '/'));
