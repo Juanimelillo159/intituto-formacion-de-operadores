@@ -16,7 +16,18 @@ define('DB_FALLBACK_PASS', getenv('DB_FALLBACK_PASS') ?: '');
 define('DB_FALLBACK_CHARSET', getenv('DB_FALLBACK_CHARSET') ?: 'utf8mb4');
 
 // TODO: Cambiar APP_URL cuando publiques el sitio.
-define('APP_URL', rtrim(getenv('APP_URL') ?: 'http://localhost/intituto-formacion-de-operadores', '/'));
+$detectedAppUrl = '';
+
+if (!empty($_SERVER['HTTP_HOST'] ?? '')) {
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+    if ($scriptDir === '/' || $scriptDir === '\' || $scriptDir === '.') {
+        $scriptDir = '';
+    }
+    $detectedAppUrl = $scheme . '://' . $_SERVER['HTTP_HOST'] . $scriptDir;
+}
+
+define('APP_URL', rtrim(getenv('APP_URL') ?: ($detectedAppUrl !== '' ? $detectedAppUrl : 'http://localhost/intituto-formacion-de-operadores'), '/'));
 
 // TODO: Cambiar estas credenciales SMTP por las reales o cargarlas desde variables de entorno.
 define('SMTP_HOST', getenv('SMTP_HOST') ?: 'smtp.hostinger.com');
