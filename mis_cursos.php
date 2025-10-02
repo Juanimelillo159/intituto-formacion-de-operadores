@@ -690,13 +690,29 @@ try {
     $checkoutCertificacionesAvailable = $tableExists($pdo, 'checkout_certificaciones');
     $estadosInscripcionesAvailable = $tableExists($pdo, 'estados_inscripciones');
     $asignacionesCursosAvailable = $tableExists($pdo, 'asignaciones_cursos');
+    $cursoModalidadAvailable = $tableExists($pdo, 'curso_modalidad');
+    $modalidadesAvailable = $tableExists($pdo, 'modalidades');
 
 
     if ($isHrManager) {
         $courses = [];
 
         if ($checkoutCapacitacionesAvailable) {
-            $sqlCapacitaciones = <<<'SQL'
+            $capModalidadSelect = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? 'mods.modalidad_resumen'
+                : 'NULL AS modalidad_resumen';
+            $capModalidadJoin = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? <<<SQL
+LEFT JOIN (
+    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+    FROM curso_modalidad cm
+    INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+    GROUP BY cm.id_curso
+) AS mods ON mods.id_curso = cc.id_curso
+SQL
+                : '';
+
+            $sqlCapacitaciones = <<<SQL
 SELECT
     cc.id_capacitacion,
     cc.id_curso,
@@ -709,19 +725,14 @@ SELECT
     cc.id_estado,
     cc.creado_en,
     c.nombre_curso,
-    mods.modalidad_resumen,
+    {$capModalidadSelect},
     est.nombre_estado AS estado_checkout,
     u.id_usuario AS assigned_user_id,
     u.nombre AS assigned_nombre,
     u.apellido AS assigned_apellido
 FROM checkout_capacitaciones cc
 LEFT JOIN cursos c ON c.id_curso = cc.id_curso
-LEFT JOIN (
-    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
-    FROM curso_modalidad cm
-    INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
-    GROUP BY cm.id_curso
-) AS mods ON mods.id_curso = cc.id_curso
+{$capModalidadJoin}
 LEFT JOIN estados_inscripciones est ON est.id_estado = cc.id_estado
 LEFT JOIN usuarios u ON u.email = cc.email
 WHERE cc.creado_por = :usuario
@@ -864,7 +875,21 @@ SQL;
         }
 
         if ($checkoutCertificacionesAvailable) {
-            $sqlCertificaciones = <<<'SQL'
+            $certModalidadSelect = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? 'mods.modalidad_resumen'
+                : 'NULL AS modalidad_resumen';
+            $certModalidadJoin = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? <<<SQL
+LEFT JOIN (
+    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+    FROM curso_modalidad cm
+    INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+    GROUP BY cm.id_curso
+) AS mods ON mods.id_curso = ccert.id_curso
+SQL
+                : '';
+
+            $sqlCertificaciones = <<<SQL
             SELECT
                 ccert.id_certificacion,
                 ccert.id_curso,
@@ -880,24 +905,19 @@ SQL;
                 ccert.pdf_nombre,
                 ccert.pdf_mime,
                 cursos.nombre_curso,
-                mods.modalidad_resumen,
+                {$certModalidadSelect},
                 est.nombre_estado AS estado_checkout,
                 u.id_usuario AS assigned_user_id,
                 u.nombre AS assigned_nombre,
                 u.apellido AS assigned_apellido
             FROM checkout_certificaciones ccert
             LEFT JOIN cursos ON cursos.id_curso = ccert.id_curso
-            LEFT JOIN (
-                SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
-                FROM curso_modalidad cm
-                INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
-                GROUP BY cm.id_curso
-            ) AS mods ON mods.id_curso = ccert.id_curso
+{$certModalidadJoin}
             LEFT JOIN estados_inscripciones est ON est.id_estado = ccert.id_estado
             LEFT JOIN usuarios u ON u.email = ccert.email
             WHERE ccert.creado_por = :usuario
             ORDER BY ccert.id_curso ASC, ccert.creado_en ASC, ccert.id_certificacion ASC
-            SQL;
+SQL;
             $stmtCertificaciones = $pdo->prepare($sqlCertificaciones);
             $stmtCertificaciones->bindValue(':usuario', $userId, PDO::PARAM_INT);
             $stmtCertificaciones->execute();
@@ -1080,6 +1100,13 @@ SQL;
         if ($comprasAvailable && $compraItemsAvailable) {
             $items = [];
 
+            $modalidadSelect = $modalidadesAvailable
+                ? 'modalidades.nombre_modalidad'
+                : 'NULL AS nombre_modalidad';
+            $modalidadesJoin = $modalidadesAvailable
+                ? "
+                 LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad"
+                : '';
             $selectBase = "SELECT
                     c.id_compra,
                     c.pagado_en,
@@ -1089,7 +1116,7 @@ SQL;
                     ci.precio_unitario,
                     ci.titulo_snapshot,
                     cursos.nombre_curso,
-                    modalidades.nombre_modalidad";
+                    {$modalidadSelect}";
             if ($inscripcionesAvailable) {
                 $selectFields = $selectBase . ",
                     i.id_inscripcion,
@@ -1107,8 +1134,7 @@ SQL;
             $sqlUser = $selectFields . "
                  FROM compras c
                  INNER JOIN compra_items ci ON ci.id_compra = c.id_compra
-                 INNER JOIN cursos ON cursos.id_curso = ci.id_curso
-                 LEFT JOIN modalidades ON modalidades.id_modalidad = ci.id_modalidad" . $joinInscripciones . "
+                 INNER JOIN cursos ON cursos.id_curso = ci.id_curso{$modalidadesJoin}" . $joinInscripciones . "
                  WHERE c.id_usuario = :usuario
                    AND c.estado = :estado
                  ORDER BY c.pagado_en DESC, c.id_compra DESC, ci.id_item ASC";
@@ -1233,22 +1259,31 @@ SQL;
         }
 
         if ($checkoutCapacitacionesAvailable) {
-            $sqlCapFallback = <<<'SQL'
-SELECT
-    cc.id_capacitacion AS slot_id,
-    cc.id_curso,
-    cc.creado_en,
-    cc.id_estado,
-    c.nombre_curso,
-    mods.modalidad_resumen
-FROM checkout_capacitaciones cc
-INNER JOIN cursos c ON c.id_curso = cc.id_curso
+            $capFallbackModalidadSelect = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? 'mods.modalidad_resumen'
+                : 'NULL AS modalidad_resumen';
+            $capFallbackModalidadJoin = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? <<<SQL
 LEFT JOIN (
     SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
     FROM curso_modalidad cm
     INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
     GROUP BY cm.id_curso
 ) AS mods ON mods.id_curso = cc.id_curso
+SQL
+                : '';
+
+            $sqlCapFallback = <<<SQL
+SELECT
+    cc.id_capacitacion AS slot_id,
+    cc.id_curso,
+    cc.creado_en,
+    cc.id_estado,
+    c.nombre_curso,
+    {$capFallbackModalidadSelect}
+FROM checkout_capacitaciones cc
+INNER JOIN cursos c ON c.id_curso = cc.id_curso
+{$capFallbackModalidadJoin}
 LEFT JOIN usuarios u ON u.email = cc.email
 WHERE cc.email IS NOT NULL
   AND cc.email <> ''
@@ -1300,15 +1335,31 @@ SQL;
         }
 
         if ($checkoutCertificacionesAvailable) {
-            $sqlCertFallback = <<<'SQL'
+            $certFallbackModalidadSelect = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? 'mods.modalidad_resumen'
+                : 'NULL AS modalidad_resumen';
+            $certFallbackModalidadJoin = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? <<<SQL
+LEFT JOIN (
+    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+    FROM curso_modalidad cm
+    INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+    GROUP BY cm.id_curso
+) AS mods ON mods.id_curso = ccert.id_curso
+SQL
+                : '';
+
+            $sqlCertFallback = <<<SQL
 SELECT
     ccert.id_certificacion AS slot_id,
     ccert.id_curso,
     ccert.creado_en,
     ccert.id_estado,
-    c.nombre_curso
+    c.nombre_curso,
+    {$certFallbackModalidadSelect}
 FROM checkout_certificaciones ccert
 INNER JOIN cursos c ON c.id_curso = ccert.id_curso
+{$certFallbackModalidadJoin}
 LEFT JOIN usuarios u ON u.email = ccert.email
 WHERE ccert.email IS NOT NULL
   AND ccert.email <> ''
