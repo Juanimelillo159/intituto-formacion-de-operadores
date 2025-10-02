@@ -208,7 +208,7 @@ if (!function_exists('checkout_fetch_payment_from_mp')) {
         checkout_configure_mp();
         $client = new PaymentClient();
         try {
-            $payment = $client->get($paymentId);
+            $payment = $client->get((int)$paymentId);
             return json_decode(json_encode($payment, JSON_UNESCAPED_UNICODE), true);
         } catch (MPApiException $apiException) {
             checkout_log_event('checkout_mp_api_error', ['payment_id' => $paymentId], $apiException);
