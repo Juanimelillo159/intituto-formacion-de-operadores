@@ -35,12 +35,54 @@ if ($contacto_mensaje !== null) {
   <?php include("nav.php") ?>
   <div class="content-wrapper">
     <?php if ($registro_mensaje !== null) : ?>
-      <div class="container mt-3">
+
+      <?php
+
+          $index_flash_titles = [
+
+              'success' => 'Cuenta creada',
+
+              'warning' => "Atenci\u{F3}n",
+
+              'danger'  => 'Hubo un problema',
+
+              'error'   => 'Hubo un problema',
+
+          ];
+
+          $index_flash_title = $index_flash_titles[$registro_tipo] ?? 'Aviso';
+
+      ?>
+
+      <script type="application/json" data-flash>
+
+        <?php echo json_encode([
+
+            'type' => $registro_tipo,
+
+            'title' => $index_flash_title,
+
+            'message' => $registro_mensaje,
+
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+
+      </script>
+
+      <noscript>
+
         <div class="alert alert-<?php echo htmlspecialchars($registro_tipo); ?> text-center" role="alert">
+
           <?php echo htmlspecialchars($registro_mensaje); ?>
+
         </div>
-      </div>
-    <?php endif; ?>
+
+      </noscript>
+
+<?php endif; ?>
+
+
+
+
     <header class="hero-section py-5">
       <div class="container h-100">
         <div class="row h-100 align-items-center">
@@ -190,11 +232,31 @@ if ($contacto_mensaje !== null) {
         <h2 class="display-4 text-center mb-4">Asesoramiento gratuito</h2>
         <div class="row">
           <div class="col-md-6 p-5">
-            <?php if ($contacto_mensaje !== null): ?>
-              <div class="alert alert-<?php echo htmlspecialchars($contacto_tipo, ENT_QUOTES, 'UTF-8'); ?> text-center" role="alert">
-                <?php echo htmlspecialchars($contacto_mensaje, ENT_QUOTES, 'UTF-8'); ?>
-              </div>
-            <?php endif; ?>
+            <?php if ($contacto_mensaje !== null): ?>
+            <?php
+                $contact_flash_titles = [
+                    'success' => 'Mensaje enviado',
+                    'warning' => "Atenci\u{F3}n",
+                    'danger'  => 'Hubo un problema',
+                    'error'   => 'Hubo un problema',
+                ];
+                $contact_flash_title = $contact_flash_titles[$contacto_tipo] ?? 'Aviso';
+            ?>
+            <script type="application/json" data-flash>
+              <?php echo json_encode([
+                  'type' => $contacto_tipo,
+                  'title' => $contact_flash_title,
+                  'message' => $contacto_mensaje,
+              ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+            </script>
+            <noscript>
+              <div class="alert alert-<?php echo htmlspecialchars($contacto_tipo, ENT_QUOTES, 'UTF-8'); ?> text-center" role="alert">
+                <?php echo htmlspecialchars($contacto_mensaje, ENT_QUOTES, 'UTF-8'); ?>
+              </div>
+            </noscript>
+<?php endif; ?>
+
+
             <form form action="enviar.php" method="POST">
               <div class="mb-3">
                 <input type="text" class="form-control" name="nombre" placeholder="Nombre" required>
@@ -239,6 +301,10 @@ if ($contacto_mensaje !== null) {
 
     <?php include("footer.php") ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.7/dist/sweetalert2.min.js" integrity="sha384-xIU22upJvFOpmGRB8OlVXiM8Kj5s9wgkKuxGfNDb0bDGPBoxineCH0/huelSnred" crossorigin="anonymous"></script>
+
+    <script src="assets/js/flash-messages.js"></script>
+
     <script src="app.js"></script>
   </div>
 

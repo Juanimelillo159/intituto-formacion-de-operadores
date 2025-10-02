@@ -20,27 +20,36 @@ function loginRequestWantsJson(): bool
     return $contentType !== '' && stripos($contentType, 'application/json') !== false;
 }
 
-function loginRespond(bool $ok, string $message, string $type = 'info', int $status = 200, ?string $redirect = null): void
-{
-    if (loginRequestWantsJson()) {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        $payload = ['ok' => $ok, 'message' => $message];
-        if ($redirect !== null) {
-            $payload['redirect'] = $redirect;
-        }
-        echo json_encode($payload, JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    $_SESSION['login_mensaje'] = $message;
-    $_SESSION['login_tipo'] = $type;
-
-    $target = $redirect ?? '../login.php';
-    header('Location: ' . $target);
-    exit;
-}
-
+function loginRespond(bool $ok, string $message, string $type = 'info', int $status = 200, ?string $redirect = null, ?string $title = null): void
+{
+    if (loginRequestWantsJson()) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        $payload = ['ok' => $ok, 'message' => $message];
+        if ($redirect !== null) {
+            $payload['redirect'] = $redirect;
+        }
+        if ($title !== null) {
+            $payload['title'] = $title;
+        }
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $_SESSION['login_mensaje'] = $message;
+    $_SESSION['login_tipo'] = $type;
+    if ($title !== null) {
+        $_SESSION['login_title'] = $title;
+    } else {
+        unset($_SESSION['login_title']);
+    }
+
+    $target = $redirect ?? '../login.php';
+    header('Location: ' . $target);
+    exit;
+}
+
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['iniciar_sesion'])) {
     loginRespond(false, 'Metodo no permitido.', 'danger', 405);
 }

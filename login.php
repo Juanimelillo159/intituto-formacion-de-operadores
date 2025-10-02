@@ -12,6 +12,7 @@ $page_description = "Pagina de inicio de sesión del Instituto de Formación de 
 
 $login_mensaje = $_SESSION['login_mensaje'] ?? null;
 $login_tipo    = $_SESSION['login_tipo'] ?? 'info';
+$login_title_value = $_SESSION['login_title'] ?? null;
 
 // Tomamos el Client ID desde la constante definida en config.php
 $googleClientId = defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : (getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE');
@@ -21,7 +22,7 @@ $include_google_auth = true;
 
 // Limpiamos el mensaje para que no quede pegado entre refrescos
 if ($login_mensaje !== null) {
-    unset($_SESSION['login_mensaje'], $_SESSION['login_tipo']);
+    unset($_SESSION['login_mensaje'], $_SESSION['login_tipo'], $_SESSION['login_title']);
 }
 ?>
 <!DOCTYPE html>
@@ -38,9 +39,27 @@ if ($login_mensaje !== null) {
       </div>
 
       <?php if ($login_mensaje !== null): ?>
-        <div class="alert alert-<?php echo htmlspecialchars($login_tipo); ?> text-center" role="alert">
-          <?php echo $login_mensaje; ?>
-        </div>
+        <?php
+            $login_flash_titles = [
+                'success' => 'Revisa tu correo',
+                'warning' => "Atenci\u{F3}n",
+                'danger'  => 'Hubo un problema',
+                'error'   => 'Hubo un problema',
+            ];
+            $login_flash_title = $login_title_value ?? ($login_flash_titles[$login_tipo] ?? 'Aviso');
+        ?>
+        <script type="application/json" data-flash>
+          <?php echo json_encode([
+              'type' => $login_tipo,
+              'title' => $login_flash_title,
+              'message' => $login_mensaje,
+          ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+        </script>
+        <noscript>
+          <div class="alert alert-<?php echo htmlspecialchars($login_tipo); ?> text-center" role="alert">
+            <?php echo $login_mensaje; ?>
+          </div>
+        </noscript>
       <?php endif; ?>
 
       <form method="POST" action="admin/sesion.php" id="form-login">
@@ -74,6 +93,7 @@ if ($login_mensaje !== null) {
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.7/dist/sweetalert2.min.js" integrity="sha384-xIU22upJvFOpmGRB8OlVXiM8Kj5s9wgkKuxGfNDb0bDGPBoxineCH0/huelSnred" crossorigin="anonymous"></script>
+<script src="assets/js/flash-messages.js"></script>
 
 <script>
 (function () {
@@ -81,15 +101,26 @@ if ($login_mensaje !== null) {
   var emailInput = document.getElementById('email');
 
   function showModal(type, message, title) {
+
+    if (window.AppAlerts && typeof window.AppAlerts.show === 'function') {
+
+      window.AppAlerts.show(type, message, title);
+
+      return;
+
+    }
+
     var text = message == null ? '' : String(message);
-    if (typeof Swal === 'undefined') { alert(text); return; }
-    var icon = 'info', defaultTitle = 'Aviso';
-    if (type === 'success') { icon = 'success'; defaultTitle = 'Correo reenviado'; }
-    else if (type === 'error' || type === 'danger') { icon = 'error'; defaultTitle = 'No pudimos completar la acción'; }
-    else if (type === 'warning') { icon = 'warning'; defaultTitle = 'Atención'; }
-    Swal.fire({ icon, title: title || defaultTitle, text, confirmButtonText: 'Aceptar',
-      customClass: { confirmButton: 'btn btn-primary' }, buttonsStyling: false });
+
+    var header = title ? title + '\n' : '';
+
+    window.alert((header + text.replace(/<[^>]+>/g, ' ')).trim());
+
   }
+
+
+
+
 
   document.addEventListener('click', function (event) {
     var link = event.target.closest('.reenviar-verificacion');
@@ -123,11 +154,15 @@ if ($login_mensaje !== null) {
         return { ok: false, message: 'Respuesta inesperada del servidor.' };
       });
     })
-    .then(function (data) {
-      var message = (data && data.message) || 'No pudimos reenviar el correo.';
-      if (data && data.ok) showModal('success', message, 'Revisa tu correo');
-      else showModal('error', message, 'No pudimos reenviar');
-    })
+    .then(function (data) {
+      var message = (data && data.message) || 'No pudimos reenviar el correo.';
+      var title = (data && typeof data.title === 'string' && data.title.trim() !== '') ? data.title : null;
+      if (data && data.ok) {
+        showModal('success', message, title || 'Revisa tu correo');
+      } else {
+        showModal('error', message, title || 'No pudimos reenviar');
+      }
+    })
     .catch(function () {
       showModal('error', 'No pudimos reenviar el correo. Intenta nuevamente.', 'Error de red');
     })

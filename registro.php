@@ -40,10 +40,54 @@ $include_google_auth = true;
             </div>
 
             <?php if ($registro_mensaje !== null): ?>
-              <div class="alert alert-<?php echo htmlspecialchars($registro_tipo, ENT_QUOTES, 'UTF-8'); ?> text-center" role="alert">
-                <?php echo htmlspecialchars($registro_mensaje, ENT_QUOTES, 'UTF-8'); ?>
-              </div>
-            <?php endif; ?>
+
+              <?php
+
+                  $registro_flash_titles = [
+
+                      'success' => 'Cuenta creada',
+
+                      'warning' => "Atenci\u{F3}n",
+
+                      'danger'  => 'Hubo un problema',
+
+                      'error'   => 'Hubo un problema',
+
+                  ];
+
+                  $registro_flash_title = $registro_flash_titles[$registro_tipo] ?? 'Aviso';
+
+              ?>
+
+              <script type="application/json" data-flash>
+
+                <?php echo json_encode([
+
+                    'type' => $registro_tipo,
+
+                    'title' => $registro_flash_title,
+
+                    'message' => $registro_mensaje,
+
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>
+
+              </script>
+
+              <noscript>
+
+                <div class="alert alert-<?php echo htmlspecialchars($registro_tipo, ENT_QUOTES, 'UTF-8'); ?> text-center" role="alert">
+
+                  <?php echo htmlspecialchars($registro_mensaje, ENT_QUOTES, 'UTF-8'); ?>
+
+                </div>
+
+              </noscript>
+
+<?php endif; ?>
+
+
+
+
 
             <!-- Formulario clásico: names alineados con admin/registro.php -->
             <form method="POST" action="register.php" id="form-registro" novalidate>
@@ -118,6 +162,8 @@ $include_google_auth = true;
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.7/dist/sweetalert2.min.js" integrity="sha384-xIU22upJvFOpmGRB8OlVXiM8Kj5s9wgkKuxGfNDb0bDGPBoxineCH0/huelSnred" crossorigin="anonymous"></script>
 
+<script src="assets/js/flash-messages.js"></script>
+
 <!-- Validaciones simples en cliente (opcional) -->
 <script>
 (function() {
@@ -130,23 +176,16 @@ $include_google_auth = true;
   var telefono      = document.getElementById('telefono');
   var emailInput    = document.getElementById('email');
 
-  function showModal(type, message, title) {
-    var text = message == null ? '' : String(message);
-    if (typeof Swal === 'undefined') { alert(text); return; }
-    var icon = 'info', defaultTitle = 'Aviso';
-    if (type === 'success') { icon = 'success'; defaultTitle = 'Cuenta creada'; }
-    else if (type === 'error' || type === 'danger') { icon = 'error'; defaultTitle = 'Hubo un problema'; }
-    else if (type === 'warning') { icon = 'warning'; defaultTitle = 'Atención'; }
-    Swal.fire({
-      icon: icon,
-      title: title || defaultTitle,
-      text: text,
-      confirmButtonText: 'Aceptar',
-      customClass: { confirmButton: 'btn btn-primary' },
-      buttonsStyling: false
-    });
-  }
-
+  function showModal(type, message, title) {
+    if (window.AppAlerts && typeof window.AppAlerts.show === 'function') {
+      window.AppAlerts.show(type, message, title);
+      return;
+    }
+    var text = message == null ? '' : String(message);
+    var header = title ? title + '\n' : '';
+    window.alert((header + text.replace(/<[^>]+>/g, ' ')).trim());
+  }
+
   function validatePasswords() {
     if (!clave || !confirmar) return;
     confirmar.setCustomValidity(confirmar.value !== clave.value ? 'Las contraseñas no coinciden' : '');

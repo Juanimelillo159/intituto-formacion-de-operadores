@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 declare(strict_types=1);
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -24,22 +24,31 @@ function resendRequestWantsJson(): bool
     return $contentType !== '' && stripos($contentType, 'application/json') !== false;
 }
 
-function resendRespond(bool $ok, string $message, int $status = 200, string $type = 'info'): void
-{
-    if (resendRequestWantsJson()) {
-        http_response_code($status);
-        header('Content-Type: application/json; charset=UTF-8');
-        echo json_encode(['ok' => $ok, 'message' => $message], JSON_UNESCAPED_UNICODE);
-        exit;
-    }
-
-    $_SESSION['login_mensaje'] = $message;
-    $_SESSION['login_tipo'] = $type;
-
-    header('Location: login.php');
-    exit;
-}
-
+function resendRespond(bool $ok, string $message, int $status = 200, string $type = 'info', ?string $title = null): void
+{
+    if (resendRequestWantsJson()) {
+        http_response_code($status);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo json_encode([
+            'ok' => $ok,
+            'message' => $message,
+            'title' => $title,
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
+    $_SESSION['login_mensaje'] = $message;
+    $_SESSION['login_tipo'] = $type;
+    if ($title !== null) {
+        $_SESSION['login_title'] = $title;
+    } else {
+        unset($_SESSION['login_title']);
+    }
+
+    header('Location: login.php');
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     resendRespond(false, 'Metodo no permitido.', 405, 'danger');
 }
@@ -84,7 +93,7 @@ try {
             resendRespond(false, 'No pudimos enviar el correo de verificacion. Intentalo nuevamente.', 500, 'danger');
         }
 
-        resendRespond(true, 'Te enviamos un nuevo correo de verificacion. Revisalo o revisa la carpeta de SPAM.', 200, 'success');
+        resendRespond(true, 'Te enviamos un nuevo correo de verificacion. Revisalo o revisa la carpeta de SPAM.', 200, 'success', 'Revisa tu correo');
     }
 } catch (Throwable $exception) {
     error_log('[reenviar_verificacion] Error: ' . $exception->getMessage());
@@ -92,4 +101,6 @@ try {
 }
 
 // Para evitar enumerar usuarios devolvemos mensaje neutro cuando no correspondia enviar correo
-resendRespond(true, 'Si el email existe, te enviamos el enlace de verificacion.', 200, 'info');
+resendRespond(true, 'Si el email existe, te enviamos el enlace de verificacion.', 200, 'info', 'Aviso');
+
+
