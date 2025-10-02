@@ -74,7 +74,7 @@
         google.accounts.id.renderButton(container, {
             theme: 'outline',
             size: 'large',
-            width: 280
+            width: '100%'
         });
         google.accounts.id.prompt();
     };

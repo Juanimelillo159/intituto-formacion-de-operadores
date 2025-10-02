@@ -114,9 +114,9 @@ $include_google_auth = true;
 <?php include __DIR__ . '/footer.php'; ?>
 
 <!-- Libs -->
-<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" integrity="sha384-1H217gwSVyLSIfaLxHbE7dRb3v4mYCKbpQvzx0cegeju1MVsGrX5xXxAvs/HgeFs" crossorigin="anonymous"></script>
+<script src="/AdminLTE-3.2.0/plugins/jquery/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.7/dist/sweetalert2.min.js" integrity="sha384-xIU22upJvFOpmGRB8OlVXiM8Kj5s9wgkKuxGfNDb0bDGPBoxineCH0/huelSnred" crossorigin="anonymous"></script>
+<script src="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.js"></script>
 
 <!-- Validaciones simples en cliente (opcional) -->
 <script>
@@ -180,4 +180,3 @@ $include_google_auth = true;
 
 </body>
 </html>
-
