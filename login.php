@@ -1,10 +1,7 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 
-// Asegurate de cargar config.php ANTES de usar GOOGLE_CLIENT_ID
 require_once __DIR__ . '/config.php';
-
-// Si tu sbd.php ya incluye config.php, igual no molesta tener ambos como require_once
 require_once __DIR__ . '/sbd.php';
 
 $page_title = "Login | Instituto de Formación";
@@ -13,16 +10,12 @@ $page_description = "Pagina de inicio de sesión del Instituto de Formación de 
 $login_mensaje = $_SESSION['login_mensaje'] ?? null;
 $login_tipo    = $_SESSION['login_tipo'] ?? 'info';
 
-// Tomamos el Client ID desde la constante definida en config.php
-$googleClientId = defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : (getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE');
-
-// Pedimos que head.php cargue la librería de Google
-$include_google_auth = true;
-
-// Limpiamos el mensaje para que no quede pegado entre refrescos
 if ($login_mensaje !== null) {
     unset($_SESSION['login_mensaje'], $_SESSION['login_tipo']);
 }
+
+$googleClientId = defined('GOOGLE_CLIENT_ID') ? GOOGLE_CLIENT_ID : (getenv('GOOGLE_CLIENT_ID') ?: 'TU_CLIENT_ID_DE_GOOGLE');
+$include_google_auth = true;
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -62,7 +55,7 @@ if ($login_mensaje !== null) {
       <div class="text-center mt-3"><span class="text-muted"> o </span></div>
       <div id="googleSignInMessage" role="alert" style="display:none;"></div>
       <div class="d-flex justify-content-center mt-3">
-      <div id="googleSignInButton"></div>
+        <div id="googleSignInButton"></div>
       </div>
 
     </div>
@@ -71,24 +64,43 @@ if ($login_mensaje !== null) {
 
 <?php include __DIR__ . "/footer.php"; ?>
 
-<script src="/AdminLTE-3.2.0/plugins/jquery/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/AdminLTE-3.2.0/plugins/sweetalert2/sweetalert2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.all.min.js" crossorigin="anonymous"></script>
 
 <script>
 (function () {
   var form = document.getElementById('form-login');
   var emailInput = document.getElementById('email');
 
+  function mapIcon(type) {
+    if (type === 'success') return 'success';
+    if (type === 'warning') return 'warning';
+    if (type === 'error' || type === 'danger') return 'error';
+    return 'info';
+  }
+
   function showModal(type, message, title) {
-    var text = message == null ? '' : String(message);
-    if (typeof Swal === 'undefined') { alert(text); return; }
-    var icon = 'info', defaultTitle = 'Aviso';
-    if (type === 'success') { icon = 'success'; defaultTitle = 'Correo reenviado'; }
-    else if (type === 'error' || type === 'danger') { icon = 'error'; defaultTitle = 'No pudimos completar la acción'; }
-    else if (type === 'warning') { icon = 'warning'; defaultTitle = 'Atención'; }
-    Swal.fire({ icon, title: title || defaultTitle, text, confirmButtonText: 'Aceptar',
-      customClass: { confirmButton: 'btn btn-primary' }, buttonsStyling: false });
+    if (typeof Swal === 'undefined') {
+      var text = message == null ? '' : String(message);
+      var header = title ? title + '\n' : '';
+      window.alert((header + text.replace(/<[^>]+>/g, ' ')).trim());
+      return;
+    }
+
+    var icon = mapIcon(type);
+    var defaultTitle = 'Aviso';
+    if (icon === 'success') defaultTitle = 'Listo';
+    else if (icon === 'warning') defaultTitle = 'Atención';
+    else if (icon === 'error') defaultTitle = 'Hubo un problema';
+
+    Swal.fire({
+      icon: icon,
+      title: title || defaultTitle,
+      html: message == null ? '' : String(message),
+      confirmButtonText: 'Aceptar',
+      customClass: { confirmButton: 'btn btn-primary' },
+      buttonsStyling: false
+    });
   }
 
   document.addEventListener('click', function (event) {
@@ -98,7 +110,9 @@ if ($login_mensaje !== null) {
     if (link.dataset.loading === '1') return;
 
     var email = (link.getAttribute('data-email') || '').trim();
-    if (!email && emailInput) { email = emailInput.value.trim(); }
+    if (!email && emailInput) {
+      email = emailInput.value.trim();
+    }
     if (!email) {
       showModal('error', 'Ingresa tu correo para reenviar la verificación.', 'Falta correo');
       if (emailInput) emailInput.focus();
@@ -111,31 +125,42 @@ if ($login_mensaje !== null) {
     fetch('reenviar_verificacion.php', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
       body: new URLSearchParams({ email: email }).toString()
     })
-    .then(function (response) {
-      return response.json().catch(function () {
-        return { ok: false, message: 'Respuesta inesperada del servidor.' };
+      .then(function (response) {
+        return response.json().catch(function () {
+          return { ok: false, message: 'Respuesta inesperada del servidor.' };
+        });
+      })
+      .then(function (data) {
+        var message = (data && data.message) || 'No pudimos reenviar el correo.';
+        if (data && data.ok) {
+          showModal('success', message, 'Revisa tu correo');
+        } else {
+          showModal('error', message, 'No pudimos reenviar');
+        }
+      })
+      .catch(function () {
+        showModal('error', 'No pudimos reenviar el correo. Intenta nuevamente.', 'Error de red');
+      })
+      .finally(function () {
+        delete link.dataset.loading;
+        link.classList.remove('disabled');
       });
-    })
-    .then(function (data) {
-      var message = (data && data.message) || 'No pudimos reenviar el correo.';
-      if (data && data.ok) showModal('success', message, 'Revisa tu correo');
-      else showModal('error', message, 'No pudimos reenviar');
-    })
-    .catch(function () {
-      showModal('error', 'No pudimos reenviar el correo. Intenta nuevamente.', 'Error de red');
-    })
-    .finally(function () {
-      delete link.dataset.loading;
-      link.classList.remove('disabled');
-    });
   });
 
-  if (form) form.addEventListener('submit', function () {
-    if (emailInput && !emailInput.value) emailInput.focus();
-  });
+  if (form) {
+    form.addEventListener('submit', function () {
+      if (emailInput && !emailInput.value) {
+        emailInput.focus();
+      }
+    });
+  }
 })();
 </script>
 
@@ -143,3 +168,5 @@ if ($login_mensaje !== null) {
 <script src="assets/js/google-auth.js"></script>
 </body>
 </html>
+
+
