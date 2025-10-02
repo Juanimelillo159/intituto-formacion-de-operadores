@@ -38,6 +38,7 @@ if ($userId <= 0) {
 
 $currentPermiso = (int)($_SESSION['permiso'] ?? 0);
 $isHrManager = $currentPermiso === 3;
+$userEmail = isset($_SESSION['email']) ? trim((string)$_SESSION['email']) : '';
 
 $misCursosFeedback = $_SESSION['mis_cursos_feedback'] ?? null;
 if ($misCursosFeedback !== null) {
@@ -1167,60 +1168,201 @@ SQL;
             $cursosComprados = [];
         } 
     }
+    $asignadas = [];
     if ($asignacionesCursosAvailable) {
-    $sqlAsignadas = "
+        $sqlAsignadas = <<<'SQL'
         SELECT
             a.id_asignacion,
             a.id_curso,
-            a.tipo_curso,           -- 'capacitacion' | 'certificacion'
+            a.tipo_curso,
             a.creado_en,
             c.nombre_curso
         FROM asignaciones_cursos a
         INNER JOIN cursos c ON c.id_curso = a.id_curso
         WHERE a.id_asignado = :usuario
-          AND a.id_estado IN (1,2)    -- ajustá a tus estados válidos para “visible”
+          AND a.id_estado IN (1,2)
         ORDER BY a.creado_en DESC, a.id_asignacion DESC
-    ";
-    $stmtAsignadas = $pdo->prepare($sqlAsignadas);
-    $stmtAsignadas->bindValue(':usuario', $userId, PDO::PARAM_INT);
-    $stmtAsignadas->execute();
+SQL;
+        $stmtAsignadas = $pdo->prepare($sqlAsignadas);
+        $stmtAsignadas->bindValue(':usuario', $userId, PDO::PARAM_INT);
+        $stmtAsignadas->execute();
 
-    $asignadas = [];
-    while ($row = $stmtAsignadas->fetch(PDO::FETCH_ASSOC)) {
-        // Formato compatible con las tarjetas que ya renderizás
-        $fechaFmt = null;
-        if (!empty($row['creado_en'])) {
-            try {
-                $fechaFmt = (new DateTimeImmutable($row['creado_en']))->format('d/m/Y H:i');
-            } catch (Throwable $e) {
-                $fechaFmt = $row['creado_en'];
+        while ($row = $stmtAsignadas->fetch(PDO::FETCH_ASSOC)) {
+            $fechaFmt = null;
+            if (!empty($row['creado_en'])) {
+                try {
+                    $fechaFmt = (new DateTimeImmutable($row['creado_en']))->format('d/m/Y H:i');
+                } catch (Throwable $e) {
+                    $fechaFmt = $row['creado_en'];
+                }
             }
+
+            $asignadas[] = [
+                'id_item'             => (int)$row['id_asignacion'],
+                'id_curso'            => (int)$row['id_curso'],
+                'tipo_curso'          => (string)$row['tipo_curso'],
+                'nombre_curso'        => $row['nombre_curso'] ?: ('Curso #' . (int)$row['id_curso']),
+                'nombre_modalidad'    => null,
+                'pagado_en'           => $row['creado_en'],
+                'pagado_en_formatted' => $fechaFmt,
+                'moneda'              => null,
+                'precio_unitario'     => null,
+                'cantidad'            => 1,
+                'inscripcion'         => [
+                    'estado'    => 'Asignado',
+                    'clase'     => 'bg-info text-dark',
+                    'progreso'  => null,
+                ],
+                'origen'              => 'asignado',
+            ];
         }
-        $asignadas[] = [
-            'id_item'             => (int)$row['id_asignacion'],
-            'id_curso'            => (int)$row['id_curso'],
-            'tipo_curso'          => (string)$row['tipo_curso'],
-            'nombre_curso'        => $row['nombre_curso'] ?: ('Curso #' . (int)$row['id_curso']),
-            'nombre_modalidad'    => null,
-            'pagado_en'           => $row['creado_en'],
-            'pagado_en_formatted' => $fechaFmt,
-            'moneda'              => null,
-            'precio_unitario'     => null,
-            'cantidad'            => 1,
-            'inscripcion'         => [
-                'estado' => 'Asignado',
-                'clase'  => 'bg-info text-dark',
-                'progreso' => null,
-            ],
-            'origen'              => 'asignado',
-        ];
     }
 
-    // Mergeá con lo que ya tengas cargado (compras propias), o reemplazá si no querés mezclar
+    if (empty($asignadas) && !$isHrManager) {
+        if ($userEmail === '' && $userId > 0) {
+            try {
+                $stmtEmailLookup = $pdo->prepare('SELECT email FROM usuarios WHERE id_usuario = ? LIMIT 1');
+                $stmtEmailLookup->execute([$userId]);
+                $fetchedEmail = $stmtEmailLookup->fetchColumn();
+                if (is_string($fetchedEmail)) {
+                    $userEmail = trim($fetchedEmail);
+                }
+            } catch (Throwable $emailLookupException) {
+                error_log('mis_cursos email lookup: ' . $emailLookupException->getMessage());
+            }
+        }
+
+        if ($checkoutCapacitacionesAvailable) {
+            $sqlCapFallback = <<<'SQL'
+SELECT
+    cc.id_capacitacion AS slot_id,
+    cc.id_curso,
+    cc.creado_en,
+    cc.id_estado,
+    c.nombre_curso,
+    mods.modalidad_resumen
+FROM checkout_capacitaciones cc
+INNER JOIN cursos c ON c.id_curso = cc.id_curso
+LEFT JOIN (
+    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+    FROM curso_modalidad cm
+    INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+    GROUP BY cm.id_curso
+) AS mods ON mods.id_curso = cc.id_curso
+LEFT JOIN usuarios u ON u.email = cc.email
+WHERE cc.email IS NOT NULL
+  AND cc.email <> ''
+  AND (
+      u.id_usuario = :usuario
+      OR (:email <> '' AND LOWER(cc.email) = LOWER(:email))
+  )
+  AND (cc.creado_por IS NULL OR cc.creado_por <> :usuario)
+ORDER BY cc.creado_en DESC, cc.id_capacitacion DESC
+SQL;
+            $stmtCapFallback = $pdo->prepare($sqlCapFallback);
+            $stmtCapFallback->bindValue(':usuario', $userId, PDO::PARAM_INT);
+            $stmtCapFallback->bindValue(':email', $userEmail, PDO::PARAM_STR);
+            $stmtCapFallback->execute();
+
+            while ($row = $stmtCapFallback->fetch(PDO::FETCH_ASSOC)) {
+                if (empty($row['id_curso']) || empty($row['slot_id'])) {
+                    continue;
+                }
+
+                $fechaFmt = null;
+                if (!empty($row['creado_en'])) {
+                    try {
+                        $fechaFmt = (new DateTimeImmutable((string)$row['creado_en']))->format('d/m/Y H:i');
+                    } catch (Throwable $fallbackDateException) {
+                        $fechaFmt = $row['creado_en'];
+                    }
+                }
+
+                $asignadas[] = [
+                    'id_item'             => -abs((int)$row['slot_id']),
+                    'id_curso'            => (int)$row['id_curso'],
+                    'tipo_curso'          => 'capacitacion',
+                    'nombre_curso'        => $row['nombre_curso'] ?: ('Curso #' . (int)$row['id_curso']),
+                    'nombre_modalidad'    => $row['modalidad_resumen'] ?? null,
+                    'pagado_en'           => $row['creado_en'],
+                    'pagado_en_formatted' => $fechaFmt,
+                    'moneda'              => null,
+                    'precio_unitario'     => null,
+                    'cantidad'            => 1,
+                    'inscripcion'         => [
+                        'estado'    => 'Asignado',
+                        'clase'     => 'bg-info text-dark',
+                        'progreso'  => null,
+                    ],
+                    'origen'              => 'asignado',
+                ];
+            }
+        }
+
+        if ($checkoutCertificacionesAvailable) {
+            $sqlCertFallback = <<<'SQL'
+SELECT
+    ccert.id_certificacion AS slot_id,
+    ccert.id_curso,
+    ccert.creado_en,
+    ccert.id_estado,
+    c.nombre_curso
+FROM checkout_certificaciones ccert
+INNER JOIN cursos c ON c.id_curso = ccert.id_curso
+LEFT JOIN usuarios u ON u.email = ccert.email
+WHERE ccert.email IS NOT NULL
+  AND ccert.email <> ''
+  AND (
+      u.id_usuario = :usuario
+      OR (:email <> '' AND LOWER(ccert.email) = LOWER(:email))
+  )
+  AND (ccert.creado_por IS NULL OR ccert.creado_por <> :usuario)
+ORDER BY ccert.creado_en DESC, ccert.id_certificacion DESC
+SQL;
+            $stmtCertFallback = $pdo->prepare($sqlCertFallback);
+            $stmtCertFallback->bindValue(':usuario', $userId, PDO::PARAM_INT);
+            $stmtCertFallback->bindValue(':email', $userEmail, PDO::PARAM_STR);
+            $stmtCertFallback->execute();
+
+            while ($row = $stmtCertFallback->fetch(PDO::FETCH_ASSOC)) {
+                if (empty($row['id_curso']) || empty($row['slot_id'])) {
+                    continue;
+                }
+
+                $fechaFmt = null;
+                if (!empty($row['creado_en'])) {
+                    try {
+                        $fechaFmt = (new DateTimeImmutable((string)$row['creado_en']))->format('d/m/Y H:i');
+                    } catch (Throwable $fallbackCertDate) {
+                        $fechaFmt = $row['creado_en'];
+                    }
+                }
+
+                $asignadas[] = [
+                    'id_item'             => -abs((int)$row['slot_id']),
+                    'id_curso'            => (int)$row['id_curso'],
+                    'tipo_curso'          => 'certificacion',
+                    'nombre_curso'        => $row['nombre_curso'] ?: ('Curso #' . (int)$row['id_curso']),
+                    'nombre_modalidad'    => null,
+                    'pagado_en'           => $row['creado_en'],
+                    'pagado_en_formatted' => $fechaFmt,
+                    'moneda'              => null,
+                    'precio_unitario'     => null,
+                    'cantidad'            => 1,
+                    'inscripcion'         => [
+                        'estado'    => 'Asignado',
+                        'clase'     => 'bg-info text-dark',
+                        'progreso'  => null,
+                    ],
+                    'origen'              => 'asignado',
+                ];
+            }
+        }
+    }
+
     if (!empty($asignadas)) {
         $cursosComprados = array_merge($asignadas, $cursosComprados);
     }
-}
 } catch (Throwable $exception) {
     $errorDetails = $exception->getMessage();
     error_log('mis_cursos load: ' . $errorDetails);
