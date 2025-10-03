@@ -204,17 +204,26 @@ SQL;
 
 function checkout_estado_label(?string $estado): string
 {
-    return match ($estado) {
-        'pagado' => 'Pagado',
-        'pendiente' => 'Pendiente',
-        'rechazado' => 'Rechazado',
-        'cancelado' => 'Cancelado',
-        'autorizado' => 'Autorizado',
-        'reembolsado' => 'Reembolsado',
-        'reversado' => 'Reversado',
-        'vencido' => 'Vencido',
-        default => ucfirst((string) $estado),
-    };
+    switch ($estado) {
+        case 'pagado':
+            return 'Pagado';
+        case 'pendiente':
+            return 'Pendiente';
+        case 'rechazado':
+            return 'Rechazado';
+        case 'cancelado':
+            return 'Cancelado';
+        case 'autorizado':
+            return 'Autorizado';
+        case 'reembolsado':
+            return 'Reembolsado';
+        case 'reversado':
+            return 'Reversado';
+        case 'vencido':
+            return 'Vencido';
+        default:
+            return ucfirst((string) $estado);
+    }
 }
 
 function checkout_mp_status_detail_message(?string $statusDetail): ?string

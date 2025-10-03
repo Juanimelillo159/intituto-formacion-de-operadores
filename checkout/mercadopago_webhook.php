@@ -16,9 +16,10 @@ try {
     }
     $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $input = file_get_contents('php://input');
+    $input = file_get_contents('php://input') ?: '';
     $decoded = [];
     if ($input !== '') {
+        @file_put_contents(__DIR__ . '/mercadopago_webhook.log', date('c') . ' RAW: ' . $input . PHP_EOL, FILE_APPEND);
         $decoded = json_decode($input, true);
         if (!is_array($decoded)) {
             $decoded = [];

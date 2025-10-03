@@ -101,12 +101,16 @@ function h($s)
 
 function checkout_certificacion_estado_label(?int $estado): string
 {
-    return match ($estado) {
-        2 => 'Aprobada',
-        3 => 'Pago registrado',
-        4 => 'Rechazada',
-        default => 'En revisión',
-    };
+    switch ($estado) {
+        case 2:
+            return 'Aprobada';
+        case 3:
+            return 'Pago registrado';
+        case 4:
+            return 'Rechazada';
+        default:
+            return 'En revisión';
+    }
 }
 
 $certificacionData = null;

@@ -63,12 +63,16 @@ if (!$data && $certificacionId > 0) {
 
 function cert_estado_label(?int $estado): string
 {
-    return match ($estado) {
-        2 => 'Documentación aprobada',
-        3 => 'Pago registrado',
-        4 => 'Solicitud rechazada',
-        default => 'En revisión',
-    };
+    switch ($estado) {
+        case 2:
+            return 'Documentación aprobada';
+        case 3:
+            return 'Pago registrado';
+        case 4:
+            return 'Solicitud rechazada';
+        default:
+            return 'En revisión';
+    }
 }
 
 $viewData = is_array($data) ? $data : [];

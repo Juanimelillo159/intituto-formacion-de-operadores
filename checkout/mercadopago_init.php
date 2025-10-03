@@ -270,8 +270,13 @@ try {
 
     $externalReference = 'insc-' . $registroId;
 
+    $successUrl = defined('URL_SUCCESS') ? URL_SUCCESS : $baseUrl . '/checkout/gracias.php';
+    $pendingUrl = defined('URL_PENDING') ? URL_PENDING : $baseUrl . '/checkout/gracias.php';
+    $failureUrl = defined('URL_FAILURE') ? URL_FAILURE : $baseUrl . '/checkout/gracias.php';
+
     $preferenceRequest = [
         'items' => [[
+            'id' => 'curso-' . $cursoId,
             'title' => $curso['nombre_curso'],
             'description' => 'Inscripción al curso ' . $curso['nombre_curso'],
             'quantity' => 1,
@@ -279,9 +284,9 @@ try {
             'currency_id' => strtoupper($moneda),
         ]],
         'back_urls' => [
-            'success' => $baseUrl . '/checkout/gracias.php',
-            'pending' => $baseUrl . '/checkout/gracias.php',
-            'failure' => $baseUrl . '/checkout/gracias.php',
+            'success' => $successUrl,
+            'pending' => $pendingUrl,
+            'failure' => $failureUrl,
         ],
         'auto_return' => 'approved',
         'external_reference' => $externalReference,
@@ -303,6 +308,9 @@ try {
     $notificationUrl = checkout_env('MP_NOTIFICATION_URL');
     if (!$notificationUrl) {
         $notificationUrl = $baseUrl . '/checkout/mercadopago_webhook.php';
+    }
+    if (defined('URL_WEBHOOK')) {
+        $notificationUrl = URL_WEBHOOK;
     }
     if ($notificationUrl) {
         $preferenceRequest['notification_url'] = $notificationUrl;

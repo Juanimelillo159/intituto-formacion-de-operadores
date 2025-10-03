@@ -117,8 +117,14 @@ if (!function_exists('checkout_get_mp_public_key')) {
     {
         $config = checkout_mp_config();
         $publicKey = $config['public_key'] ?? null;
-        if (!$publicKey) {
-            $publicKey = checkout_env('MP_PUBLIC_KEY') ?? checkout_env('MERCADOPAGO_PUBLIC_KEY');
+        if (!$publicKey && checkout_env('MP_PUBLIC_KEY')) {
+            $publicKey = checkout_env('MP_PUBLIC_KEY');
+        }
+        if (!$publicKey && checkout_env('MERCADOPAGO_PUBLIC_KEY')) {
+            $publicKey = checkout_env('MERCADOPAGO_PUBLIC_KEY');
+        }
+        if (!$publicKey && defined('MP_PUBLIC_KEY')) {
+            $publicKey = MP_PUBLIC_KEY;
         }
         if ($publicKey === null) {
             return null;
@@ -134,7 +140,13 @@ if (!function_exists('checkout_get_base_url')) {
      */
     function checkout_get_base_url(): string
     {
-        $configured = checkout_env('APP_BASE_URL') ?? checkout_env('BASE_URL');
+        $configured = checkout_env('APP_BASE_URL');
+        if (!$configured && checkout_env('BASE_URL')) {
+            $configured = checkout_env('BASE_URL');
+        }
+        if (!$configured && defined('BASE_URL')) {
+            $configured = BASE_URL;
+        }
         if ($configured) {
             $configured = trim($configured);
             if ($configured !== '') {
@@ -179,16 +191,28 @@ if (!function_exists('checkout_configure_mp')) {
     {
         $config = checkout_mp_config();
         $token = $config['access_token'] ?? null;
-        if (!$token) {
-            $token = checkout_env('MP_ACCESS_TOKEN') ?? checkout_env('MERCADOPAGO_ACCESS_TOKEN');
+        if (!$token && checkout_env('MP_ACCESS_TOKEN')) {
+            $token = checkout_env('MP_ACCESS_TOKEN');
+        }
+        if (!$token && checkout_env('MERCADOPAGO_ACCESS_TOKEN')) {
+            $token = checkout_env('MERCADOPAGO_ACCESS_TOKEN');
+        }
+        if (!$token && defined('MP_ACCESS_TOKEN')) {
+            $token = MP_ACCESS_TOKEN;
         }
         if (!$token) {
             throw new RuntimeException('No se configuró el token de acceso de Mercado Pago. Definí MP_ACCESS_TOKEN.');
         }
         MercadoPagoConfig::setAccessToken($token);
         $integratorId = $config['integrator_id'] ?? null;
-        if (!$integratorId) {
-            $integratorId = checkout_env('MP_INTEGRATOR_ID') ?? checkout_env('MERCADOPAGO_INTEGRATOR_ID');
+        if (!$integratorId && checkout_env('MP_INTEGRATOR_ID')) {
+            $integratorId = checkout_env('MP_INTEGRATOR_ID');
+        }
+        if (!$integratorId && checkout_env('MERCADOPAGO_INTEGRATOR_ID')) {
+            $integratorId = checkout_env('MERCADOPAGO_INTEGRATOR_ID');
+        }
+        if (!$integratorId && defined('MP_INTEGRATOR_ID')) {
+            $integratorId = MP_INTEGRATOR_ID;
         }
         if ($integratorId) {
             MercadoPagoConfig::setIntegratorId($integratorId);
@@ -224,17 +248,35 @@ if (!function_exists('checkout_map_mp_status_to_estado')) {
     function checkout_map_mp_status_to_estado(string $status): string
     {
         $status = strtolower($status);
-        return match ($status) {
-            'approved', 'accredited', 'captured' => 'pagado',
-            'authorized' => 'autorizado',
-            'pending', 'in_process', 'in_mediation', 'in_review' => 'pendiente',
-            'rejected', 'refused' => 'rechazado',
-            'cancelled', 'cancelled_by_collector', 'cancelled_by_user' => 'cancelado',
-            'refunded', 'partially_refunded' => 'reembolsado',
-            'charged_back' => 'reversado',
-            'expired' => 'vencido',
-            default => 'pendiente',
-        };
+        switch ($status) {
+            case 'approved':
+            case 'accredited':
+            case 'captured':
+                return 'pagado';
+            case 'authorized':
+                return 'autorizado';
+            case 'pending':
+            case 'in_process':
+            case 'in_mediation':
+            case 'in_review':
+                return 'pendiente';
+            case 'rejected':
+            case 'refused':
+                return 'rechazado';
+            case 'cancelled':
+            case 'cancelled_by_collector':
+            case 'cancelled_by_user':
+                return 'cancelado';
+            case 'refunded':
+            case 'partially_refunded':
+                return 'reembolsado';
+            case 'charged_back':
+                return 'reversado';
+            case 'expired':
+                return 'vencido';
+            default:
+                return 'pendiente';
+        }
     }
 }
 
@@ -245,7 +287,7 @@ if (!function_exists('checkout_decode_payload')) {
             return [];
         }
         try {
-            $decoded = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            $decoded = json_decode($payload, true);
             return is_array($decoded) ? $decoded : [];
         } catch (Throwable $e) {
             return [];
@@ -257,7 +299,7 @@ if (!function_exists('checkout_encode_payload')) {
     function checkout_encode_payload(array $payload): string
     {
         try {
-            return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+            return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } catch (Throwable $e) {
             return '{}';
         }
