@@ -1,5 +1,15 @@
 <?php
 
+// Credenciales de prueba por defecto. Reemplazá por las definitivas si las tenés
+// configuradas como constantes o variables de entorno en tu hosting.
+if (!defined('MP_ACCESS_TOKEN')) {
+    define('MP_ACCESS_TOKEN', 'APP_USR-697544312345765-091622-213b5d03eba54b706beafeeaf8e3f2ba-1578491289');
+}
+
+if (!defined('MP_CLIENT_ID')) {
+    define('MP_CLIENT_ID', '697544312345765');
+}
+
 $config = [
     'public_key' => null,
     'access_token' => null,
