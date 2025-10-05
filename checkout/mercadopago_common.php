@@ -197,11 +197,31 @@ function mp_store_preference(PDO $con, int $paymentId, string $preferenceId, str
  */
 function mp_fetch_payment(string $paymentId): array
 {
+    $numericId = preg_replace('/\D+/', '', $paymentId);
+    if ($numericId === '' || !is_numeric($numericId)) {
+        throw new \InvalidArgumentException('El identificador de pago no es válido.');
+    }
+
     mp_configure_sdk();
     $client = new PaymentClient();
-    $payment = $client->get($paymentId);
+    $payment = $client->get((int) $numericId);
 
     return json_decode(json_encode($payment), true) ?: [];
+}
+
+if (!function_exists('checkout_format_currency')) {
+    function checkout_format_currency(float $amount, string $currency): string
+    {
+        $currency = strtoupper(trim($currency));
+        $symbol = '$';
+        if ($currency === 'USD') {
+            $symbol = 'US$';
+        } elseif ($currency === 'EUR') {
+            $symbol = '€';
+        }
+
+        return sprintf('%s %s', $symbol, number_format($amount, 2, ',', '.'));
+    }
 }
 
 /**
