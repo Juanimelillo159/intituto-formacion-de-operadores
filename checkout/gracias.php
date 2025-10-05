@@ -153,7 +153,7 @@ SQL;
             throw new RuntimeException('No recibimos la información del pago.');
         }
 
-        $mpRow = checkout_fetch_mp_order($con, [
+        $mpRow = mp_find_order($con, [
             'preference_id' => $preferenceId,
             'payment_id' => $paymentId,
             'external_reference' => $externalRef,
@@ -167,17 +167,20 @@ SQL;
         try {
             $paymentLookupId = $paymentId ?: ($mpRow['payment_id'] ?? null);
             if ($paymentLookupId) {
-                $paymentData = checkout_fetch_payment_from_mp((string) $paymentLookupId);
+                $paymentData = mp_fetch_payment((string) $paymentLookupId);
             }
         } catch (Throwable $apiError) {
-            checkout_log_event('checkout_mp_return_payment_error', ['payment_id' => $paymentId], $apiError);
+            mp_log('mp_return_payment_error', ['payment_id' => $paymentId], $apiError);
         }
 
-        $sync = checkout_sync_mp_payment($con, $mpRow, $paymentData, 'return', true);
-        $orderData = $sync['row'];
-        $estadoPago = $sync['estado_pago'];
-        $mpStatus = $sync['mp_status'];
-        $statusDetail = isset($orderData['status_detail']) ? (string) $orderData['status_detail'] : '';
+        if ($paymentData) {
+            $mpRow = mp_update_payment_status($con, $mpRow, $paymentData);
+        }
+
+        $orderData = $mpRow;
+        $estadoPago = (string) ($mpRow['pago_estado'] ?? 'pendiente');
+        $mpStatus = (string) ($mpRow['status'] ?? '');
+        $statusDetail = (string) ($mpRow['status_detail'] ?? '');
 
         if (!empty($orderData['tipo_checkout']) && in_array($orderData['tipo_checkout'], ['curso', 'capacitacion', 'certificacion'], true)) {
             $tipoParam = $orderData['tipo_checkout'];
@@ -198,7 +201,7 @@ SQL;
         }
     } catch (Throwable $exception) {
         $error = $exception->getMessage();
-        checkout_log_event('checkout_mp_return_error', ['error' => $exception->getMessage()], $exception);
+        mp_log('mp_return_error', ['error' => $exception->getMessage()], $exception);
     }
 }
 
@@ -258,6 +261,11 @@ function checkout_mp_status_detail_message(?string $statusDetail): ?string
 
     if (isset($map[$detail])) {
         return $map[$detail] . ' (código: ' . strtoupper($detail) . ')';
+    }
+
+    $fallback = mp_status_detail_message($detail);
+    if ($fallback) {
+        return $fallback . ' (código: ' . strtoupper($detail) . ')';
     }
 
     if (function_exists('str_starts_with') && str_starts_with($detail, 'cc_rejected_')) {
