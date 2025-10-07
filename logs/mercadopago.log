@@ -41,3 +41,4 @@
 {"ts":"2025-10-06T01:44:33+02:00","event":"mp_webhook_skip","context":{"reason":"sin_payment_id","query":{"id":"34531906128","topic":"merchant_order"},"body":{"resource":"https:\/\/api.mercadolibre.com\/merchant_orders\/34531906128","topic":"merchant_order"}}}
 {"ts":"2025-10-06T01:51:19+02:00","event":"mp_webhook_received","context":{"payment_id":"128771190530"}}
 {"ts":"2025-10-07T02:22:02+02:00","event":"mp_preference_created","context":{"pago":33,"registro":46,"preference":"1578491289-4dadeae1-e56d-4687-84fa-4c2023d8bc17","monto":120000,"moneda":"ARS"}}
+{"ts":"2025-10-07T16:20:55+02:00","event":"mp_preference_created","context":{"pago":23,"registro":47,"preference":"1578491289-060e27fc-cafe-4336-8216-c9a1d1178fa7","monto":120000,"moneda":"ARS"}}
