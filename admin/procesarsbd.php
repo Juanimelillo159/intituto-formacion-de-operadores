@@ -1,6 +1,7 @@
 <?php
 // procesarsbd.php (sin sesiones)
 declare(strict_types=1);
+require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../sbd.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
@@ -1012,9 +1013,85 @@ try {
         registrar_historico_certificacion($con, $certificacionId, $nuevoEstado);
         $con->commit();
 
-        $_SESSION['certificacion_admin_success'] = $isAprobarCertificacion
+        $adminSuccessMessage = $isAprobarCertificacion
             ? 'La certificación fue aprobada correctamente.'
             : 'La certificación fue rechazada correctamente.';
+
+        if ($isAprobarCertificacion) {
+            $notified = false;
+            $notifyError = null;
+            $emailAlumno = trim((string)($certRow['email'] ?? ''));
+            if ($emailAlumno !== '') {
+                try {
+                    require_once __DIR__ . '/../checkout/mercadopago_mailer.php';
+
+                    $nombreAlumno = trim(((string)($certRow['nombre'] ?? '')) . ' ' . ((string)($certRow['apellido'] ?? '')));
+                    if ($nombreAlumno === '') {
+                        $nombreAlumno = $emailAlumno;
+                    }
+
+                    $cursoStmt = $con->prepare('SELECT nombre_certificacion, nombre_curso FROM cursos WHERE id_curso = :id LIMIT 1');
+                    $cursoStmt->execute([':id' => (int)($certRow['id_curso'] ?? 0)]);
+                    $cursoRow = $cursoStmt->fetch(PDO::FETCH_ASSOC) ?: [];
+                    $nombreCurso = (string)($cursoRow['nombre_certificacion'] ?? $cursoRow['nombre_curso'] ?? 'Certificación solicitada');
+
+                    $baseUrl = defined('APP_URL') && APP_URL
+                        ? rtrim((string)APP_URL, '/')
+                        : rtrim(checkout_env('APP_URL') ?? mp_base_url(), '/');
+                    $checkoutLink = sprintf(
+                        '%s/checkout/checkout.php?id_certificacion=%d&tipo=certificacion&certificacion_registro=%d',
+                        $baseUrl,
+                        (int)($certRow['id_curso'] ?? 0),
+                        $certificacionId
+                    );
+
+                    $precioInfo = mp_fetch_course_price($con, (int)($certRow['id_curso'] ?? 0));
+                    $monto = (float)($precioInfo['amount'] ?? 0);
+                    $moneda = (string)($precioInfo['currency'] ?? 'ARS');
+                    $configMail = checkout_mail_config();
+                    $resumenMonto = $monto > 0
+                        ? 'El monto a abonar es de <strong>' . checkout_format_currency($monto, $moneda) . '</strong>.'
+                        : 'En el checkout verás el arancel actualizado antes de confirmar el pago.';
+
+                    $mail = checkout_create_mailer();
+                    $mail->addAddress($emailAlumno, $nombreAlumno);
+                    $mail->Subject = 'Documentación aprobada - Completá el pago de tu certificación';
+                    $mailBody = <<<HTML
+                        <p>Hola {$nombreAlumno},</p>
+                        <p>Te confirmamos que aprobamos la documentación enviada para la certificación <strong>{$nombreCurso}</strong>.</p>
+                        <p>{$resumenMonto}</p>
+                        <p>Para finalizar el proceso, ingresá al checkout desde el siguiente enlace. Encontrarás tus datos cargados y podrás abonar con Mercado Pago o adjuntar el comprobante de transferencia.</p>
+                        <p style="text-align:center; margin:24px 0;">
+                            <a href="{$checkoutLink}" style="display:inline-block; padding:12px 20px; background:#2563eb; color:#ffffff; border-radius:8px; text-decoration:none; font-weight:600;">Ir al checkout y completar el pago</a>
+                        </p>
+                        <p>Si necesitás ayuda, respondé este correo o escribinos a <a href="mailto:{$configMail['admin_email']}">{$configMail['admin_email']}</a>.</p>
+                        <p>Saludos,<br>Instituto de Formación de Operadores</p>
+                    HTML;
+                    $mail->Body = $mailBody;
+                    $altBody = strip_tags(preg_replace('/<\/(p|div)>/i', "\n\n", $mailBody));
+                    $altBody .= "\n\nCheckout: {$checkoutLink}\n";
+                    $mail->AltBody = $altBody;
+                    $mail->send();
+                    $notified = true;
+                } catch (Throwable $mailException) {
+                    $notifyError = $mailException->getMessage();
+                    log_cursos('certificacion_aprobar_mail_error', [
+                        'id_certificacion' => $certificacionId,
+                        'email' => $emailAlumno,
+                    ], $mailException);
+                }
+            }
+
+            if ($notified) {
+                $adminSuccessMessage .= ' Se notificó al solicitante por correo.';
+            } elseif ($notifyError !== null) {
+                $adminSuccessMessage .= ' No se pudo enviar el correo al solicitante: ' . $notifyError;
+            } else {
+                $adminSuccessMessage .= ' No se envió correo porque la solicitud no tiene un email cargado.';
+            }
+        }
+
+        $_SESSION['certificacion_admin_success'] = $adminSuccessMessage;
 
         header('Location: certificaciones.php');
         exit;
