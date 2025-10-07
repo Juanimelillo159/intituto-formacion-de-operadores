@@ -5,25 +5,28 @@ include '../admin/aside.php';
 include '../admin/footer.php';
 
 $pagosStmt = $con->prepare(
-    "SELECT p.*,\n"
-    . "       CASE\n"
-    . "           WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'\n"
-    . "           WHEN p.id_certificacion IS NOT NULL THEN 'certificacion'\n"
-    . "           ELSE 'curso'\n"
-    . "       END AS tipo_checkout,\n"
-    . "       COALESCE(cap.nombre, cert.nombre) AS alumno_nombre,\n"
-    . "       COALESCE(cap.apellido, cert.apellido) AS alumno_apellido,\n"
-    . "       COALESCE(cap.email, cert.email) AS alumno_email,\n"
-    . "       COALESCE(cap.telefono, cert.telefono) AS alumno_telefono,\n"
-    . "       COALESCE(cur_cap.nombre_curso, cur_cert.nombre_certificacion, cur_cert.nombre_curso, '') AS curso_nombre\n"
-    . "  FROM checkout_pagos p\n"
-    . "  LEFT JOIN checkout_capacitaciones cap ON p.id_capacitacion = cap.id_capacitacion\n"
-    . "  LEFT JOIN checkout_certificaciones cert ON p.id_certificacion = cert.id_certificacion\n"
-    . "  LEFT JOIN cursos cur_cap ON cap.id_curso = cur_cap.id_curso\n"
-    . "  LEFT JOIN cursos cur_cert ON cert.id_curso = cur_cert.id_curso\n"
-    . " WHERE p.metodo = 'transferencia'\n"
-    . " ORDER BY (p.estado = 'pendiente') DESC, p.creado_en DESC"
+    "SELECT
+         p.*,
+         CASE
+             WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'
+             WHEN p.id_certificacion IS NOT NULL THEN 'certificacion'
+             ELSE 'desconocido'
+         END AS tipo_checkout,
+         COALESCE(cap.nombre,   cert.nombre)   AS alumno_nombre,
+         COALESCE(cap.apellido, cert.apellido) AS alumno_apellido,
+         COALESCE(cap.email,    cert.email)    AS alumno_email,
+         COALESCE(cap.telefono, cert.telefono) AS alumno_telefono,
+         COALESCE(cur_cap.nombre_curso, cur_cert.nombre_curso, '') AS curso_nombre
+     FROM checkout_pagos p
+     LEFT JOIN checkout_capacitaciones  cap   ON cap.id_capacitacion  = p.id_capacitacion
+     LEFT JOIN checkout_certificaciones cert  ON cert.id_certificacion = p.id_certificacion
+     LEFT JOIN cursos cur_cap  ON cur_cap.id_curso  = cap.id_curso
+     LEFT JOIN cursos cur_cert ON cur_cert.id_curso = cert.id_curso
+     WHERE p.metodo IN ('transferencia','mercado_pago')
+     ORDER BY (p.estado = 'pendiente') DESC, p.creado_en DESC"
 );
+
+
 $pagosStmt->execute();
 $pagos = $pagosStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -236,7 +239,9 @@ function pago_format_currency(?float $amount, ?string $currency): string
                 responsive: true,
                 lengthChange: true,
                 autoWidth: false,
-                order: [[0, 'desc']],
+                order: [
+                    [0, 'desc']
+                ],
                 language: {
                     url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/es-ES.json"
                 },

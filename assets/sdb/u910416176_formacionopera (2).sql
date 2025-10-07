@@ -284,6 +284,7 @@ CREATE TABLE recuperaciones_contrasena (
 );
 
 
+
 -- 1) Catálogos / tablas base
 INSERT INTO estado (id_estado, nombre_estado, descripcion_estado) VALUES
 (1, 'registrado', 'El usuario se registro pero no inicio sesion nunca en la pagina'),

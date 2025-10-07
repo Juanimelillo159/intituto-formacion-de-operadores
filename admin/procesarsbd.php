@@ -718,16 +718,16 @@ try {
                        acepta_tyc = 1
              WHERE id_certificacion = :id
         ');
-        $upCert->execute([
-            ':precio' => $precioFinal,
-            ':moneda' => $monedaPrecio,
-            ':obs' => $observacionesCert,
-            ':nombre' => $nombreInscrito,
-            ':apellido' => $apellidoInscrito,
-            ':email' => $emailInscrito,
-            ':telefono' => $telefonoInscrito,
-            ':id' => (int)$certificacionRow['id_certificacion'],
-        ]);
+            $upCert->execute([
+                ':precio' => $precioFinal,
+                ':moneda' => $monedaPrecio,
+                ':obs' => $observacionesCert,
+                ':nombre' => $nombreInscrito,
+                ':apellido' => $apellidoInscrito,
+                ':email' => $emailInscrito,
+                ':telefono' => $telefonoInscrito,
+                ':id' => (int)$certificacionRow['id_certificacion'],
+            ]);
             registrar_historico_certificacion($con, (int)$certificacionRow['id_certificacion'], 3);
         }
 
@@ -779,40 +779,41 @@ try {
         }
 
         $pagoStmt = $con->prepare(
-            "SELECT p.*,\n"
-            . "       CASE\n"
-            . "           WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'\n"
-            . "           WHEN p.id_certificacion IS NOT NULL THEN 'certificacion'\n"
-            . "           ELSE 'curso'\n"
-            . "       END AS tipo_checkout,\n"
-            . "       cap.id_estado   AS cap_estado,\n"
-            . "       cap.creado_por  AS cap_creado_por,\n"
-            . "       cap.nombre      AS cap_nombre,\n"
-            . "       cap.apellido    AS cap_apellido,\n"
-            . "       cap.email       AS cap_email,\n"
-            . "       cap.telefono    AS cap_telefono,\n"
-            . "       cap.id_curso    AS cap_curso_id,\n"
-            . "       cert.id_estado  AS cert_estado,\n"
-            . "       cert.creado_por AS cert_creado_por,\n"
-            . "       cert.nombre     AS cert_nombre,\n"
-            . "       cert.apellido   AS cert_apellido,\n"
-            . "       cert.email      AS cert_email,\n"
-            . "       cert.telefono   AS cert_telefono,\n"
-            . "       cert.id_curso   AS cert_curso_id,\n"
-            . "       cert.observaciones AS cert_observaciones,\n"
-            . "       COALESCE(cap.nombre, cert.nombre)   AS alumno_nombre,\n"
-            . "       COALESCE(cap.apellido, cert.apellido) AS alumno_apellido,\n"
-            . "       COALESCE(cap.email, cert.email)     AS alumno_email,\n"
-            . "       COALESCE(cap.telefono, cert.telefono) AS alumno_telefono,\n"
-            . "       COALESCE(cur_cap.nombre_curso, cur_cert.nombre_certificacion, cur_cert.nombre_curso, '') AS curso_nombre\n"
-            . "  FROM checkout_pagos p\n"
-            . "  LEFT JOIN checkout_capacitaciones cap ON p.id_capacitacion = cap.id_capacitacion\n"
-            . "  LEFT JOIN checkout_certificaciones cert ON p.id_certificacion = cert.id_certificacion\n"
-            . "  LEFT JOIN cursos cur_cap ON cap.id_curso = cur_cap.id_curso\n"
-            . "  LEFT JOIN cursos cur_cert ON cert.id_curso = cur_cert.id_curso\n"
-            . " WHERE p.id_pago = :id\n"
-            . " LIMIT 1"
+            "SELECT p.*,
+            CASE
+              WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'
+              WHEN p.id_certificacion IS NOT NULL THEN 'certificacion'
+              ELSE 'desconocido'
+            END AS tipo_checkout,
+            cap.id_estado   AS cap_estado,
+            cap.creado_por  AS cap_creado_por,
+            cap.nombre      AS cap_nombre,
+            cap.apellido    AS cap_apellido,
+            cap.email       AS cap_email,
+            cap.telefono    AS cap_telefono,
+            cap.id_curso    AS cap_curso_id,
+            cert.id_estado  AS cert_estado,
+            cert.creado_por AS cert_creado_por,
+            cert.nombre     AS cert_nombre,
+            cert.apellido   AS cert_apellido,
+            cert.email      AS cert_email,
+            cert.telefono   AS cert_telefono,
+            cert.id_curso   AS cert_curso_id,
+            cert.observaciones AS cert_observaciones,
+            COALESCE(cap.nombre,   cert.nombre)      AS alumno_nombre,
+            COALESCE(cap.apellido, cert.apellido)    AS alumno_apellido,
+            COALESCE(cap.email,    cert.email)       AS alumno_email,
+            COALESCE(cap.telefono, cert.telefono)    AS alumno_telefono,
+            COALESCE(cur_cap.nombre_curso, cur_cert.nombre_curso, '') AS curso_nombre
+       FROM checkout_pagos p
+  LEFT JOIN checkout_capacitaciones  cap   ON cap.id_capacitacion  = p.id_capacitacion
+  LEFT JOIN checkout_certificaciones cert  ON cert.id_certificacion = p.id_certificacion
+  LEFT JOIN cursos cur_cap  ON cur_cap.id_curso  = cap.id_curso
+  LEFT JOIN cursos cur_cert ON cur_cert.id_curso = cert.id_curso
+      WHERE p.id_pago = :id
+      LIMIT 1"
         );
+
         $pagoStmt->execute([':id' => $pagoId]);
         $pagoRow = $pagoStmt->fetch(PDO::FETCH_ASSOC);
         if (!$pagoRow) {
@@ -820,9 +821,10 @@ try {
         }
 
         $metodoPago = strtolower((string)($pagoRow['metodo'] ?? ''));
-        if ($metodoPago !== 'transferencia') {
-            throw new RuntimeException('Sólo se pueden gestionar pagos realizados por transferencia.');
+        if (!in_array($metodoPago, ['transferencia', 'mercado_pago'], true)) {
+            throw new RuntimeException('Sólo se pueden gestionar pagos por transferencia o Mercado Pago.');
         }
+
 
         $estadoPagoActual = strtolower((string)($pagoRow['estado'] ?? 'pendiente'));
         $nuevoEstadoPago = $isAprobarPagoTransferencia ? 'pagado' : 'rechazado';
@@ -836,9 +838,9 @@ try {
         }
 
         $ahoraLabel = (new DateTimeImmutable('now'))->format('d/m/Y H:i');
-        $notaPago = $isAprobarPagoTransferencia
-            ? 'Pago aprobado manualmente el ' . $ahoraLabel
-            : 'Pago rechazado manualmente el ' . $ahoraLabel;
+        $notaPago = ($isAprobarPagoTransferencia ? 'Pago aprobado' : 'Pago rechazado')
+            . ' manualmente (' . ($metodoPago === 'mercado_pago' ? 'Mercado Pago' : 'transferencia') . ') el ' . $ahoraLabel;
+
         $obsPagoActual = trim((string)($pagoRow['observaciones'] ?? ''));
         $observacionesPago = $notaPago;
         if ($obsPagoActual !== '') {
