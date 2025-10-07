@@ -88,7 +88,7 @@ if (!function_exists('checkout_send_purchase_emails')) {
         } catch (MailException $studentException) {
             $sentAll = false;
             $errors[] = 'No se pudo enviar el correo al alumno: ' . $studentException->getMessage();
-            checkout_log_event('checkout_mail_error', ['target' => 'alumno', 'source' => $source], $studentException);
+            mp_log('mp_mail_error', ['target' => 'alumno', 'source' => $source], $studentException);
         }
 
         $adminBody = <<<HTML
@@ -121,7 +121,7 @@ if (!function_exists('checkout_send_purchase_emails')) {
         } catch (MailException $adminException) {
             $sentAll = false;
             $errors[] = 'No se pudo notificar al administrador: ' . $adminException->getMessage();
-            checkout_log_event('checkout_mail_error', ['target' => 'admin', 'source' => $source], $adminException);
+            mp_log('mp_mail_error', ['target' => 'admin', 'source' => $source], $adminException);
         }
 
         return $sentAll;
