@@ -48,6 +48,10 @@ if ($id_curso <= 0 && isset($_GET['id_capacitacion'])) {
 if ($id_curso <= 0 && isset($_GET['id_certificacion'])) {
     $id_curso = (int)$_GET['id_certificacion'];
 }
+$certificacionRegistroId = isset($_GET['certificacion_registro'])
+    ? (int)$_GET['certificacion_registro']
+    : 0;
+$prefetchedCertificacion = null;
 
 $tipo_checkout = isset($_GET['tipo']) ? strtolower(trim((string)$_GET['tipo'])) : '';
 if ($tipo_checkout === '' && isset($_GET['id_capacitacion'])) {
@@ -57,6 +61,19 @@ if ($tipo_checkout === '' && isset($_GET['id_capacitacion'])) {
 }
 if (!in_array($tipo_checkout, ['curso', 'capacitacion', 'certificacion'], true)) {
     $tipo_checkout = 'curso';
+}
+
+if ($certificacionRegistroId > 0) {
+    $prefetchCertStmt = $con->prepare('SELECT * FROM checkout_certificaciones WHERE id_certificacion = :id LIMIT 1');
+    $prefetchCertStmt->execute([':id' => $certificacionRegistroId]);
+    $prefetchedRow = $prefetchCertStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($prefetchedRow && (int)($prefetchedRow['creado_por'] ?? 0) === $currentUserId) {
+        $prefetchedCertificacion = $prefetchedRow;
+        if ($id_curso <= 0) {
+            $id_curso = (int)($prefetchedRow['id_curso'] ?? 0);
+        }
+        $tipo_checkout = 'certificacion';
+    }
 }
 
 $back_link_anchor = '#cursos';
@@ -120,19 +137,36 @@ $certificacionSubmitLabel = 'Enviar solicitud';
 
 if ($tipo_checkout === 'certificacion' && $curso) {
     if ($currentUserId > 0) {
-        $certStmt = $con->prepare('
-            SELECT cc.*
-              FROM checkout_certificaciones cc
-             WHERE cc.id_curso = :curso
-               AND cc.creado_por = :usuario
-          ORDER BY cc.id_certificacion DESC
-             LIMIT 1
-        ');
-        $certStmt->execute([
-            ':curso' => $id_curso,
-            ':usuario' => $currentUserId,
-        ]);
-        $certificacionData = $certStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($prefetchedCertificacion && (int)($prefetchedCertificacion['id_curso'] ?? 0) === $id_curso) {
+            $certificacionData = $prefetchedCertificacion;
+        } elseif ($certificacionRegistroId > 0) {
+            $certStmt = $con->prepare('
+                SELECT cc.*
+                  FROM checkout_certificaciones cc
+                 WHERE cc.id_certificacion = :id
+                   AND cc.creado_por = :usuario
+                 LIMIT 1
+            ');
+            $certStmt->execute([
+                ':id' => $certificacionRegistroId,
+                ':usuario' => $currentUserId,
+            ]);
+            $certificacionData = $certStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } else {
+            $certStmt = $con->prepare('
+                SELECT cc.*
+                  FROM checkout_certificaciones cc
+                 WHERE cc.id_curso = :curso
+                   AND cc.creado_por = :usuario
+              ORDER BY cc.id_certificacion DESC
+                 LIMIT 1
+            ');
+            $certStmt->execute([
+                ':curso' => $id_curso,
+                ':usuario' => $currentUserId,
+            ]);
+            $certificacionData = $certStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
     }
 
     if ($certificacionData) {
