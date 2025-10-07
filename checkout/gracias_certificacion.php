@@ -48,7 +48,7 @@ if (!$data && $certificacionId > 0) {
         $data = [
             'id_certificacion' => (int) $row['id_certificacion'],
             'id_curso' => (int) $row['id_curso'],
-            'curso_nombre' => (string) ($row['nombre_certificacion'] ?? $row['nombre_curso'] ?? ''),
+            'curso_nombre' => (string) ($row['nombre_curso'] ?? ''),
             'nombre' => (string) ($row['nombre'] ?? ''),
             'apellido' => (string) ($row['apellido'] ?? ''),
             'email' => (string) ($row['email'] ?? ''),
