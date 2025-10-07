@@ -79,12 +79,30 @@ if (!$viewData && !$error) {
 
 $nombreCurso = $viewData['curso_nombre'] ?? '';
 $nombreSolicitante = trim(($viewData['nombre'] ?? '') . ' ' . ($viewData['apellido'] ?? ''));
-$estadoActual = cert_estado_label($viewData['estado'] ?? null);
+$estadoValor = $viewData['estado'] ?? null;
+$estadoActual = cert_estado_label($estadoValor);
 $precioCert = $viewData['precio'] ?? null;
 $monedaCert = $viewData['moneda'] ?? 'ARS';
 $checkoutLink = null;
+$checkoutCtaLabel = 'Ver estado de mi solicitud';
+$checkoutCtaIcon = 'fas fa-magnifying-glass';
 if (!empty($viewData['id_curso'])) {
-    $checkoutLink = sprintf('checkout.php?id_certificacion=%d&tipo=certificacion', (int) $viewData['id_curso']);
+    if (!empty($viewData['id_certificacion'])) {
+        $checkoutLink = sprintf(
+            'checkout.php?id_certificacion=%d&tipo=certificacion&certificacion_registro=%d',
+            (int) $viewData['id_curso'],
+            (int) $viewData['id_certificacion']
+        );
+    } else {
+        $checkoutLink = sprintf('checkout.php?id_certificacion=%d&tipo=certificacion', (int) $viewData['id_curso']);
+    }
+}
+if ((int) $estadoValor === 2) {
+    $checkoutCtaLabel = 'Ir al pago de mi certificación';
+    $checkoutCtaIcon = 'fas fa-credit-card';
+} elseif ((int) $estadoValor === 3) {
+    $checkoutCtaLabel = 'Ver detalles de mi certificación';
+    $checkoutCtaIcon = 'fas fa-circle-check';
 }
 $backLink = '../index.php#certificaciones';
 
@@ -637,8 +655,8 @@ $backLink = '../index.php#certificaciones';
                                 <div class="action-buttons">
                                     <?php if ($checkoutLink): ?>
                                         <a href="<?php echo htmlspecialchars($checkoutLink, ENT_QUOTES, 'UTF-8'); ?>" class="btn-modern btn-primary">
-                                            <i class="fas fa-magnifying-glass"></i>
-                                            Ver estado de mi solicitud
+                                            <i class="<?php echo htmlspecialchars($checkoutCtaIcon, ENT_QUOTES, 'UTF-8'); ?>"></i>
+                                            <?php echo htmlspecialchars($checkoutCtaLabel, ENT_QUOTES, 'UTF-8'); ?>
                                         </a>
                                     <?php endif; ?>
                                     <a href="<?php echo htmlspecialchars($backLink, ENT_QUOTES, 'UTF-8'); ?>" class="btn-modern btn-outline">
