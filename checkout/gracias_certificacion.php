@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 session_start();
@@ -91,119 +92,570 @@ $backLink = '../index.php#certificaciones';
 <!DOCTYPE html>
 <html lang="es">
 <?php include __DIR__ . '/../head.php'; ?>
-<body class="checkout-body">
-<?php include __DIR__ . '/../nav.php'; ?>
 
-<main class="checkout-main">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-xl-8">
-                <div class="checkout-card">
-                    <div class="checkout-header">
-                        <h1>¡Gracias por enviar tu solicitud!</h1>
-                        <p>Recibimos tu documentación y comenzaremos la revisión.</p>
-                    </div>
-                    <div class="checkout-content">
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1e40af;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --text-dark: #1f2937;
+            --text-muted: #6b7280;
+            --bg-light: #f9fafb;
+            --border-color: #e5e7eb;
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+
+        .gracias-container {
+            padding: 4rem 0;
+            animation: fadeIn 0.6s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .gracias-card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+
+        .gracias-header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #06b6d4 100%);
+            color: white;
+            padding: 3rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .gracias-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 0.8;
+            }
+        }
+
+        .gracias-header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .gracias-header p {
+            font-size: 1.125rem;
+            opacity: 0.95;
+            margin: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .icon-status {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.5rem;
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+            }
+
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .icon-status.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+
+        .icon-status.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .icon-status.pending {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.3);
+        }
+
+        .gracias-content {
+            padding: 2.5rem;
+        }
+
+        .alert-modern {
+            border: none;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: start;
+            gap: 1rem;
+            animation: slideDown 0.4s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-modern.success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+        }
+
+        .alert-modern.error {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+        }
+
+        .alert-modern i {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .summary-item {
+            display: flex;
+            align-items: start;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-item i {
+            color: var(--primary-color);
+            font-size: 1.25rem;
+            width: 24px;
+            flex-shrink: 0;
+            margin-top: 0.25rem;
+        }
+
+        .summary-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+
+        .summary-value {
+            font-size: 1.125rem;
+            color: var(--text-dark);
+            font-weight: 600;
+        }
+
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .badge-status.pending {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            color: #92400e;
+        }
+
+        .badge-status.approved {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+        }
+
+        .badge-status.paid {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: #1e40af;
+        }
+
+        .badge-status.rejected {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+        }
+
+        .timeline-section {
+            margin-bottom: 2rem;
+        }
+
+        .timeline-section h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            padding-left: 1rem;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 1.875rem;
+            top: 3rem;
+            bottom: -2rem;
+            width: 2px;
+            background: linear-gradient(180deg, var(--primary-color) 0%, transparent 100%);
+        }
+
+        .timeline-item:last-child::before {
+            display: none;
+        }
+
+        .timeline-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color) 0%, #06b6d4 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.3);
+            position: relative;
+            z-index: 1;
+        }
+
+        .timeline-content h3 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-content p {
+            color: var(--text-muted);
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .btn-modern {
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-modern:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color) 0%, #06b6d4 100%);
+            color: white;
+        }
+
+        .btn-outline {
+            background: white;
+            color: var(--primary-color);
+            border: 2px solid var(--primary-color);
+            box-shadow: none;
+        }
+
+        .btn-outline:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .gracias-header h1 {
+                font-size: 1.75rem;
+            }
+
+            .gracias-content {
+                padding: 1.5rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn-modern {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .timeline-item {
+                gap: 1rem;
+            }
+
+            .timeline-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 1.25rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <?php include __DIR__ . '/../nav.php'; ?>
+
+    <main class="gracias-container">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-xl-8 col-lg-10">
+                    <div class="gracias-card">
                         <?php if ($error): ?>
-                            <div class="alert alert-danger checkout-alert" role="alert">
-                                <div class="d-flex align-items-start gap-2">
-                                    <i class="fas fa-triangle-exclamation mt-1"></i>
+                            <div class="gracias-header">
+                                <div class="icon-status error">
+                                    <i class="fas fa-triangle-exclamation"></i>
+                                </div>
+                                <h1>No pudimos encontrar tu solicitud</h1>
+                                <p>Ocurrió un problema al recuperar la información</p>
+                            </div>
+                            <div class="gracias-content">
+                                <div class="alert-modern error">
+                                    <i class="fas fa-circle-exclamation"></i>
                                     <div>
-                                        <strong>No pudimos recuperar tu solicitud.</strong>
-                                        <div class="small mt-1"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
-                                        <div class="small mt-1">Si necesitás ayuda, escribinos a <a href="mailto:<?php echo htmlspecialchars(checkout_mail_config()['admin_email'], ENT_QUOTES, 'UTF-8'); ?>"><?php echo htmlspecialchars(checkout_mail_config()['admin_email'], ENT_QUOTES, 'UTF-8'); ?></a>.</div>
+                                        <strong>Error al cargar los datos</strong>
+                                        <div style="margin-top: 0.5rem;"><?php echo htmlspecialchars($error, ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <div style="margin-top: 0.5rem;">Si necesitas ayuda, escribinos a <a href="mailto:<?php echo htmlspecialchars(checkout_mail_config()['admin_email'], ENT_QUOTES, 'UTF-8'); ?>" style="color: inherit; font-weight: 600;"><?php echo htmlspecialchars(checkout_mail_config()['admin_email'], ENT_QUOTES, 'UTF-8'); ?></a></div>
                                     </div>
+                                </div>
+                                <div class="action-buttons">
+                                    <a href="<?php echo htmlspecialchars($backLink, ENT_QUOTES, 'UTF-8'); ?>" class="btn-modern btn-primary">
+                                        <i class="fas fa-arrow-left"></i>
+                                        Volver a certificaciones
+                                    </a>
                                 </div>
                             </div>
                         <?php else: ?>
-                            <div class="alert alert-success checkout-alert" role="alert">
-                                <div class="d-flex align-items-start gap-2">
-                                    <i class="fas fa-circle-check mt-1"></i>
-                                    <div>
-                                        <strong>Tu documentación está en revisión.</strong>
-                                        <div class="small mt-1">Nuestro equipo verificará el formulario y te notificará por correo apenas tengamos novedades.</div>
-                                    </div>
+                            <div class="gracias-header">
+                                <div class="icon-status success">
+                                    <i class="fas fa-circle-check"></i>
                                 </div>
+                                <h1>¡Gracias por enviar tu solicitud!</h1>
+                                <p>Recibimos tu documentación y comenzaremos la revisión</p>
                             </div>
+                            <div class="gracias-content">
+                                <div class="alert-modern success">
+                                    <i class="fas fa-circle-check"></i>
+                                    <div>
+                                        <strong>Tu documentación está en revisión</strong>
+                                        <div style="margin-top: 0.5rem;">Nuestro equipo verificará el formulario y te notificará por correo apenas tengamos novedades.</div>
+                                    </div>
+                                </div>
 
-                            <section class="mb-4">
-                                <h2 class="h5 fw-bold mb-3">Resumen de tu solicitud</h2>
-                                <div class="card border-0 shadow-sm">
-                                    <div class="card-body">
-                                        <div class="mb-2">
-                                            <span class="text-muted d-block small">Certificación</span>
-                                            <span class="fw-semibold"><?php echo htmlspecialchars($nombreCurso !== '' ? $nombreCurso : 'Certificación solicitada', ENT_QUOTES, 'UTF-8'); ?></span>
+                                <div class="summary-card">
+                                    <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-dark); margin-bottom: 1.5rem;">
+                                        <i class="fas fa-file-certificate" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
+                                        Resumen de tu solicitud
+                                    </h2>
+
+                                    <div class="summary-item">
+                                        <i class="fas fa-certificate"></i>
+                                        <div style="flex: 1;">
+                                            <div class="summary-label">Certificación</div>
+                                            <div class="summary-value"><?php echo htmlspecialchars($nombreCurso !== '' ? $nombreCurso : 'Certificación solicitada', ENT_QUOTES, 'UTF-8'); ?></div>
                                         </div>
-                                        <div class="mb-2">
-                                            <span class="text-muted d-block small">Solicitante</span>
-                                            <span class="fw-semibold"><?php echo htmlspecialchars($nombreSolicitante !== '' ? $nombreSolicitante : 'Datos registrados en tu perfil', ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </div>
+
+                                    <div class="summary-item">
+                                        <i class="fas fa-user"></i>
+                                        <div style="flex: 1;">
+                                            <div class="summary-label">Solicitante</div>
+                                            <div class="summary-value"><?php echo htmlspecialchars($nombreSolicitante !== '' ? $nombreSolicitante : 'Datos registrados en tu perfil', ENT_QUOTES, 'UTF-8'); ?></div>
                                         </div>
-                                        <div class="mb-2">
-                                            <span class="text-muted d-block small">Contacto</span>
-                                            <span class="fw-semibold"><?php echo htmlspecialchars($viewData['email'] ?? 'Te escribiremos al correo registrado', ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </div>
+
+                                    <div class="summary-item">
+                                        <i class="fas fa-envelope"></i>
+                                        <div style="flex: 1;">
+                                            <div class="summary-label">Contacto</div>
+                                            <div class="summary-value"><?php echo htmlspecialchars($viewData['email'] ?? 'Te escribiremos al correo registrado', ENT_QUOTES, 'UTF-8'); ?></div>
                                             <?php if (!empty($viewData['telefono'])): ?>
-                                                <div class="small text-muted">Teléfono: <?php echo htmlspecialchars($viewData['telefono'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                                <div style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;">
+                                                    <i class="fas fa-phone" style="margin-right: 0.5rem;"></i>
+                                                    <?php echo htmlspecialchars($viewData['telefono'], ENT_QUOTES, 'UTF-8'); ?>
+                                                </div>
                                             <?php endif; ?>
                                         </div>
-                                        <div class="mb-0">
-                                            <span class="text-muted d-block small">Estado actual</span>
-                                            <span class="badge bg-primary-subtle text-primary-emphasis px-3 py-2"><?php echo htmlspecialchars($estadoActual, ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </div>
+
+                                    <div class="summary-item">
+                                        <i class="fas fa-info-circle"></i>
+                                        <div style="flex: 1;">
+                                            <div class="summary-label">Estado actual</div>
+                                            <div>
+                                                <span class="badge-status <?php
+                                                                            $estado = $viewData['estado'] ?? null;
+                                                                            echo match ($estado) {
+                                                                                2 => 'approved',
+                                                                                3 => 'paid',
+                                                                                4 => 'rejected',
+                                                                                default => 'pending'
+                                                                            };
+                                                                            ?>">
+                                                    <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                                                    <?php echo htmlspecialchars($estadoActual, ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                            </div>
                                             <?php if ($precioCert !== null): ?>
-                                                <div class="small text-muted mt-2">Inversión estimada: <?php echo htmlspecialchars(number_format((float) $precioCert, 2, ',', '.'), ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars($monedaCert, ENT_QUOTES, 'UTF-8'); ?></div>
+                                                <div style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.75rem;">
+                                                    <i class="fas fa-tag" style="margin-right: 0.5rem;"></i>
+                                                    Inversión estimada: <strong><?php echo htmlspecialchars(number_format((float) $precioCert, 2, ',', '.'), ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars($monedaCert, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                </div>
                                             <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
-                            </section>
 
-                            <section class="mb-4">
-                                <h2 class="h5 fw-bold mb-3">¿Qué sucede ahora?</h2>
-                                <ul class="list-unstyled timeline-list">
-                                    <li class="d-flex mb-3">
-                                        <i class="fas fa-file-circle-check text-primary me-3 mt-1"></i>
-                                        <div>
-                                            <strong>Revisión de tu formulario</strong>
-                                            <p class="mb-0 small text-muted">Verificaremos que la documentación esté completa y cumpla con los requisitos.</p>
-                                        </div>
-                                    </li>
-                                    <li class="d-flex mb-3">
-                                        <i class="fas fa-envelope-open-text text-primary me-3 mt-1"></i>
-                                        <div>
-                                            <strong>Notificación por correo</strong>
-                                            <p class="mb-0 small text-muted">Te avisaremos si necesitamos ajustes o cuando la certificación quede aprobada para avanzar al pago.</p>
-                                        </div>
-                                    </li>
-                                    <li class="d-flex">
-                                        <i class="fas fa-credit-card text-primary me-3 mt-1"></i>
-                                        <div>
-                                            <strong>Habilitación del pago</strong>
-                                            <p class="mb-0 small text-muted">Una vez aprobada la documentación, podrás completar el último paso desde el checkout para finalizar tu certificación.</p>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </section>
+                                <div class="timeline-section">
+                                    <h2>¿Qué sucede ahora?</h2>
 
-                            <div class="d-flex flex-column flex-md-row gap-2">
-                                <?php if ($checkoutLink): ?>
-                                    <a class="btn btn-gradient btn-rounded d-inline-flex align-items-center justify-content-center" href="<?php echo htmlspecialchars($checkoutLink, ENT_QUOTES, 'UTF-8'); ?>">
-                                        <i class="fas fa-magnifying-glass me-2"></i>
-                                        Ver estado de mi solicitud
+                                    <div class="timeline-item">
+                                        <div class="timeline-icon">
+                                            <i class="fas fa-file-circle-check"></i>
+                                        </div>
+                                        <div class="timeline-content">
+                                            <h3>Revisión de tu formulario</h3>
+                                            <p>Verificaremos que la documentación esté completa y cumpla con los requisitos establecidos para la certificación.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="timeline-item">
+                                        <div class="timeline-icon">
+                                            <i class="fas fa-envelope-open-text"></i>
+                                        </div>
+                                        <div class="timeline-content">
+                                            <h3>Notificación por correo</h3>
+                                            <p>Te avisaremos si necesitamos ajustes o cuando la certificación quede aprobada para avanzar al siguiente paso.</p>
+                                        </div>
+                                    </div>
+
+                                    <div class="timeline-item">
+                                        <div class="timeline-icon">
+                                            <i class="fas fa-credit-card"></i>
+                                        </div>
+                                        <div class="timeline-content">
+                                            <h3>Habilitación del pago</h3>
+                                            <p>Una vez aprobada la documentación, podrás completar el pago desde el checkout para finalizar tu certificación.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="action-buttons">
+                                    <?php if ($checkoutLink): ?>
+                                        <a href="<?php echo htmlspecialchars($checkoutLink, ENT_QUOTES, 'UTF-8'); ?>" class="btn-modern btn-primary">
+                                            <i class="fas fa-magnifying-glass"></i>
+                                            Ver estado de mi solicitud
+                                        </a>
+                                    <?php endif; ?>
+                                    <a href="<?php echo htmlspecialchars($backLink, ENT_QUOTES, 'UTF-8'); ?>" class="btn-modern btn-outline">
+                                        <i class="fas fa-arrow-left"></i>
+                                        Volver a certificaciones
                                     </a>
-                                <?php endif; ?>
-                                <a class="btn btn-outline-light btn-rounded d-inline-flex align-items-center justify-content-center" href="<?php echo htmlspecialchars($backLink, ENT_QUOTES, 'UTF-8'); ?>">
-                                    <i class="fas fa-arrow-left me-2"></i>
-                                    Volver a las certificaciones
-                                </a>
+                                </div>
                             </div>
                         <?php endif; ?>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-</main>
+    </main>
 
-<?php include __DIR__ . '/../footer.php'; ?>
+    <?php include __DIR__ . '/../footer.php'; ?>
 
 </body>
+
 </html>

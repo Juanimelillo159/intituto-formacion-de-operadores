@@ -265,6 +265,7 @@ $base_path = '../';
 $page_styles = '<link rel="stylesheet" href="../checkout/css/style.css">';
 include '../head.php';
 ?>
+
 <body class="checkout-body">
     <?php include '../nav.php'; ?>
 
@@ -477,65 +478,187 @@ include '../head.php';
                                                 </div>
                                             <?php endif; ?>
 
-                                            <div class="row g-4 align-items-stretch">
-                                                <div class="col-lg-7">
-                                                    <div class="summary-card h-100">
-                                                        <h5>Documentación requerida</h5>
-                                                        <p class="mb-3">Descargá el formulario, completalo y volvé a subirlo en formato PDF para que nuestro equipo pueda revisarlo.</p>
-                                                        <a class="btn btn-outline-light btn-sm mb-3" href="../assets/pdf/solicitud_certificacion.pdf" target="_blank" rel="noopener">
-                                                            <i class="fas fa-file-download me-2"></i>Descargar formulario
-                                                        </a>
-                                                        <?php if ($certificacionPdfUrl): ?>
-                                                            <div class="mb-3">
-                                                                <span class="badge bg-success"><i class="fas fa-file-pdf me-2"></i>PDF cargado</span>
-                                                                <a class="ms-2" href="<?php echo h($certificacionPdfUrl); ?>" target="_blank" rel="noopener">Ver archivo enviado</a>
+                                            <!-- Reorganizando la sección de certificación con mejor estructura visual -->
+                                            <div class="row g-4">
+                                                <!-- Documentación requerida -->
+                                                <div class="col-12">
+                                                    <div class="summary-card">
+                                                        <div class="d-flex align-items-center gap-3 mb-4">
+                                                            <div class="d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%); border-radius: 12px;">
+                                                                <i class="fas fa-file-pdf text-white" style="font-size: 24px;"></i>
                                                             </div>
-                                                        <?php endif; ?>
-                                                        <label for="cert_pdf" class="form-label required-field">Subir formulario firmado (PDF)</label>
-                                                        <input type="file" class="form-control" id="cert_pdf" name="cert_pdf" accept="application/pdf" <?php echo $certificacionAllowSubmit ? '' : 'disabled'; ?>>
-                                                        <div class="upload-label">Formato requerido: PDF. Tamaño máximo 10 MB.</div>
+                                                            <div>
+                                                                <h5 class="mb-1">Documentación requerida</h5>
+                                                                <p class="mb-0 small text-muted">Descargá, completá y subí el formulario firmado</p>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="row g-4">
+                                                            <!-- Paso 1: Descargar -->
+                                                            <div class="col-md-4">
+                                                                <div class="p-4 rounded-3" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%); border: 1px solid rgba(37, 99, 235, 0.1);">
+                                                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                                                        <div class="d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: #2563eb; border-radius: 8px; color: white; font-weight: 600; font-size: 14px;">1</div>
+                                                                        <h6 class="mb-0">Descargar formulario</h6>
+                                                                    </div>
+                                                                    <p class="small text-muted mb-3">Descargá el PDF oficial con los campos a completar</p>
+                                                                    <a class="btn btn-sm w-100" href="../assets/pdf/solicitud_certificacion.pdf" target="_blank" rel="noopener" style="background: #2563eb; color: white; border-radius: 8px; padding: 10px; font-weight: 500;">
+                                                                        <i class="fas fa-download me-2"></i>Descargar PDF
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Paso 2: Completar -->
+                                                            <div class="col-md-4">
+                                                                <div class="p-4 rounded-3" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%); border: 1px solid rgba(37, 99, 235, 0.1);">
+                                                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                                                        <div class="d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: #2563eb; border-radius: 8px; color: white; font-weight: 600; font-size: 14px;">2</div>
+                                                                        <h6 class="mb-0">Completar y firmar</h6>
+                                                                    </div>
+                                                                    <p class="small text-muted mb-3">Completá todos los campos requeridos y firmá el documento</p>
+                                                                    <div class="d-flex align-items-center gap-2 p-2 rounded" style="background: rgba(37, 99, 235, 0.1);">
+                                                                        <i class="fas fa-info-circle" style="color: #2563eb;"></i>
+                                                                        <span class="small" style="color: #2563eb;">Guardá como PDF</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Paso 3: Subir -->
+                                                            <div class="col-md-4">
+                                                                <div class="p-4 rounded-3" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(6, 182, 212, 0.05) 100%); border: 1px solid rgba(37, 99, 235, 0.1);">
+                                                                    <div class="d-flex align-items-center gap-2 mb-3">
+                                                                        <div class="d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background: #2563eb; border-radius: 8px; color: white; font-weight: 600; font-size: 14px;">3</div>
+                                                                        <h6 class="mb-0">Subir documento</h6>
+                                                                    </div>
+                                                                    <p class="small text-muted mb-3">Adjuntá el formulario completado y firmado</p>
+                                                                    <?php if ($certificacionPdfUrl): ?>
+                                                                        <div class="d-flex align-items-center gap-2 p-2 rounded" style="background: rgba(16, 185, 129, 0.1);">
+                                                                            <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                                                                            <span class="small" style="color: #10b981;">PDF cargado</span>
+                                                                        </div>
+                                                                    <?php else: ?>
+                                                                        <div class="d-flex align-items-center gap-2 p-2 rounded" style="background: rgba(245, 158, 11, 0.1);">
+                                                                            <i class="fas fa-clock" style="color: #f59e0b;"></i>
+                                                                            <span class="small" style="color: #f59e0b;">Pendiente</span>
+                                                                        </div>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <!-- Área de subida de archivo -->
+                                                        <div class="mt-4 p-4 rounded-3" style="background: rgba(37, 99, 235, 0.03); border: 2px dashed rgba(37, 99, 235, 0.2);">
+                                                            <div class="row align-items-center g-3">
+                                                                <div class="col-md-8">
+                                                                    <label for="cert_pdf" class="form-label mb-2" style="font-weight: 600; color: #1e293b;">
+                                                                        <i class="fas fa-cloud-upload-alt me-2" style="color: #2563eb;"></i>
+                                                                        Subir formulario firmado (PDF) <?php if ($certificacionAllowSubmit): ?><span style="color: #ef4444;">*</span><?php endif; ?>
+                                                                    </label>
+                                                                    <input type="file" class="form-control" id="cert_pdf" name="cert_pdf" accept="application/pdf" <?php echo $certificacionAllowSubmit ? '' : 'disabled'; ?> style="border-radius: 8px;">
+                                                                    <div class="small text-muted mt-2">
+                                                                        <i class="fas fa-info-circle me-1"></i>
+                                                                        Formato: PDF • Tamaño máximo: 10 MB
+                                                                    </div>
+                                                                </div>
+                                                                <?php if ($certificacionPdfUrl): ?>
+                                                                    <div class="col-md-4">
+                                                                        <div class="p-3 rounded-3" style="background: white; border: 1px solid #e2e8f0;">
+                                                                            <div class="d-flex align-items-center gap-2 mb-2">
+                                                                                <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 20px;"></i>
+                                                                                <span class="small fw-semibold">Archivo actual</span>
+                                                                            </div>
+                                                                            <a class="btn btn-sm btn-outline-primary w-100" href="<?php echo h($certificacionPdfUrl); ?>" target="_blank" rel="noopener" style="border-radius: 6px;">
+                                                                                <i class="fas fa-eye me-2"></i>Ver documento
+                                                                            </a>
+                                                                        </div>
+                                                                    </div>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div class="col-lg-5">
-                                                    <div class="summary-card h-100">
-                                                        <h5>Datos del solicitante</h5>
-                                                        <p class="mb-3 small text-muted"><?php echo h($certDatosHelper); ?></p>
+
+                                                <!-- Datos del solicitante -->
+                                                <div class="col-12">
+                                                    <div class="summary-card">
+                                                        <div class="d-flex align-items-center gap-3 mb-4">
+                                                            <div class="d-flex align-items-center justify-content-center" style="width: 48px; height: 48px; background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%); border-radius: 12px;">
+                                                                <i class="fas fa-user-circle text-white" style="font-size: 24px;"></i>
+                                                            </div>
+                                                            <div>
+                                                                <h5 class="mb-1">Datos del solicitante</h5>
+                                                                <p class="mb-0 small text-muted"><?php echo h($certDatosHelper); ?></p>
+                                                            </div>
+                                                        </div>
+
                                                         <div class="row g-3">
+                                                            <!-- Información personal -->
                                                             <div class="col-12">
-                                                                <label for="cert_nombre" class="form-label required-field">Nombre</label>
-                                                                <input type="text" class="form-control" id="cert_nombre" name="nombre_insc" autocomplete="given-name" value="<?php echo h($certNombreValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?>>
+                                                                <div class="p-3 rounded-3" style="background: rgba(37, 99, 235, 0.03); border-left: 3px solid #2563eb;">
+                                                                    <h6 class="mb-3" style="color: #2563eb; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                                        <i class="fas fa-id-card me-2"></i>Información Personal
+                                                                    </h6>
+                                                                    <div class="row g-3">
+                                                                        <div class="col-md-6">
+                                                                            <label for="cert_nombre" class="form-label small fw-semibold mb-1">Nombre <span style="color: #ef4444;">*</span></label>
+                                                                            <input type="text" class="form-control" id="cert_nombre" name="nombre_insc" autocomplete="given-name" value="<?php echo h($certNombreValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label for="cert_apellido" class="form-label small fw-semibold mb-1">Apellido <span style="color: #ef4444;">*</span></label>
+                                                                            <input type="text" class="form-control" id="cert_apellido" name="apellido_insc" autocomplete="family-name" value="<?php echo h($certApellidoValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label for="cert_dni" class="form-label small fw-semibold mb-1">DNI / Documento</label>
+                                                                            <input type="text" class="form-control" id="cert_dni" name="dni_insc" value="<?php echo h($certDniValue); ?>" <?php echo $certInputsReadonly; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label for="cert_pais" class="form-label small fw-semibold mb-1">País</label>
+                                                                            <input type="text" class="form-control" id="cert_pais" name="pais_insc" value="<?php echo h($certPaisValue); ?>" <?php echo $certInputsReadonly; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
+
+                                                            <!-- Información de contacto -->
                                                             <div class="col-12">
-                                                                <label for="cert_apellido" class="form-label required-field">Apellido</label>
-                                                                <input type="text" class="form-control" id="cert_apellido" name="apellido_insc" autocomplete="family-name" value="<?php echo h($certApellidoValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?>>
+                                                                <div class="p-3 rounded-3" style="background: rgba(6, 182, 212, 0.03); border-left: 3px solid #06b6d4;">
+                                                                    <h6 class="mb-3" style="color: #06b6d4; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                                        <i class="fas fa-envelope me-2"></i>Información de Contacto
+                                                                    </h6>
+                                                                    <div class="row g-3">
+                                                                        <div class="col-md-6">
+                                                                            <label for="cert_email" class="form-label small fw-semibold mb-1">Email <span style="color: #ef4444;">*</span></label>
+                                                                            <input type="email" class="form-control" id="cert_email" name="email_insc" autocomplete="email" value="<?php echo h($certEmailValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label for="cert_telefono" class="form-label small fw-semibold mb-1">Teléfono</label>
+                                                                            <input type="text" class="form-control" id="cert_telefono" name="tel_insc" autocomplete="tel" value="<?php echo h($certTelefonoValue); ?>" <?php echo $certInputsReadonly; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
+
+                                                            <!-- Dirección -->
                                                             <div class="col-12">
-                                                                <label for="cert_email" class="form-label required-field">Email</label>
-                                                                <input type="email" class="form-control" id="cert_email" name="email_insc" autocomplete="email" value="<?php echo h($certEmailValue); ?>" <?php echo $certInputsReadonly; ?> <?php echo $certificacionAllowSubmit ? 'required' : ''; ?>>
-                                                            </div>
-                                                            <div class="col-12">
-                                                                <label for="cert_telefono" class="form-label">Teléfono</label>
-                                                                <input type="text" class="form-control" id="cert_telefono" name="tel_insc" autocomplete="tel" value="<?php echo h($certTelefonoValue); ?>" <?php echo $certInputsReadonly; ?>>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <label for="cert_dni" class="form-label">DNI</label>
-                                                                <input type="text" class="form-control" id="cert_dni" name="dni_insc" value="<?php echo h($certDniValue); ?>" <?php echo $certInputsReadonly; ?>>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <label for="cert_pais" class="form-label">País</label>
-                                                                <input type="text" class="form-control" id="cert_pais" name="pais_insc" value="<?php echo h($certPaisValue); ?>" <?php echo $certInputsReadonly; ?>>
-                                                            </div>
-                                                            <div class="col-12">
-                                                                <label for="cert_direccion" class="form-label">Dirección</label>
-                                                                <input type="text" class="form-control" id="cert_direccion" name="dir_insc" autocomplete="address-line1" value="<?php echo h($certDireccionValue); ?>" <?php echo $certInputsReadonly; ?>>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <label for="cert_ciudad" class="form-label">Ciudad</label>
-                                                                <input type="text" class="form-control" id="cert_ciudad" name="ciu_insc" autocomplete="address-level2" value="<?php echo h($certCiudadValue); ?>" <?php echo $certInputsReadonly; ?>>
-                                                            </div>
-                                                            <div class="col-md-6">
-                                                                <label for="cert_provincia" class="form-label">Provincia</label>
-                                                                <input type="text" class="form-control" id="cert_provincia" name="prov_insc" autocomplete="address-level1" value="<?php echo h($certProvinciaValue); ?>" <?php echo $certInputsReadonly; ?>>
+                                                                <div class="p-3 rounded-3" style="background: rgba(139, 92, 246, 0.03); border-left: 3px solid #8b5cf6;">
+                                                                    <h6 class="mb-3" style="color: #8b5cf6; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                                        <i class="fas fa-map-marker-alt me-2"></i>Dirección
+                                                                    </h6>
+                                                                    <div class="row g-3">
+                                                                        <div class="col-12">
+                                                                            <label for="cert_direccion" class="form-label small fw-semibold mb-1">Calle y número</label>
+                                                                            <input type="text" class="form-control" id="cert_direccion" name="dir_insc" autocomplete="address-line1" value="<?php echo h($certDireccionValue); ?>" <?php echo $certInputsReadonly; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label for="cert_ciudad" class="form-label small fw-semibold mb-1">Ciudad</label>
+                                                                            <input type="text" class="form-control" id="cert_ciudad" name="ciu_insc" autocomplete="address-level2" value="<?php echo h($certCiudadValue); ?>" <?php echo $certInputsReadonly; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                        <div class="col-md-6">
+                                                                            <label for="cert_provincia" class="form-label small fw-semibold mb-1">Provincia / Estado</label>
+                                                                            <input type="text" class="form-control" id="cert_provincia" name="prov_insc" autocomplete="address-level1" value="<?php echo h($certProvinciaValue); ?>" <?php echo $certInputsReadonly; ?> style="border-radius: 8px;">
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -647,62 +770,62 @@ include '../head.php';
                                                 </div>
                                             <?php endif; ?>
                                             <?php if ($tipo_checkout !== 'certificacion' || $certificacionPuedePagar || $certificacionPagado): ?>
-                                            <h5>Método de pago</h5>
-                                            <label class="payment-option">
-                                                <input type="radio" id="metodo_transfer" name="metodo_pago" value="transferencia" checked>
-                                                <div class="payment-info">
-                                                    <strong>Transferencia bancaria</strong>
-                                                    <span>Subí el comprobante de tu transferencia.</span>
-                                                </div>
-                                            </label>
-                                            <label class="payment-option mt-3">
-                                                <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago" <?php echo $precio_vigente ? '' : 'disabled'; ?>>
-                                                <div class="payment-info">
-                                                    <strong>Mercado Pago</strong>
-                                                    <?php if ($precio_vigente): ?>
-                                                        <span>Pagá de forma segura con tarjetas, efectivo o saldo en Mercado Pago.</span>
-                                                    <?php else: ?>
-                                                        <span>Disponible cuando haya un precio vigente para esta capacitación.</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </label>
-
-                                            <div class="payment-details" id="transferDetails">
-                                                <div class="bank-data">
-                                                    <strong>Datos bancarios</strong>
-                                                    <ul class="mb-0 mt-2 ps-3">
-                                                        <li>Banco: Tu Banco</li>
-                                                        <li>CBU: 0000000000000000000000</li>
-                                                        <li>Alias: tuempresa.cursos</li>
-                                                    </ul>
-                                                </div>
-                                                <div class="row g-3">
-                                                    <div class="col-lg-8">
-                                                        <label for="comprobante" class="form-label required-field">Comprobante de pago</label>
-                                                        <input type="file" class="form-control" id="comprobante" name="comprobante" accept=".jpg,.jpeg,.png,.pdf">
-                                                        <div class="upload-label">Formatos aceptados: JPG, PNG o PDF. Tamaño máximo 5 MB.</div>
+                                                <h5>Método de pago</h5>
+                                                <label class="payment-option">
+                                                    <input type="radio" id="metodo_transfer" name="metodo_pago" value="transferencia" checked>
+                                                    <div class="payment-info">
+                                                        <strong>Transferencia bancaria</strong>
+                                                        <span>Subí el comprobante de tu transferencia.</span>
                                                     </div>
-                                                    <div class="col-lg-4">
-                                                        <label for="obs_pago" class="form-label">Observaciones</label>
-                                                        <input type="text" class="form-control" id="obs_pago" name="obs_pago" placeholder="Opcional">
+                                                </label>
+                                                <label class="payment-option mt-3">
+                                                    <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago" <?php echo $precio_vigente ? '' : 'disabled'; ?>>
+                                                    <div class="payment-info">
+                                                        <strong>Mercado Pago</strong>
+                                                        <?php if ($precio_vigente): ?>
+                                                            <span>Pagá de forma segura con tarjetas, efectivo o saldo en Mercado Pago.</span>
+                                                        <?php else: ?>
+                                                            <span> Disponible cuando haya un precio vigente para esta capacitación.</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </label>
+
+                                                <div class="payment-details" id="transferDetails">
+                                                    <div class="bank-data">
+                                                        <strong>Datos bancarios</strong>
+                                                        <ul class="mb-0 mt-2 ps-3">
+                                                            <li>Banco: Tu Banco</li>
+                                                            <li>CBU: 0000000000000000000000</li>
+                                                            <li>Alias: tuempresa.cursos</li>
+                                                        </ul>
+                                                    </div>
+                                                    <div class="row g-3">
+                                                        <div class="col-lg-8">
+                                                            <label for="comprobante" class="form-label required-field">Comprobante de pago</label>
+                                                            <input type="file" class="form-control" id="comprobante" name="comprobante" accept=".jpg,.jpeg,.png,.pdf">
+                                                            <div class="upload-label">Formatos aceptados: JPG, PNG o PDF. Tamaño máximo 5 MB.</div>
+                                                        </div>
+                                                        <div class="col-lg-4">
+                                                            <label for="obs_pago" class="form-label">Observaciones</label>
+                                                            <input type="text" class="form-control" id="obs_pago" name="obs_pago" placeholder="Opcional">
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            <div class="payment-details hidden" id="mpDetails">
-                                                <div class="summary-card">
-                                                    <h6 class="mb-3">Pagar con Mercado Pago</h6>
-                                                    <p class="mb-2">Al confirmar, crearemos tu orden y te redirigiremos a Mercado Pago para completar el pago en un entorno seguro.</p>
-                                                    <?php if ($precio_vigente): ?>
-                                                        <?php $mpMontoTexto = sprintf('%s %s', strtoupper($precio_vigente['moneda'] ?? 'ARS'), number_format((float) $precio_vigente['precio'], 2, ',', '.')); ?>
-                                                        <p class="mb-2 fw-semibold">Monto a abonar: <?php echo $mpMontoTexto; ?></p>
-                                                    <?php endif; ?>
-                                                    <ul class="mb-0 small text-muted list-unstyled">
-                                                        <li class="mb-1"><i class="fas fa-lock me-2"></i>Usá tu cuenta de Mercado Pago o tus medios de pago habituales.</li>
-                                                        <li><i class="fas fa-envelope me-2"></i>Te enviaremos un correo con la confirmación apenas se acredite.</li>
-                                                    </ul>
+                                                <div class="payment-details hidden" id="mpDetails">
+                                                    <div class="summary-card">
+                                                        <h6 class="mb-3">Pagar con Mercado Pago</h6>
+                                                        <p class="mb-2">Al confirmar, crearemos tu orden y te redirigiremos a Mercado Pago para completar el pago en un entorno seguro.</p>
+                                                        <?php if ($precio_vigente): ?>
+                                                            <?php $mpMontoTexto = sprintf('%s %s', strtoupper($precio_vigente['moneda'] ?? 'ARS'), number_format((float) $precio_vigente['precio'], 2, ',', '.')); ?>
+                                                            <p class="mb-2 fw-semibold">Monto a abonar: <?php echo $mpMontoTexto; ?></p>
+                                                        <?php endif; ?>
+                                                        <ul class="mb-0 small text-muted list-unstyled">
+                                                            <li class="mb-1"><i class="fas fa-lock me-2"></i>Usá tu cuenta de Mercado Pago o tus medios de pago habituales.</li>
+                                                            <li><i class="fas fa-envelope me-2"></i>Te enviaremos un correo con la confirmación apenas se acredite.</li>
+                                                        </ul>
+                                                    </div>
                                                 </div>
-                                            </div>
                                             <?php endif; ?>
                                         </div>
 
@@ -734,7 +857,7 @@ include '../head.php';
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        (function () {
+        (function() {
             const card = document.querySelector('.checkout-card');
             const steps = Array.from(document.querySelectorAll('.checkout-step'));
             const panels = Array.from(document.querySelectorAll('.step-panel'));
@@ -764,7 +887,10 @@ include '../head.php';
                     panel.classList.toggle('active', panelIndex === target);
                 });
                 if (card) {
-                    window.scrollTo({ top: card.offsetTop - 80, behavior: 'smooth' });
+                    window.scrollTo({
+                        top: card.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
                 }
             };
 
@@ -803,10 +929,18 @@ include '../head.php';
                             return false;
                         }
                         if (certificacionAllowSubmit) {
-                            const requiredCert = [
-                                { id: 'cert_nombre', label: 'Nombre' },
-                                { id: 'cert_apellido', label: 'Apellido' },
-                                { id: 'cert_email', label: 'Email' }
+                            const requiredCert = [{
+                                    id: 'cert_nombre',
+                                    label: 'Nombre'
+                                },
+                                {
+                                    id: 'cert_apellido',
+                                    label: 'Apellido'
+                                },
+                                {
+                                    id: 'cert_email',
+                                    label: 'Email'
+                                }
                             ];
                             const missingCert = requiredCert.find(field => {
                                 const el = document.getElementById(field.id);
@@ -828,11 +962,22 @@ include '../head.php';
                         }
                         return true;
                     }
-                    const required = [
-                        { id: 'nombre', label: 'Nombre' },
-                        { id: 'apellido', label: 'Apellido' },
-                        { id: 'email', label: 'Email' },
-                        { id: 'telefono', label: 'Teléfono' }
+                    const required = [{
+                            id: 'nombre',
+                            label: 'Nombre'
+                        },
+                        {
+                            id: 'apellido',
+                            label: 'Apellido'
+                        },
+                        {
+                            id: 'email',
+                            label: 'Email'
+                        },
+                        {
+                            id: 'telefono',
+                            label: 'Teléfono'
+                        }
                     ];
                     const missing = required.find(field => {
                         const el = document.getElementById(field.id);
@@ -914,9 +1059,9 @@ include '../head.php';
                 }
                 const file = certPdfInput.files[0];
                 if (!file) {
-                    const message = certificacionHasPdf
-                        ? 'Subí nuevamente el formulario firmado para reenviar la solicitud.'
-                        : 'Adjuntá el formulario firmado en formato PDF.';
+                    const message = certificacionHasPdf ?
+                        'Subí nuevamente el formulario firmado para reenviar la solicitud.' :
+                        'Adjuntá el formulario firmado en formato PDF.';
                     showAlert('error', 'Falta el formulario', message);
                     return false;
                 }
@@ -1095,9 +1240,9 @@ include '../head.php';
                 }
                 const mpSelected = mpRadio ? mpRadio.checked : false;
                 const title = mpSelected ? 'Ir a Mercado Pago' : 'Confirmar inscripción';
-                const text = mpSelected
-                    ? 'Vamos a generar tu orden y redirigirte a Mercado Pago para que completes el pago.'
-                    : '¿Deseás enviar la inscripción con los datos cargados?';
+                const text = mpSelected ?
+                    'Vamos a generar tu orden y redirigirte a Mercado Pago para que completes el pago.' :
+                    '¿Deseás enviar la inscripción con los datos cargados?';
                 const confirmText = mpSelected ? 'Sí, continuar' : 'Sí, enviar';
 
                 Swal.fire({
@@ -1130,4 +1275,5 @@ include '../head.php';
         })();
     </script>
 </body>
+
 </html>
