@@ -188,7 +188,7 @@ try {
     ];
 
     $con->commit();
-    echo json_encode(['success' => true, 'redirect' => '../mis_cursos.php']);
+    echo json_encode(['success' => true, 'redirect' => '../intituto-formacion-de-operadores/mis_cursos.php']);
 } catch (Throwable $e) {
     if ($con->inTransaction()) $con->rollBack();
     jerr('Error de servidor al guardar sesión', ['ex' => $e->getMessage()]);

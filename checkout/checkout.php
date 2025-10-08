@@ -511,6 +511,17 @@ include '../head.php';
                                                     </div>
                                                 </div>
                                             <?php endif; ?>
+                                            <?php if ($certificacionEstado === 2 && !$certificacionPagado): ?>
+                                                <div class="alert alert-success checkout-alert mb-4" role="alert">
+                                                    <div class="d-flex align-items-start gap-2">
+                                                        <i class="fas fa-circle-check mt-1"></i>
+                                                        <div>
+                                                            <strong>¡Documentación aprobada!</strong>
+                                                            <div class="small mt-1">Revisá que tus datos estén correctos y avanzá al paso 3 para completar el pago de la certificación.</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
 
                                             <!-- Reorganizando la sección de certificación con mejor estructura visual -->
                                             <div class="row g-4">
@@ -782,6 +793,17 @@ include '../head.php';
 
                                     <div class="step-panel" data-step="3">
                                         <div class="payment-box">
+                                            <?php if ($tipo_checkout === 'certificacion' && $certificacionPuedePagar && !$certificacionPagado): ?>
+                                                <div class="alert alert-success checkout-alert" role="alert">
+                                                    <div class="d-flex align-items-start gap-2">
+                                                        <i class="fas fa-shield-check mt-1"></i>
+                                                        <div>
+                                                            <strong>Tu certificación está lista para el pago.</strong>
+                                                            <div class="small mt-1">Elegí cómo querés abonar: podés pagar con Mercado Pago o subir el comprobante de transferencia.</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            <?php endif; ?>
                                             <?php if ($tipo_checkout === 'certificacion' && !$certificacionPuedePagar && !$certificacionPagado): ?>
                                                 <div class="alert alert-info checkout-alert" role="alert">
                                                     <div class="d-flex align-items-start gap-2">
@@ -1219,6 +1241,14 @@ include '../head.php';
                 transferRadio.addEventListener('change', togglePaymentDetails);
             }
             togglePaymentDetails();
+
+            if (checkoutType === 'certificacion' && certificacionPuedePagar && !certificacionPagado) {
+                const terms = document.getElementById('acepta');
+                if (terms && !terms.checked) {
+                    terms.checked = true;
+                }
+                goToStep(3);
+            }
 
             const setConfirmLoading = (isLoading) => {
                 if (isLoading) {

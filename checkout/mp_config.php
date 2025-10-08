@@ -17,7 +17,7 @@ const MP_PUBLIC_KEY = 'APP_USR-f6bee8bf-0ec6-4ce2-810e-c0011329fc31';
 
 // URLs auxiliares empleadas durante el flujo de pago. Si necesitás utilizarlas
 // en otro dominio, modificá BASE_URL por el dominio público correspondiente.
-const MP_BASE_URL = 'https://f99f5ef8e5bc.ngrok-free.app/intituto-formacion-de-operadores';
+const MP_BASE_URL = 'localhost/intituto-formacion-de-operadores';
 const MP_URL_SUCCESS = MP_BASE_URL . '/checkout/gracias.php';
 const MP_URL_FAILURE = MP_BASE_URL . '/checkout/gracias.php';
 const MP_URL_PENDING = MP_BASE_URL . '/checkout/gracias.php';

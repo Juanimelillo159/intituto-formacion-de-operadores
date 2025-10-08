@@ -11,3 +11,4 @@
 {"ts":"2025-10-07 18:39:59","user":"anon","ip":"::1","accion":"pago_transferencia_actualizado","data":{"id_pago":22,"accion":"aprobar","tipo":"capacitacion"}}
 {"ts":"2025-10-07 18:42:23","user":"anon","ip":"::1","accion":"checkout_crear_orden_ok","data":{"orden":50,"id_curso":3,"metodo":"transferencia","monto":99000,"moneda":"ARS"}}
 {"ts":"2025-10-07 18:42:44","user":"anon","ip":"::1","accion":"pago_transferencia_actualizado","data":{"id_pago":26,"accion":"aprobar","tipo":"capacitacion"}}
+{"ts":"2025-10-08 05:20:36","user":"anon","ip":"::1","accion":"certificacion_aprobar_mail_error","data":{"id_certificacion":5,"email":"juanimelillo36@gmail.com"},"error":{"type":"PDOException","message":"SQLSTATE[42S22]: Column not found: 1054 Unknown column 'nombre_certificacion' in 'field list'","code":"42S22"}}
