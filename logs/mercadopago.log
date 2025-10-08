@@ -44,3 +44,4 @@
 {"ts":"2025-10-07T16:20:55+02:00","event":"mp_preference_created","context":{"pago":23,"registro":47,"preference":"1578491289-060e27fc-cafe-4336-8216-c9a1d1178fa7","monto":120000,"moneda":"ARS"}}
 {"ts":"2025-10-07T17:15:59+02:00","event":"mp_preference_created","context":{"pago":24,"registro":48,"preference":"1578491289-1810c07e-6350-4613-80c5-2c98929e8e49","monto":99000,"moneda":"ARS"}}
 {"ts":"2025-10-07T18:40:57+02:00","event":"mp_preference_created","context":{"pago":25,"registro":49,"preference":"1578491289-77c0da91-ff4b-426e-ad16-061fbb6842e6","monto":70000,"moneda":"ARS"}}
+{"ts":"2025-10-08T05:21:30+02:00","event":"mp_preference_created","context":{"pago":27,"registro":7,"preference":"1578491289-1df5df7d-7f43-4ef2-8131-07b62f0b5c00","monto":85000,"moneda":"ARS"}}
