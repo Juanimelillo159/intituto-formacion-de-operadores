@@ -113,9 +113,10 @@ try {
             try { $fechaFmt = (new DateTimeImmutable($fechaRaw))->format('d/m/Y H:i'); } catch (Throwable $e) {}
         }
 
+        $certId = (int)($row['id_registro'] ?? 0);
         $item = [
             'tipo'            => 'certificacion',
-            'id'              => (int)$row['id_registro'],
+            'id'              => $certId,
             'fecha'           => $fechaRaw,
             'fecha_formatted' => $fechaFmt,
             'total'           => (float)($row['total'] ?? 0),
@@ -125,6 +126,7 @@ try {
             'id_estado'       => $row['id_estado'] ?? null,
             'pdf_path'        => $row['pdf_path'] ?? null,
             'pdf_nombre'      => $row['pdf_nombre'] ?? null,
+            'certificacion_registro' => $certId,
         ];
         $certificaciones[] = $item;
         $combinado[] = $item;
@@ -230,7 +232,7 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                             <?php if (($row['tipo'] ?? '') === 'certificacion'): ?>
                                                 <?php $estadoCert = isset($row['id_estado']) ? (int)$row['id_estado'] : 0; ?>
                                                 <?php if ($estadoCert === 2 && isset($row['id_curso']) && (int)$row['id_curso'] > 0): ?>
-                                                    <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo (int)$row['id_curso']; ?>">
+                                                    <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo (int)$row['id_curso']; ?>&amp;certificacion_registro=<?php echo isset($row['certificacion_registro']) ? (int)$row['certificacion_registro'] : 0; ?>">
                                                         Pagar
                                                     </a>
                                                 <?php elseif ($estadoCert === 3): ?>
@@ -339,7 +341,7 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                             <td class="text-start">
                                                 <?php $estadoCert = isset($cert['id_estado']) ? (int)$cert['id_estado'] : 0; ?>
                                                 <?php if ($estadoCert === 2 && isset($cert['id_curso']) && (int)$cert['id_curso'] > 0): ?>
-                                                    <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo (int)$cert['id_curso']; ?>">
+                                                    <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo (int)$cert['id_curso']; ?>&amp;certificacion_registro=<?php echo isset($cert['certificacion_registro']) ? (int)$cert['certificacion_registro'] : 0; ?>">
                                                         Pagar
                                                     </a>
                                                 <?php elseif ($estadoCert === 3): ?>
