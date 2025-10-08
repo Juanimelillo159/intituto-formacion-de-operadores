@@ -84,7 +84,7 @@ try {
         'message' => 'Sesion iniciada con exito. Bienvenido de nuevo.'
     ];
 
-    $redirectUrl = '../mis_cursos.php';
+    $redirectUrl = '../instituto-formacion-de-operadores/mis_cursos.php';
     if (loginRequestWantsJson()) {
         http_response_code(200);
         header('Content-Type: application/json; charset=UTF-8');
