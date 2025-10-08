@@ -230,16 +230,27 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                         <td class="text-start"><?php echo htmlspecialchars($row['estado_label'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td class="text-center">
                                             <?php if (($row['tipo'] ?? '') === 'certificacion'): ?>
-                                                <?php $estadoCert = isset($row['id_estado']) ? (int)$row['id_estado'] : 0; ?>
-                                                <?php if ($estadoCert === 2 && isset($row['id_curso']) && (int)$row['id_curso'] > 0): ?>
-                                                    <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo (int)$row['id_curso']; ?>&amp;certificacion_registro=<?php echo isset($row['certificacion_registro']) ? (int)$row['certificacion_registro'] : 0; ?>">
-                                                        Pagar
-                                                    </a>
-                                                <?php elseif ($estadoCert === 3): ?>
-                                                    <span class="badge bg-success">Pagado</span>
-                                                <?php else: ?>
-                                                    <span class="text-muted">—</span>
-                                                <?php endif; ?>
+                                                <?php
+                                                    $estadoCert = isset($row['id_estado']) ? (int)$row['id_estado'] : 0;
+                                                    $certRegistro = isset($row['certificacion_registro']) ? (int)$row['certificacion_registro'] : 0;
+                                                    $cursoId = isset($row['id_curso']) ? (int)$row['id_curso'] : 0;
+                                                ?>
+                                                <div class="d-flex flex-column flex-md-row gap-2 justify-content-center">
+                                                    <?php if ($certRegistro > 0): ?>
+                                                        <a class="btn btn-sm btn-outline-primary" href="checkout/gracias_certificacion.php?certificacion=<?php echo $certRegistro; ?>">
+                                                            Ver estado solicitud
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <?php if ($estadoCert === 2 && $cursoId > 0 && $certRegistro > 0): ?>
+                                                        <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo $cursoId; ?>&amp;certificacion_registro=<?php echo $certRegistro; ?>">
+                                                            Pagar certificación
+                                                        </a>
+                                                    <?php elseif ($estadoCert === 3): ?>
+                                                        <span class="badge bg-success align-self-center">Pagado</span>
+                                                    <?php else: ?>
+                                                        <span class="text-muted align-self-center">En revisión</span>
+                                                    <?php endif; ?>
+                                                </div>
                                             <?php else: ?>
                                                 <span class="text-muted">—</span>
                                             <?php endif; ?>
@@ -339,16 +350,27 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-start">
-                                                <?php $estadoCert = isset($cert['id_estado']) ? (int)$cert['id_estado'] : 0; ?>
-                                                <?php if ($estadoCert === 2 && isset($cert['id_curso']) && (int)$cert['id_curso'] > 0): ?>
-                                                    <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo (int)$cert['id_curso']; ?>&amp;certificacion_registro=<?php echo isset($cert['certificacion_registro']) ? (int)$cert['certificacion_registro'] : 0; ?>">
-                                                        Pagar
-                                                    </a>
-                                                <?php elseif ($estadoCert === 3): ?>
-                                                    <span class="badge bg-success">Pagado</span>
-                                                <?php else: ?>
-                                                    <span class="text-muted">—</span>
-                                                <?php endif; ?>
+                                                <?php
+                                                    $estadoCert = isset($cert['id_estado']) ? (int)$cert['id_estado'] : 0;
+                                                    $certRegistro = isset($cert['certificacion_registro']) ? (int)$cert['certificacion_registro'] : 0;
+                                                    $cursoId = isset($cert['id_curso']) ? (int)$cert['id_curso'] : 0;
+                                                ?>
+                                                <div class="d-flex flex-column flex-md-row gap-2">
+                                                    <?php if ($certRegistro > 0): ?>
+                                                        <a class="btn btn-sm btn-outline-primary" href="checkout/gracias_certificacion.php?certificacion=<?php echo $certRegistro; ?>">
+                                                            Ver estado solicitud
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <?php if ($estadoCert === 2 && $cursoId > 0 && $certRegistro > 0): ?>
+                                                        <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo $cursoId; ?>&amp;certificacion_registro=<?php echo $certRegistro; ?>">
+                                                            Pagar certificación
+                                                        </a>
+                                                    <?php elseif ($estadoCert === 3): ?>
+                                                        <span class="badge bg-success align-self-center">Pagado</span>
+                                                    <?php else: ?>
+                                                        <span class="text-muted align-self-center">En revisión</span>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
                                             <td class="text-end"><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></td>
                                         </tr>
