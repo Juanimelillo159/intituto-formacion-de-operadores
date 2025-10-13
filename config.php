@@ -67,6 +67,7 @@ function getPdo(): PDO
 
     $fallbackKey = DB_FALLBACK_HOST . '|' . DB_FALLBACK_NAME . '|' . DB_FALLBACK_USER;
     $primaryKey = DB_HOST . '|' . DB_NAME . '|' . DB_USER;
+
     if ($fallbackKey !== $primaryKey) {
         $configs[] = [
             'host' => DB_FALLBACK_HOST,
@@ -78,14 +79,17 @@ function getPdo(): PDO
     }
 
     $lastException = null;
+
     foreach ($configs as $cfg) {
         $dsn = sprintf('mysql:host=%s;dbname=%s;charset=%s', $cfg['host'], $cfg['name'], $cfg['charset']);
+
         try {
             $pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
+
             return $pdo;
         } catch (PDOException $exception) {
             $lastException = $exception;
@@ -99,7 +103,6 @@ function getPdo(): PDO
     http_response_code(500);
     die('Error de conexion a la base de datos.');
 }
-
 function getSmtpConfig(): array
 {
     return [
@@ -112,3 +115,4 @@ function getSmtpConfig(): array
         'from_name' => SMTP_FROM_NAME,
     ];
 }
+
