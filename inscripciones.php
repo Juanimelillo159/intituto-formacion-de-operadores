@@ -479,7 +479,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $coursesError === null) {
                 </div>
                 <div class="mb-3 d-none" id="modalSharedLocationWrapper">
                     <label class="form-label" for="modalSharedLocation">Ubicacion general</label>
-                    <input type="text" class="form-control" id="modalSharedLocation" placeholder="Ej. Planta central, sala A">
+                    <input type="text" class="form-control" id="modalSharedLocation" placeholder="Ej. Río Gallegos / Caleta Olivia">
                 </div>
                 <div id="modalSummaryContainer" class="d-flex flex-column gap-3"></div>
             </div>
