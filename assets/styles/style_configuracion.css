@@ -51,6 +51,88 @@
     border: none;
 }
 
+.config-subsection-title {
+    display: inline-flex;
+    align-items: center;
+    padding: .5rem 1.4rem;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #0d6efd 0%, #3641ff 100%);
+    border: 1px solid rgba(11, 37, 105, 0.65);
+    color: #ffffff;
+    font-size: .82rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    box-shadow: 0 18px 36px rgba(13, 110, 253, 0.25);
+    text-shadow: 0 1px 1px rgba(10, 24, 78, 0.35);
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.config-subsection-title::before {
+    content: "";
+    display: inline-block;
+    width: .65rem;
+    height: .65rem;
+    border-radius: 50%;
+    margin-right: .65rem;
+    background: rgba(255, 255, 255, 0.45);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.15);
+}
+
+.config-subsection-title:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 20px 38px rgba(13, 110, 253, 0.3);
+}
+
+.config-card .config-subsection-title {
+    align-self: flex-start;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2.25rem;
+    position: relative;
+    padding: .15rem 0;
+}
+
+.section-header::before {
+    content: "";
+    position: absolute;
+    inset: 50% 0 auto 0;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0), rgba(148, 163, 184, .45), rgba(148, 163, 184, 0));
+    transform: translateY(-50%);
+    z-index: 0;
+}
+
+.section-header.section--cap::before {
+    background: linear-gradient(90deg, rgba(13, 110, 253, 0), rgba(13, 110, 253, .35), rgba(13, 110, 253, 0));
+}
+
+.section-header.section--cert::before {
+    background: linear-gradient(90deg, rgba(32, 201, 151, 0), rgba(32, 201, 151, .35), rgba(32, 201, 151, 0));
+}
+
+.section-header .config-subsection-title {
+    margin: 0;
+    position: relative;
+    z-index: 1;
+}
+
+.section-header.section--cap .config-subsection-title {
+    background: linear-gradient(135deg, #0d6efd 0%, #3641ff 100%);
+    border-color: rgba(11, 37, 105, 0.65);
+}
+
+.section-header.section--cert .config-subsection-title {
+    background: linear-gradient(135deg, #1ab981 0%, #1a9f88 100%);
+    border-color: rgba(4, 79, 58, 0.5);
+    box-shadow: 0 18px 36px rgba(26, 159, 136, 0.25);
+}
+
 .config-tabs {
     background: #f1f5f9;
     border-radius: 999px;
