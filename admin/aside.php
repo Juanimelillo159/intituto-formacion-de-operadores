@@ -101,6 +101,13 @@
               </a>
             </li>
 
+            <li class="nav-item">
+              <a href="pagos.php" class="nav-link">
+                <i class="fas fa-solid fa-receipt"></i>
+                <p>Pagos</p>
+              </a>
+            </li>
+
           </ul>
         </nav>
         <!-- /.sidebar-menu -->

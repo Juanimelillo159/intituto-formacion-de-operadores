@@ -861,6 +861,7 @@ SQL;
                         'apellido' => $seat['apellido'] ?? $seat['assigned_apellido'] ?? '',
                         'email' => $email,
                         'estado' => $stateLabel,
+                        'estado_key' => $stateKey,
                         'clase' => $stateClass,
                         'progreso' => null,
                         'id_item_compra' => (int)$seat['id_capacitacion'],
@@ -1040,12 +1041,15 @@ SQL;
                             'apellido' => $cert['apellido'] ?? $cert['assigned_apellido'] ?? '',
                             'email' => $email,
                             'estado' => $stateLabel,
+                            'estado_key' => $stateKey,
                             'clase' => $stateClass,
                             'progreso' => null,
                             'id_item_compra' => (int)$cert['id_certificacion'],
                             'pdf_path' => $cert['pdf_path'] ?? null,
                             'pdf_nombre' => $cert['pdf_nombre'] ?? null,
                             'pdf_mime' => $cert['pdf_mime'] ?? null,
+                            'id_estado' => isset($cert['id_estado']) ? (int)$cert['id_estado'] : null,
+                            'puede_pagar' => isset($cert['id_estado']) && (int)$cert['id_estado'] === 2,
                         ];
 
                         $purchaseItem['asignaciones'][] = $assignmentData;
@@ -1623,14 +1627,46 @@ $configActive = 'mis_cursos';
                                                         <?php if (!empty($assignment['email'])): ?>
                                                             <span class="text-muted small d-block"><?php echo htmlspecialchars((string)$assignment['email'], ENT_QUOTES, 'UTF-8'); ?></span>
                                                         <?php endif; ?>
-                                                        <?php if ($assignment['progreso'] !== null): ?>
-                                                            <span class="text-muted small">Progreso: <?php echo (int)$assignment['progreso']; ?>%</span>
+                                                    <?php if ($assignment['progreso'] !== null): ?>
+                                                        <span class="text-muted small">Progreso: <?php echo (int)$assignment['progreso']; ?>%</span>
+                                                    <?php endif; ?>
+                                                    <?php if (($curso['tipo_curso'] ?? '') === 'certificacion'): ?>
+                                                        <?php if (!empty($assignment['pdf_path'])): ?>
+                                                            <?php
+                                                            $pdfUrl = '/' . ltrim((string)$assignment['pdf_path'], '/');
+                                                            $pdfLabel = trim((string)($assignment['pdf_nombre'] ?? 'Formulario enviado'));
+                                                            if ($pdfLabel === '') {
+                                                                $pdfLabel = 'Formulario enviado';
+                                                            }
+                                                            ?>
+                                                            <div class="small mt-2">
+                                                                <a class="link-primary" href="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                                                                    <i class="fas fa-file-pdf me-1"></i><?php echo htmlspecialchars($pdfLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                                                </a>
+                                                            </div>
                                                         <?php endif; ?>
-                                                    </li>
-                                                <?php endforeach; ?>
-                                            </ul>
-                                        </div>
+                                                        <?php if (!empty($assignment['puede_pagar']) && !empty($assignment['id_item_compra']) && !empty($curso['id_curso'])): ?>
+                                                            <?php
+                                                            $checkoutUrl = sprintf(
+                                                                'checkout/checkout.php?id_certificacion=%d&tipo=certificacion&certificacion_registro=%d',
+                                                                (int)$curso['id_curso'],
+                                                                (int)$assignment['id_item_compra']
+                                                            );
+                                                            ?>
+                                                            <a class="btn btn-sm btn-primary mt-2" href="<?php echo htmlspecialchars($checkoutUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                <i class="fas fa-credit-card me-1"></i>Completar pago
+                                                            </a>
+                                                        <?php elseif (isset($assignment['estado_key']) && $assignment['estado_key'] === 'pagado'): ?>
+                                                            <div class="small text-success mt-2">
+                                                                <i class="fas fa-circle-check me-1"></i>Pago registrado
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    <?php endif; ?>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
                                     </div>
+                                </div>
                                 <?php endif; ?>
                             </div>
 

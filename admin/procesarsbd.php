@@ -76,6 +76,18 @@ function registrar_historico_certificacion(PDO $con, int $idCertificacion, int $
     ]);
 }
 
+function registrar_historico_capacitacion(PDO $con, int $idCapacitacion, int $estado): void
+{
+    $hist = $con->prepare('
+        INSERT INTO historico_estado_capacitaciones (id_capacitacion, id_estado)
+        VALUES (:id, :estado)
+    ');
+    $hist->execute([
+        ':id' => $idCapacitacion,
+        ':estado' => $estado,
+    ]);
+}
+
 function obtener_usuario_id_de_sesion(): int
 {
     if (isset($_SESSION['id_usuario']) && is_numeric($_SESSION['id_usuario'])) {
@@ -129,6 +141,8 @@ try {
     $isCrearCertificacion = ($accion === 'crear_certificacion');
     $isAprobarCertificacion = ($accion === 'aprobar_certificacion');
     $isRechazarCertificacion = ($accion === 'rechazar_certificacion');
+    $isAprobarPagoTransferencia = ($accion === 'aprobar_pago_transferencia');
+    $isRechazarPagoTransferencia = ($accion === 'rechazar_pago_transferencia');
 
     $checkoutIsCrearOrden = isset($_POST['crear_orden']) || ($accion === 'crear_orden');
 
@@ -704,16 +718,16 @@ try {
                        acepta_tyc = 1
              WHERE id_certificacion = :id
         ');
-        $upCert->execute([
-            ':precio' => $precioFinal,
-            ':moneda' => $monedaPrecio,
-            ':obs' => $observacionesCert,
-            ':nombre' => $nombreInscrito,
-            ':apellido' => $apellidoInscrito,
-            ':email' => $emailInscrito,
-            ':telefono' => $telefonoInscrito,
-            ':id' => (int)$certificacionRow['id_certificacion'],
-        ]);
+            $upCert->execute([
+                ':precio' => $precioFinal,
+                ':moneda' => $monedaPrecio,
+                ':obs' => $observacionesCert,
+                ':nombre' => $nombreInscrito,
+                ':apellido' => $apellidoInscrito,
+                ':email' => $emailInscrito,
+                ':telefono' => $telefonoInscrito,
+                ':id' => (int)$certificacionRow['id_certificacion'],
+            ]);
             registrar_historico_certificacion($con, (int)$certificacionRow['id_certificacion'], 3);
         }
 
@@ -755,6 +769,211 @@ try {
         $redirectUrl = '../checkout/gracias.php?' . http_build_query($redirectQuery);
 
         header('Location: ' . $redirectUrl);
+        exit;
+    }
+
+    if ($isAprobarPagoTransferencia || $isRechazarPagoTransferencia) {
+        $pagoId = (int)($_POST['id_pago'] ?? 0);
+        if ($pagoId <= 0) {
+            throw new InvalidArgumentException('Pago inválido.');
+        }
+
+        $pagoStmt = $con->prepare(
+            "SELECT p.*,
+            CASE
+              WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'
+              WHEN p.id_certificacion IS NOT NULL THEN 'certificacion'
+              ELSE 'desconocido'
+            END AS tipo_checkout,
+            cap.id_estado   AS cap_estado,
+            cap.creado_por  AS cap_creado_por,
+            cap.nombre      AS cap_nombre,
+            cap.apellido    AS cap_apellido,
+            cap.email       AS cap_email,
+            cap.telefono    AS cap_telefono,
+            cap.id_curso    AS cap_curso_id,
+            cert.id_estado  AS cert_estado,
+            cert.creado_por AS cert_creado_por,
+            cert.nombre     AS cert_nombre,
+            cert.apellido   AS cert_apellido,
+            cert.email      AS cert_email,
+            cert.telefono   AS cert_telefono,
+            cert.id_curso   AS cert_curso_id,
+            cert.observaciones AS cert_observaciones,
+            COALESCE(cap.nombre,   cert.nombre)      AS alumno_nombre,
+            COALESCE(cap.apellido, cert.apellido)    AS alumno_apellido,
+            COALESCE(cap.email,    cert.email)       AS alumno_email,
+            COALESCE(cap.telefono, cert.telefono)    AS alumno_telefono,
+            COALESCE(cur_cap.nombre_curso, cur_cert.nombre_curso, '') AS curso_nombre
+       FROM checkout_pagos p
+  LEFT JOIN checkout_capacitaciones  cap   ON cap.id_capacitacion  = p.id_capacitacion
+  LEFT JOIN checkout_certificaciones cert  ON cert.id_certificacion = p.id_certificacion
+  LEFT JOIN cursos cur_cap  ON cur_cap.id_curso  = cap.id_curso
+  LEFT JOIN cursos cur_cert ON cur_cert.id_curso = cert.id_curso
+      WHERE p.id_pago = :id
+      LIMIT 1"
+        );
+
+        $pagoStmt->execute([':id' => $pagoId]);
+        $pagoRow = $pagoStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$pagoRow) {
+            throw new RuntimeException('No encontramos el pago seleccionado.');
+        }
+
+        $metodoPago = strtolower((string)($pagoRow['metodo'] ?? ''));
+        if (!in_array($metodoPago, ['transferencia', 'mercado_pago'], true)) {
+            throw new RuntimeException('Sólo se pueden gestionar pagos por transferencia o Mercado Pago.');
+        }
+
+
+        $estadoPagoActual = strtolower((string)($pagoRow['estado'] ?? 'pendiente'));
+        $nuevoEstadoPago = $isAprobarPagoTransferencia ? 'pagado' : 'rechazado';
+
+        if ($estadoPagoActual === $nuevoEstadoPago) {
+            $_SESSION['pagos_admin_success'] = $isAprobarPagoTransferencia
+                ? 'El pago ya se encontraba aprobado.'
+                : 'El pago ya se encontraba marcado como rechazado.';
+            header('Location: pagos.php');
+            exit;
+        }
+
+        $ahoraLabel = (new DateTimeImmutable('now'))->format('d/m/Y H:i');
+        $notaPago = ($isAprobarPagoTransferencia ? 'Pago aprobado' : 'Pago rechazado')
+            . ' manualmente (' . ($metodoPago === 'mercado_pago' ? 'Mercado Pago' : 'transferencia') . ') el ' . $ahoraLabel;
+
+        $obsPagoActual = trim((string)($pagoRow['observaciones'] ?? ''));
+        $observacionesPago = $notaPago;
+        if ($obsPagoActual !== '') {
+            $observacionesPago .= ' | ' . $obsPagoActual;
+        }
+
+        $capacitacionId = isset($pagoRow['id_capacitacion']) ? (int)$pagoRow['id_capacitacion'] : 0;
+        $certificacionId = isset($pagoRow['id_certificacion']) ? (int)$pagoRow['id_certificacion'] : 0;
+
+        $con->beginTransaction();
+
+        $upPago = $con->prepare('UPDATE checkout_pagos SET estado = :estado, observaciones = :obs WHERE id_pago = :id');
+        $upPago->execute([
+            ':estado' => $nuevoEstadoPago,
+            ':obs' => $observacionesPago,
+            ':id' => $pagoId,
+        ]);
+
+        $tipoCheckout = (string)($pagoRow['tipo_checkout'] ?? '');
+
+        if ($capacitacionId > 0) {
+            $estadoCapActual = isset($pagoRow['cap_estado']) ? (int)$pagoRow['cap_estado'] : 0;
+            $estadoCapNuevo = $estadoCapActual;
+            if ($isAprobarPagoTransferencia) {
+                $estadoCapNuevo = 3;
+            } elseif ($isRechazarPagoTransferencia) {
+                $estadoCapNuevo = 4;
+            }
+
+            if ($estadoCapNuevo !== $estadoCapActual && $estadoCapNuevo > 0) {
+                $upCap = $con->prepare('UPDATE checkout_capacitaciones SET id_estado = :estado WHERE id_capacitacion = :id');
+                $upCap->execute([
+                    ':estado' => $estadoCapNuevo,
+                    ':id' => $capacitacionId,
+                ]);
+                registrar_historico_capacitacion($con, $capacitacionId, $estadoCapNuevo);
+            }
+        }
+
+        if ($certificacionId > 0) {
+            $estadoCertActual = isset($pagoRow['cert_estado']) ? (int)$pagoRow['cert_estado'] : 0;
+            $estadoCertNuevo = $estadoCertActual;
+            if ($isAprobarPagoTransferencia) {
+                $estadoCertNuevo = 3;
+            } elseif ($isRechazarPagoTransferencia) {
+                $estadoCertNuevo = 2;
+            }
+
+            $obsCertActual = trim((string)($pagoRow['cert_observaciones'] ?? ''));
+            $notaCert = $notaPago;
+            if ($obsCertActual !== '') {
+                $notaCert .= ' | ' . $obsCertActual;
+            }
+
+            if ($estadoCertNuevo !== $estadoCertActual) {
+                $sqlCert = 'UPDATE checkout_certificaciones SET observaciones = :obs, id_estado = :estado WHERE id_certificacion = :id';
+                $paramsCert = [
+                    ':obs' => $notaCert,
+                    ':estado' => $estadoCertNuevo,
+                    ':id' => $certificacionId,
+                ];
+                $con->prepare($sqlCert)->execute($paramsCert);
+                registrar_historico_certificacion($con, $certificacionId, $estadoCertNuevo);
+            } else {
+                $sqlCert = 'UPDATE checkout_certificaciones SET observaciones = :obs WHERE id_certificacion = :id';
+                $con->prepare($sqlCert)->execute([
+                    ':obs' => $notaCert,
+                    ':id' => $certificacionId,
+                ]);
+            }
+        }
+
+        $con->commit();
+
+        $emailError = null;
+        if ($isAprobarPagoTransferencia && $tipoCheckout === 'capacitacion') {
+            $destinatario = trim((string)($pagoRow['alumno_email'] ?? ''));
+            if ($destinatario !== '') {
+                try {
+                    require_once __DIR__ . '/../checkout/mercadopago_mailer.php';
+                    $studentName = trim(((string)($pagoRow['alumno_nombre'] ?? '')) . ' ' . ((string)($pagoRow['alumno_apellido'] ?? '')));
+                    if ($studentName === '') {
+                        $studentName = $destinatario;
+                    }
+                    $cursoNombre = trim((string)($pagoRow['curso_nombre'] ?? 'tu capacitación'));
+                    $monto = isset($pagoRow['monto']) ? (float)$pagoRow['monto'] : 0.0;
+                    $moneda = (string)($pagoRow['moneda'] ?? 'ARS');
+                    $montoLabel = checkout_format_currency($monto, $moneda);
+
+                    $mail = checkout_create_mailer();
+                    $mail->addAddress($destinatario, $studentName);
+                    $mail->Subject = 'Confirmación de pago por transferencia - ' . $cursoNombre;
+
+                    $body = '<p>Hola ' . htmlspecialchars($studentName, ENT_QUOTES, 'UTF-8') . ',</p>' .
+                        '<p>Confirmamos la acreditación del pago por transferencia correspondiente a tu capacitación <strong>' .
+                        htmlspecialchars($cursoNombre, ENT_QUOTES, 'UTF-8') . '</strong>.</p>' .
+                        '<p><strong>Detalle del pago</strong></p>' .
+                        '<ul>' .
+                        '<li>Monto acreditado: <strong>' . htmlspecialchars($montoLabel, ENT_QUOTES, 'UTF-8') . '</strong></li>' .
+                        '<li>Fecha de aprobación: ' . htmlspecialchars($ahoraLabel, ENT_QUOTES, 'UTF-8') . '</li>' .
+                        '<li>Método: Transferencia bancaria</li>' .
+                        '</ul>' .
+                        '<p>En las próximas horas nos pondremos en contacto para coordinar los pasos siguientes.</p>' .
+                        '<p>¡Gracias por confiar en el Instituto de Formación de Operadores!</p>';
+
+                    $mail->Body = $body;
+                    $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
+                    $mail->send();
+                } catch (Throwable $mailError) {
+                    $emailError = $mailError->getMessage();
+                    log_cursos('transferencia_mail_error', ['id_pago' => $pagoId], $mailError);
+                }
+            }
+        }
+
+        $mensajeBase = $isAprobarPagoTransferencia
+            ? 'El pago fue aprobado correctamente.'
+            : 'El pago fue rechazado correctamente.';
+
+        if ($emailError !== null) {
+            $_SESSION['pagos_admin_success'] = $mensajeBase;
+            $_SESSION['pagos_admin_warning'] = 'No se pudo enviar el correo al alumno: ' . $emailError;
+        } else {
+            $_SESSION['pagos_admin_success'] = $mensajeBase;
+        }
+
+        log_cursos('pago_transferencia_actualizado', [
+            'id_pago' => $pagoId,
+            'accion' => $isAprobarPagoTransferencia ? 'aprobar' : 'rechazar',
+            'tipo' => $tipoCheckout,
+        ]);
+
+        header('Location: pagos.php');
         exit;
     }
 
@@ -1162,6 +1381,12 @@ try {
             $redirect .= '?' . http_build_query($params);
         }
         header('Location: ' . $redirect);
+        exit;
+    }
+
+    if ($isAprobarPagoTransferencia || $isRechazarPagoTransferencia) {
+        $_SESSION['pagos_admin_error'] = $e->getMessage();
+        header('Location: pagos.php');
         exit;
     }
 
