@@ -1495,7 +1495,7 @@ $configActive = 'mis_cursos';
             $sectionClass = $isCap ? 'section--cap' : 'section--cert';
             ?>
             <div class="section-header <?php echo $sectionClass; ?>">
-            <h2><?php echo htmlspecialchars($sectionTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
+                <h2 class="config-subsection-title"><?php echo htmlspecialchars($sectionTitle, ENT_QUOTES, 'UTF-8'); ?></h2>
             </div>
         <div class="mis-cursos-grid row row-cols-1 row-cols-md-2 g-4 mb-5">
             <?php foreach ($lista as $curso): ?>
