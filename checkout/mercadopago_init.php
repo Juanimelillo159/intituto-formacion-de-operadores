@@ -79,7 +79,8 @@ try {
         throw new RuntimeException('No encontramos el curso seleccionado.');
     }
 
-    $precio = mp_fetch_course_price($con, $cursoId);
+    $priceType = course_price_normalize_type($tipo);
+    $precio = mp_fetch_course_price($con, $cursoId, $priceType);
     if ($precio['amount'] <= 0) {
         $precio['amount'] = (float)($_POST['precio_checkout'] ?? 0);
         $precio['currency'] = strtoupper((string)($_POST['moneda_checkout'] ?? 'ARS'));

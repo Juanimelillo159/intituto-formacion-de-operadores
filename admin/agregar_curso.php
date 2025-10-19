@@ -3,6 +3,7 @@ include '../sbd.php';
 include '../admin/header.php';
 include '../admin/aside.php';
 include '../admin/footer.php';
+require_once __DIR__ . '/../price_helpers.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -127,9 +128,16 @@ include '../admin/footer.php';
                                                     <!-- NUEVO: PRECIO -->
                                                     <div class="col-md-6">
                                                         <div class="form-group">
-                                                            <label for="precio" class="required-field"><i class="fas fa-dollar-sign"></i> Precio (ARS)</label>
-                                                            <input required type="text" inputmode="decimal" class="form-control" id="precio" name="precio" placeholder="Ej: 120000,00 o 120000.00">
+                                                            <label for="precio_capacitacion" class="required-field"><i class="fas fa-dollar-sign"></i> Precio capacitación (ARS)</label>
+                                                            <input required type="text" inputmode="decimal" class="form-control" id="precio_capacitacion" name="precio_capacitacion" placeholder="Ej: 120000,00 o 120000.00">
                                                             <small class="form-text text-muted">Podés usar coma o punto como separador decimal.</small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="precio_certificacion"><i class="fas fa-medal"></i> Precio certificación (ARS)</label>
+                                                            <input type="text" inputmode="decimal" class="form-control" id="precio_certificacion" name="precio_certificacion" placeholder="Ej: 60000,00 o 60000.00">
+                                                            <small class="form-text text-muted">Dejalo vacío si la certificación se define más adelante.</small>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -272,9 +280,9 @@ include '../admin/footer.php';
                     label: 'Nivel de Complejidad'
                 },
                 {
-                    sel: '#precio',
-                    label: 'Precio'
-                } // <-- NUEVO
+                    sel: '#precio_capacitacion',
+                    label: 'Precio de capacitación'
+                }
             ];
             req.forEach(c => {
                 const $el = $(c.sel);

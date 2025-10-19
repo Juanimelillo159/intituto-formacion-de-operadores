@@ -5,6 +5,7 @@ use MercadoPago\Client\Payment\PaymentClient;
 use MercadoPago\MercadoPagoConfig;
 
 require_once __DIR__ . '/mp_config.php';
+require_once __DIR__ . '/../price_helpers.php';
 
 /**
  * Configura el SDK con el access token de pruebas.
@@ -132,19 +133,21 @@ function mp_log(string $event, array $context = [], ?Throwable $error = null): v
 /**
  * Recupera el precio vigente del curso solicitado.
  */
-function mp_fetch_course_price(PDO $con, int $courseId): array
+function mp_fetch_course_price(PDO $con, int $courseId, string $checkoutType = 'capacitacion'): array
 {
+    $priceType = course_price_normalize_type($checkoutType);
     $sql = <<<SQL
         SELECT precio, moneda
           FROM curso_precio_hist
          WHERE id_curso = :curso
+           AND tipo = :tipo
            AND vigente_desde <= NOW()
            AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
       ORDER BY vigente_desde DESC
          LIMIT 1
     SQL;
     $st = $con->prepare($sql);
-    $st->execute([':curso' => $courseId]);
+    $st->execute([':curso' => $courseId, ':tipo' => $priceType]);
     $row = $st->fetch(PDO::FETCH_ASSOC);
 
     if ($row && isset($row['precio'])) {

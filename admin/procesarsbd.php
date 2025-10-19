@@ -3,6 +3,7 @@
 declare(strict_types=1);
 require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/../sbd.php';
+require_once __DIR__ . '/../price_helpers.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
@@ -257,12 +258,16 @@ try {
               SELECT precio, moneda
                 FROM curso_precio_hist
                WHERE id_curso = :c
+                 AND tipo = :t
                  AND vigente_desde <= NOW()
                  AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
             ORDER BY vigente_desde DESC
                LIMIT 1
             ');
-            $precioStmt->execute([':c' => $checkoutCursoId]);
+            $precioStmt->execute([
+                ':c' => $checkoutCursoId,
+                ':t' => 'certificacion',
+            ]);
             $precioRow = $precioStmt->fetch();
             $precioFinal = $precioRow ? (float)$precioRow['precio'] : (float)($_POST['precio_checkout'] ?? 0.0);
             if ($precioFinal < 0) {
@@ -539,16 +544,21 @@ try {
             throw new RuntimeException('El curso seleccionado no existe.');
         }
 
+        $precioTipo = course_price_normalize_type($checkoutTipo);
         $precioStmt = $con->prepare("
           SELECT precio, moneda
             FROM curso_precio_hist
            WHERE id_curso = :c
+             AND tipo = :t
              AND vigente_desde <= NOW()
              AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
         ORDER BY vigente_desde DESC
            LIMIT 1
         ");
-        $precioStmt->execute([':c' => $checkoutCursoId]);
+        $precioStmt->execute([
+            ':c' => $checkoutCursoId,
+            ':t' => $precioTipo,
+        ]);
         $precioRow = $precioStmt->fetch();
         $precioFinal = $precioRow ? (float)$precioRow['precio'] : (float)$precioInput;
         $monedaPrecio = ($precioRow && !empty($precioRow['moneda'])) ? (string)$precioRow['moneda'] : 'ARS';
@@ -1045,7 +1055,7 @@ try {
                         $certificacionId
                     );
 
-                    $precioInfo = mp_fetch_course_price($con, (int)($certRow['id_curso'] ?? 0));
+                    $precioInfo = mp_fetch_course_price($con, (int)($certRow['id_curso'] ?? 0), 'certificacion');
                     $monto = (float)($precioInfo['amount'] ?? 0);
                     $moneda = (string)($precioInfo['currency'] ?? 'ARS');
                     $configMail = checkout_mail_config();
@@ -1106,6 +1116,7 @@ try {
         $id_curso   = (int)($_POST['id_curso'] ?? 0);
         $precioRaw  = $_POST['precio'] ?? null;
         $desdeRaw   = $_POST['desde'] ?? null;
+        $tipoPrecio = course_price_normalize_type($_POST['tipo_precio'] ?? null);
         $comentario = trim($_POST['comentario'] ?? '') ?: 'Alta manual en curso';
 
         if ($id_curso <= 0) throw new InvalidArgumentException('Curso inválido.');
@@ -1116,8 +1127,8 @@ try {
         $con->beginTransaction();
 
         // (0) no duplicar exacto mismo vigente_desde
-        $st = $con->prepare("SELECT 1 FROM curso_precio_hist WHERE id_curso = :c AND vigente_desde = :d LIMIT 1");
-        $st->execute([':c' => $id_curso, ':d' => $desde]);
+        $st = $con->prepare("SELECT 1 FROM curso_precio_hist WHERE id_curso = :c AND tipo = :t AND vigente_desde = :d LIMIT 1");
+        $st->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':d' => $desde]);
         if ($st->fetchColumn()) {
             throw new RuntimeException('Ya existe un precio con esa fecha de vigencia.');
         }
@@ -1127,11 +1138,12 @@ try {
           SELECT id, vigente_desde
             FROM curso_precio_hist
            WHERE id_curso = :c
+             AND tipo = :t
              AND vigente_desde > :d
         ORDER BY vigente_desde ASC
            LIMIT 1
         ");
-        $stNext->execute([':c' => $id_curso, ':d' => $desde]);
+        $stNext->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':d' => $desde]);
         $next = $stNext->fetch();
         $nuevoHasta = null;
         if ($next) {
@@ -1146,18 +1158,20 @@ try {
           UPDATE curso_precio_hist
              SET vigente_hasta = DATE_SUB(:d0, INTERVAL 1 SECOND)
            WHERE id_curso = :c
+             AND tipo = :t
              AND vigente_desde < :d1
              AND (vigente_hasta IS NULL OR vigente_hasta >= :d2)
         ");
-        $up->execute([':d0' => $desde, ':c' => $id_curso, ':d1' => $desde, ':d2' => $desde]);
+        $up->execute([':d0' => $desde, ':c' => $id_curso, ':t' => $tipoPrecio, ':d1' => $desde, ':d2' => $desde]);
 
         // (3) insertar nuevo
         $ins = $con->prepare("
-          INSERT INTO curso_precio_hist (id_curso, precio, moneda, vigente_desde, vigente_hasta, comentario)
-          VALUES (:c, :p, 'ARS', :d, :h, :com)
+          INSERT INTO curso_precio_hist (id_curso, tipo, precio, moneda, vigente_desde, vigente_hasta, comentario)
+          VALUES (:c, :t, :p, 'ARS', :d, :h, :com)
         ");
         $ins->execute([
             ':c' => $id_curso,
+            ':t' => $tipoPrecio,
             ':p' => $precio,
             ':d' => $desde,
             ':h' => $nuevoHasta,
@@ -1165,7 +1179,7 @@ try {
         ]);
 
         $con->commit();
-        log_cursos('agregar_precio_ok', ['id_curso' => $id_curso, 'precio' => $precio, 'desde' => $desde, 'hasta' => $nuevoHasta]);
+        log_cursos('agregar_precio_ok', ['id_curso' => $id_curso, 'tipo' => $tipoPrecio, 'precio' => $precio, 'desde' => $desde, 'hasta' => $nuevoHasta]);
 
         header('Location: curso.php?id_curso=' . $id_curso . '&tab=precios&saved=1');
         exit;
@@ -1251,9 +1265,11 @@ try {
         $observaciones = trim($_POST['observaciones'] ?? '');
         $modalidades   = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
 
-        // Precio inicial opcional (si el form manda "precio")
-        $precioInicialRaw = $_POST['precio'] ?? null;
-        $precioInicial    = normalizar_precio($precioInicialRaw);
+        // Precio inicial opcional por tipo
+        $precioInicialCapRaw  = $_POST['precio_capacitacion'] ?? null;
+        $precioInicialCap     = normalizar_precio($precioInicialCapRaw);
+        $precioInicialCertRaw = $_POST['precio_certificacion'] ?? null;
+        $precioInicialCert    = normalizar_precio($precioInicialCertRaw);
 
         if ($nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '' || $complejidad === '') {
             throw new InvalidArgumentException('Faltan campos obligatorios.');
@@ -1294,17 +1310,20 @@ try {
             }
         }
 
-        // Precio inicial (si vino). Fecha = NOW()
-        if ($precioInicial !== null) {
+        $insertInitialPrice = function(string $tipo, ?string $precio) use ($con, $id_curso): void {
+            if ($precio === null) {
+                return;
+            }
+
             $nuevoHasta = null;
             $stNext = $con->prepare("
               SELECT vigente_desde
                 FROM curso_precio_hist
-               WHERE id_curso = :c AND vigente_desde > NOW()
+               WHERE id_curso = :c AND tipo = :t AND vigente_desde > NOW()
             ORDER BY vigente_desde ASC
                LIMIT 1
             ");
-            $stNext->execute([':c' => $id_curso]);
+            $stNext->execute([':c' => $id_curso, ':t' => $tipo]);
             $next = $stNext->fetchColumn();
             if ($next) {
                 $dt = new DateTime($next);
@@ -1316,15 +1335,19 @@ try {
               UPDATE curso_precio_hist
                  SET vigente_hasta = DATE_SUB(NOW(), INTERVAL 1 SECOND)
                WHERE id_curso = :c
+                 AND tipo = :t
                  AND vigente_desde <  NOW()
                  AND (vigente_hasta IS NULL OR vigente_hasta >= NOW())
-            ")->execute([':c' => $id_curso]);
+            ")->execute([':c' => $id_curso, ':t' => $tipo]);
 
             $con->prepare("
-              INSERT INTO curso_precio_hist (id_curso, precio, moneda, vigente_desde, vigente_hasta, comentario)
-              VALUES (:c, :p, 'ARS', NOW(), :h, 'Alta inicial de curso')
-            ")->execute([':c' => $id_curso, ':p' => $precioInicial, ':h' => $nuevoHasta]);
-        }
+              INSERT INTO curso_precio_hist (id_curso, tipo, precio, moneda, vigente_desde, vigente_hasta, comentario)
+              VALUES (:c, :t, :p, 'ARS', NOW(), :h, 'Alta inicial de curso')
+            ")->execute([':c' => $id_curso, ':t' => $tipo, ':p' => $precio, ':h' => $nuevoHasta]);
+        };
+
+        $insertInitialPrice('capacitacion', $precioInicialCap);
+        $insertInitialPrice('certificacion', $precioInicialCert);
 
         $con->commit();
         log_cursos('agregar_curso_ok', [
@@ -1332,7 +1355,10 @@ try {
             'nombre'      => $nombre,
             'complejidad' => $complejidad,
             'modalidades' => $modalidades,
-            'precio_inicial' => $precioInicial,
+            'precios_iniciales' => [
+                'capacitacion' => $precioInicialCap,
+                'certificacion' => $precioInicialCert,
+            ],
         ]);
 
         header('Location: cursos.php');

@@ -3,6 +3,7 @@ include '../sbd.php';
 include '../admin/header.php';
 include '../admin/aside.php';
 include '../admin/footer.php';
+require_once __DIR__ . '/../price_helpers.php';
 
 $id_curso = isset($_GET["id_curso"]) ? (int)$_GET["id_curso"] : 0;
 
@@ -40,37 +41,67 @@ $sql_modalidades->execute();
 $modalidades = $sql_modalidades->fetchAll(PDO::FETCH_ASSOC);
 
 // ====== PRECIOS ======
-$sql_hist = $con->prepare("
-  SELECT id, precio, moneda, vigente_desde, vigente_hasta, comentario
-  FROM curso_precio_hist
-  WHERE id_curso = :id
-  ORDER BY vigente_desde DESC
-");
-$sql_hist->execute([':id' => $id_curso]);
-$historial = $sql_hist->fetchAll(PDO::FETCH_ASSOC);
+$priceTypes = [];
+foreach (course_price_valid_types() as $priceType) {
+  $priceTypes[$priceType] = [
+    'label' => course_price_label($priceType),
+    'icon'  => $priceType === 'certificacion' ? 'fas fa-award' : 'fas fa-graduation-cap',
+  ];
+}
 
-$sql_vig = $con->prepare("
-  SELECT precio, moneda, vigente_desde, vigente_hasta
-  FROM curso_precio_hist
-  WHERE id_curso = :id
-    AND vigente_desde <= NOW()
-    AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
-  ORDER BY vigente_desde DESC
-  LIMIT 1
-");
-$sql_vig->execute([':id' => $id_curso]);
-$precio_vigente = $sql_vig->fetch(PDO::FETCH_ASSOC);
+function fetch_price_history(PDO $con, int $cursoId, string $tipo): array
+{
+  $sql = $con->prepare("
+    SELECT id, precio, moneda, vigente_desde, vigente_hasta, comentario
+      FROM curso_precio_hist
+     WHERE id_curso = :id AND tipo = :tipo
+     ORDER BY vigente_desde DESC
+  ");
+  $sql->execute([':id' => $cursoId, ':tipo' => $tipo]);
+  return $sql->fetchAll(PDO::FETCH_ASSOC) ?: [];
+}
 
-$sql_next = $con->prepare("
-  SELECT precio, moneda, vigente_desde
-  FROM curso_precio_hist
-  WHERE id_curso = :id
-    AND vigente_desde > NOW()
-  ORDER BY vigente_desde ASC
-  LIMIT 1
-");
-$sql_next->execute([':id' => $id_curso]);
-$precio_proximo = $sql_next->fetch(PDO::FETCH_ASSOC);
+function fetch_price_current(PDO $con, int $cursoId, string $tipo): ?array
+{
+  $sql = $con->prepare("
+    SELECT precio, moneda, vigente_desde, vigente_hasta
+      FROM curso_precio_hist
+     WHERE id_curso = :id
+       AND tipo = :tipo
+       AND vigente_desde <= NOW()
+       AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+     ORDER BY vigente_desde DESC
+     LIMIT 1
+  ");
+  $sql->execute([':id' => $cursoId, ':tipo' => $tipo]);
+  $row = $sql->fetch(PDO::FETCH_ASSOC);
+  return $row ?: null;
+}
+
+function fetch_price_next(PDO $con, int $cursoId, string $tipo): ?array
+{
+  $sql = $con->prepare("
+    SELECT precio, moneda, vigente_desde
+      FROM curso_precio_hist
+     WHERE id_curso = :id
+       AND tipo = :tipo
+       AND vigente_desde > NOW()
+     ORDER BY vigente_desde ASC
+     LIMIT 1
+  ");
+  $sql->execute([':id' => $cursoId, ':tipo' => $tipo]);
+  $row = $sql->fetch(PDO::FETCH_ASSOC);
+  return $row ?: null;
+}
+
+$priceData = [];
+foreach (array_keys($priceTypes) as $priceType) {
+  $priceData[$priceType] = [
+    'historial' => fetch_price_history($con, $id_curso, $priceType),
+    'vigente'   => fetch_price_current($con, $id_curso, $priceType),
+    'proximo'   => fetch_price_next($con, $id_curso, $priceType),
+  ];
+}
 
 function h($s)
 {
@@ -344,82 +375,102 @@ function estado_precio($vd, $vh)
                     <!-- PRECIOS -->
                     <div class="tab-pane fade" id="course-prices" role="tabpanel">
                       <div class="card-body">
-                        <!-- Resumen -->
-                        <div class="row mb-3">
-                          <div class="col-md-6">
-                            <div class="alert alert-success mb-2">
-                              <strong><i class="fas fa-check-circle"></i> Precio vigente:</strong>
-                              <?php
-                              if ($precio_vigente) {
-                                echo 'ARS ' . number_format((float)$precio_vigente['precio'], 2, ',', '.') .
-                                  ' desde ' . h(fmt_fecha($precio_vigente['vigente_desde']));
-                              } else {
-                                echo '—';
-                              }
-                              ?>
+                        <?php foreach ($priceTypes as $priceType => $meta):
+                          $historialTipo = $priceData[$priceType]['historial'];
+                          $precioVigente = $priceData[$priceType]['vigente'];
+                          $precioProximo = $priceData[$priceType]['proximo'];
+                          ?>
+                          <div class="mb-5" data-price-type="<?php echo h($priceType); ?>">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+                              <h4 class="mb-0">
+                                <i class="<?php echo h($meta['icon']); ?> mr-2"></i>
+                                <?php echo h('Precios de ' . $meta['label']); ?>
+                              </h4>
                             </div>
-                          </div>
-                          <div class="col-md-6">
-                            <div class="alert alert-info mb-2">
-                              <strong><i class="fas fa-clock"></i> Próximo programado:</strong>
-                              <?php
-                              if ($precio_proximo) {
-                                echo 'ARS ' . number_format((float)$precio_proximo['precio'], 2, ',', '.') .
-                                  ' desde ' . h(fmt_fecha($precio_proximo['vigente_desde']));
-                              } else {
-                                echo '—';
-                              }
-                              ?>
+                            <div class="row mb-3">
+                              <div class="col-md-6">
+                                <div class="alert alert-success mb-2">
+                                  <strong><i class="fas fa-check-circle"></i> Precio vigente:</strong>
+                                  <?php
+                                  if ($precioVigente) {
+                                    echo h(strtoupper($precioVigente['moneda'] ?? 'ARS')) . ' ' . number_format((float)$precioVigente['precio'], 2, ',', '.') .
+                                      ' desde ' . h(fmt_fecha($precioVigente['vigente_desde']));
+                                  } else {
+                                    echo '—';
+                                  }
+                                  ?>
+                                </div>
+                              </div>
+                              <div class="col-md-6">
+                                <div class="alert alert-info mb-2">
+                                  <strong><i class="fas fa-clock"></i> Próximo programado:</strong>
+                                  <?php
+                                  if ($precioProximo) {
+                                    echo h(strtoupper($precioProximo['moneda'] ?? 'ARS')) . ' ' . number_format((float)$precioProximo['precio'], 2, ',', '.') .
+                                      ' desde ' . h(fmt_fecha($precioProximo['vigente_desde']));
+                                  } else {
+                                    echo '—';
+                                  }
+                                  ?>
+                                </div>
+                              </div>
                             </div>
-                          </div>
-                        </div>
 
-                        <!-- Histórico -->
-                        <div class="table-responsive">
-                          <table class="table table-sm table-hover">
-                            <thead>
-                              <tr>
-                                <th>Estado</th>
-                                <th>Precio</th>
-                                <th>Moneda</th>
-                                <th>Vigente desde</th>
-                                <th>Vigente hasta</th>
-                                <th>Comentario</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <?php if (empty($historial)): ?>
-                                <tr>
-                                  <td colspan="6" class="text-center text-muted">Sin registros de precio</td>
-                                </tr>
-                                <?php else: foreach ($historial as $p): [$est, $badge] = estado_precio($p['vigente_desde'], $p['vigente_hasta']); ?>
+                            <div class="table-responsive">
+                              <table class="table table-sm table-hover">
+                                <thead>
                                   <tr>
-                                    <td><span class="badge <?php echo $badge; ?>"><?php echo $est; ?></span></td>
-                                    <td><?php echo 'ARS ' . number_format((float)$p['precio'], 2, ',', '.'); ?></td>
-                                    <td><?php echo h($p['moneda'] ?: 'ARS'); ?></td>
-                                    <td><?php echo h(fmt_fecha($p['vigente_desde'])); ?></td>
-                                    <td><?php echo h($p['vigente_hasta'] ? fmt_fecha($p['vigente_hasta']) : '—'); ?></td>
-                                    <td><?php echo h($p['comentario'] ?? ''); ?></td>
+                                    <th>Estado</th>
+                                    <th>Precio</th>
+                                    <th>Moneda</th>
+                                    <th>Vigente desde</th>
+                                    <th>Vigente hasta</th>
+                                    <th>Comentario</th>
                                   </tr>
-                              <?php endforeach;
-                              endif; ?>
-                            </tbody>
-                          </table>
-                        </div>
+                                </thead>
+                                <tbody>
+                                  <?php if (empty($historialTipo)): ?>
+                                    <tr>
+                                      <td colspan="6" class="text-center text-muted">Sin registros de precio</td>
+                                    </tr>
+                                  <?php else: foreach ($historialTipo as $p): [$est, $badge] = estado_precio($p['vigente_desde'], $p['vigente_hasta']); ?>
+                                      <tr>
+                                        <td><span class="badge <?php echo $badge; ?>"><?php echo $est; ?></span></td>
+                                        <td><?php echo h(strtoupper($p['moneda'] ?? 'ARS')) . ' ' . number_format((float)$p['precio'], 2, ',', '.'); ?></td>
+                                        <td><?php echo h($p['moneda'] ?: 'ARS'); ?></td>
+                                        <td><?php echo h(fmt_fecha($p['vigente_desde'])); ?></td>
+                                        <td><?php echo h($p['vigente_hasta'] ? fmt_fecha($p['vigente_hasta']) : '—'); ?></td>
+                                        <td><?php echo h($p['comentario'] ?? ''); ?></td>
+                                      </tr>
+                                  <?php endforeach;
+                                  endif; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        <?php endforeach; ?>
 
                         <!-- NUEVO PRECIO (estos inputs van dentro del MISMO form) -->
                         <hr>
                         <h5 class="mb-3"><i class="fas fa-plus-circle"></i> Nuevo precio</h5>
                         <div class="form-row">
-                          <div class="form-group col-md-4">
+                          <div class="form-group col-md-3">
+                            <label for="tipo_precio_nuevo" class="required-field">Tipo de precio</label>
+                            <select disabled class="form-control" id="tipo_precio_nuevo" name="tipo_precio">
+                              <?php foreach ($priceTypes as $priceType => $meta): ?>
+                                <option value="<?php echo h($priceType); ?>"><?php echo h($meta['label']); ?></option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
+                          <div class="form-group col-md-3">
                             <label for="precio_nuevo" class="required-field">Precio (ARS)</label>
                             <input disabled type="text" inputmode="decimal" class="form-control" id="precio_nuevo" name="precio" placeholder="Ej: 120000,00">
                           </div>
-                          <div class="form-group col-md-4">
+                          <div class="form-group col-md-3">
                             <label for="desde_nuevo" class="required-field">Vigente desde</label>
                             <input disabled type="datetime-local" class="form-control" id="desde_nuevo" name="desde">
                           </div>
-                          <div class="form-group col-md-4">
+                          <div class="form-group col-md-3">
                             <label for="comentario_nuevo">Comentario (opcional)</label>
                             <input disabled type="text" class="form-control" id="comentario_nuevo" name="comentario" maxlength="255" placeholder="Motivo / nota interna">
                           </div>
@@ -457,8 +508,14 @@ function estado_precio($vd, $vh)
     // Datos para validación rápida (opcional)
     const rangosPrecio = <?php
                           $js = [];
-                          foreach ($historial as $p) {
-                            $js[] = ['desde' => $p['vigente_desde'], 'hasta' => $p['vigente_hasta']];
+                          foreach ($priceData as $tipo => $dataset) {
+                            $js[$tipo] = [];
+                            foreach ($dataset['historial'] as $p) {
+                              $js[$tipo][] = [
+                                'desde' => $p['vigente_desde'],
+                                'hasta' => $p['vigente_hasta'],
+                              ];
+                            }
                           }
                           echo json_encode($js, JSON_UNESCAPED_UNICODE);
                           ?>;
@@ -499,7 +556,7 @@ function estado_precio($vd, $vh)
         const ids = [
           'courseName', 'courseDescription', 'courseDuration', 'courseObjectives',
           'complejidad', 'programa', 'publico', 'cronograma', 'requisitos', 'observaciones',
-          'precio_nuevo', 'desde_nuevo', 'comentario_nuevo'
+          'tipo_precio_nuevo', 'precio_nuevo', 'desde_nuevo', 'comentario_nuevo'
         ];
         ids.forEach(id => {
           const el = document.getElementById(id);

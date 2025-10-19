@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once '../sbd.php';
+require_once __DIR__ . '/../price_helpers.php';
 
 function checkout_get_session_user_id(): int
 {
@@ -98,16 +99,18 @@ if ($curso) {
 
 $precio_vigente = null;
 if ($curso) {
+    $precioTipo = course_price_normalize_type($tipo_checkout);
     $pv = $con->prepare("
         SELECT precio, moneda, vigente_desde
         FROM curso_precio_hist
         WHERE id_curso = :c
+          AND tipo = :t
           AND vigente_desde <= NOW()
           AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
         ORDER BY vigente_desde DESC
         LIMIT 1
     ");
-    $pv->execute([':c' => $id_curso]);
+    $pv->execute([':c' => $id_curso, ':t' => $precioTipo]);
     $precio_vigente = $pv->fetch(PDO::FETCH_ASSOC);
 }
 

@@ -108,6 +108,7 @@ CREATE TABLE empresa_trabajadores (
 CREATE TABLE curso_precio_hist (
   id INT(11) NOT NULL AUTO_INCREMENT,
   id_curso INT(11) NOT NULL,
+  tipo VARCHAR(20) NOT NULL DEFAULT 'capacitacion',
   precio DECIMAL(10,2) NOT NULL,
   moneda CHAR(3) NOT NULL DEFAULT 'ARS',
   vigente_desde DATETIME NOT NULL,
@@ -115,6 +116,7 @@ CREATE TABLE curso_precio_hist (
   comentario VARCHAR(255) DEFAULT NULL,
   creado_en DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP(),
   KEY FK_id_curso (id_curso),
+  KEY idx_precio_tipo (id_curso, tipo, vigente_desde),
   PRIMARY KEY (id),
   CONSTRAINT FK_id_curso FOREIGN KEY (id_curso) REFERENCES cursos (id_curso)
 );
@@ -332,29 +334,29 @@ INSERT INTO cursos (id_curso, nombre_curso, descripcion_curso, duracion, objetiv
 (9, 'Operador de Excavadora', 'Curso de manejo de excavadoras hidráulicas.', 45, 'Enseñar técnicas de excavación y normativas de seguridad.', 2),
 (10, 'Operador de Topador', 'Curso de operación de topadores para movimiento de suelos.', 50, 'Formar operadores en nivelación, empuje y seguridad en obra.', 2);
 
-INSERT INTO curso_precio_hist (id, id_curso, precio, moneda, vigente_desde, vigente_hasta, comentario, creado_en) VALUES
-(1, 1, 120000.00, 'ARS', '2025-07-01 00:00:00', NULL, 'Ajuste invierno 2025', '2025-09-16 19:40:17'),
-(2, 1, 110000.00, 'ARS', '2025-03-01 00:00:00', '2025-06-30 23:59:59', 'Ajuste Q2 2025', '2025-09-16 19:40:17'),
-(3, 1, 95000.00, 'ARS', '2024-11-01 00:00:00', '2025-02-28 23:59:59', 'Tarifa fin 2024', '2025-09-16 19:40:17'),
-(4, 2, 85000.00, 'ARS', '2025-06-20 00:00:00', NULL, 'Tarifa vigente 2025-06', '2025-09-16 19:40:17'),
-(5, 3, 99000.00, 'ARS', '2025-07-01 00:00:00', NULL, 'Ajuste mitad de año', '2025-09-16 19:40:17'),
-(6, 3, 92000.00, 'ARS', '2025-05-01 00:00:00', '2025-06-30 23:59:59', 'Tarifa promo mayo-junio', '2025-09-16 19:40:17'),
-(7, 4, 150000.00, 'ARS', '2025-07-01 00:00:00', NULL, 'Revisión anual 2025', '2025-09-16 19:40:17'),
-(8, 4, 135000.00, 'ARS', '2024-12-01 00:00:00', '2025-06-30 23:59:59', 'Tarifa 2024-2025 H1', '2025-09-16 19:40:17'),
-(9, 5, 70000.00, 'ARS', '2025-08-15 00:00:00', NULL, 'Lanzamiento agosto 2025', '2025-09-16 19:40:17'),
-(10, 6, 130000.00, 'ARS', '2025-07-15 00:00:00', '2025-09-15 22:06:59', 'Ajuste julio 2025', '2025-09-16 19:40:17'),
-(11, 6, 120000.00, 'ARS', '2025-02-01 00:00:00', '2025-07-14 23:59:59', 'Revisión Q1-Q2 2025', '2025-09-16 19:40:17'),
-(12, 6, 105000.00, 'ARS', '2024-07-01 00:00:00', '2025-01-31 23:59:59', 'Tarifa 2do semestre 2024', '2025-09-16 19:40:17'),
-(13, 7, 65000.00, 'ARS', '2025-01-10 00:00:00', NULL, 'Tarifa base 2025', '2025-09-16 19:40:17'),
-(14, 8, 115000.00, 'ARS', '2025-06-01 00:00:00', NULL, 'Ajuste mitad de año', '2025-09-16 19:40:17'),
-(15, 8, 98000.00, 'ARS', '2025-03-10 00:00:00', '2025-05-31 23:59:59', 'Tarifa post lanzamiento', '2025-09-16 19:40:17'),
-(16, 9, 140000.00, 'ARS', '2025-04-01 00:00:00', NULL, 'Revisión abril 2025', '2025-09-16 19:40:17'),
-(17, 9, 125000.00, 'ARS', '2024-09-01 00:00:00', '2025-03-31 23:59:59', 'Tarifa 2024/2025', '2025-09-16 19:40:17'),
-(18, 10, 90000.00, 'ARS', '2025-02-01 00:00:00', '2025-09-26 00:02:59', 'Tarifa 2025', '2025-09-18 00:03:38'),
-(20, 6, 1200000.00, 'ARS', '2025-09-27 21:58:00', NULL, 'comentario', '2025-09-16 21:59:03'),
-(21, 6, 1300000.00, 'ARS', '2025-09-15 22:07:00', '2025-09-26 22:06:59', 'comentario', '2025-09-16 22:07:34'),
-(22, 6, 180000.00, 'ARS', '2025-09-26 22:07:00', '2025-09-27 21:57:59', 'mas', '2025-09-16 22:07:55'),
-(23, 10, 999999.00, 'ARS', '2025-09-26 00:03:00', NULL, 'inflacion loquita', '2025-09-18 00:03:38');
+INSERT INTO curso_precio_hist (id, id_curso, tipo, precio, moneda, vigente_desde, vigente_hasta, comentario, creado_en) VALUES
+(1, 1, 'capacitacion', 120000.00, 'ARS', '2025-07-01 00:00:00', NULL, 'Ajuste invierno 2025', '2025-09-16 19:40:17'),
+(2, 1, 'capacitacion', 110000.00, 'ARS', '2025-03-01 00:00:00', '2025-06-30 23:59:59', 'Ajuste Q2 2025', '2025-09-16 19:40:17'),
+(3, 1, 'capacitacion', 95000.00, 'ARS', '2024-11-01 00:00:00', '2025-02-28 23:59:59', 'Tarifa fin 2024', '2025-09-16 19:40:17'),
+(4, 2, 'capacitacion', 85000.00, 'ARS', '2025-06-20 00:00:00', NULL, 'Tarifa vigente 2025-06', '2025-09-16 19:40:17'),
+(5, 3, 'capacitacion', 99000.00, 'ARS', '2025-07-01 00:00:00', NULL, 'Ajuste mitad de año', '2025-09-16 19:40:17'),
+(6, 3, 'capacitacion', 92000.00, 'ARS', '2025-05-01 00:00:00', '2025-06-30 23:59:59', 'Tarifa promo mayo-junio', '2025-09-16 19:40:17'),
+(7, 4, 'capacitacion', 150000.00, 'ARS', '2025-07-01 00:00:00', NULL, 'Revisión anual 2025', '2025-09-16 19:40:17'),
+(8, 4, 'capacitacion', 135000.00, 'ARS', '2024-12-01 00:00:00', '2025-06-30 23:59:59', 'Tarifa 2024-2025 H1', '2025-09-16 19:40:17'),
+(9, 5, 'capacitacion', 70000.00, 'ARS', '2025-08-15 00:00:00', NULL, 'Lanzamiento agosto 2025', '2025-09-16 19:40:17'),
+(10, 6, 'capacitacion', 130000.00, 'ARS', '2025-07-15 00:00:00', '2025-09-15 22:06:59', 'Ajuste julio 2025', '2025-09-16 19:40:17'),
+(11, 6, 'capacitacion', 120000.00, 'ARS', '2025-02-01 00:00:00', '2025-07-14 23:59:59', 'Revisión Q1-Q2 2025', '2025-09-16 19:40:17'),
+(12, 6, 'capacitacion', 105000.00, 'ARS', '2024-07-01 00:00:00', '2025-01-31 23:59:59', 'Tarifa 2do semestre 2024', '2025-09-16 19:40:17'),
+(13, 7, 'capacitacion', 65000.00, 'ARS', '2025-01-10 00:00:00', NULL, 'Tarifa base 2025', '2025-09-16 19:40:17'),
+(14, 8, 'capacitacion', 115000.00, 'ARS', '2025-06-01 00:00:00', NULL, 'Ajuste mitad de año', '2025-09-16 19:40:17'),
+(15, 8, 'capacitacion', 98000.00, 'ARS', '2025-03-10 00:00:00', '2025-05-31 23:59:59', 'Tarifa post lanzamiento', '2025-09-16 19:40:17'),
+(16, 9, 'capacitacion', 140000.00, 'ARS', '2025-04-01 00:00:00', NULL, 'Revisión abril 2025', '2025-09-16 19:40:17'),
+(17, 9, 'capacitacion', 125000.00, 'ARS', '2024-09-01 00:00:00', '2025-03-31 23:59:59', 'Tarifa 2024/2025', '2025-09-16 19:40:17'),
+(18, 10, 'capacitacion', 90000.00, 'ARS', '2025-02-01 00:00:00', '2025-09-26 00:02:59', 'Tarifa 2025', '2025-09-18 00:03:38'),
+(20, 6, 'capacitacion', 1200000.00, 'ARS', '2025-09-27 21:58:00', NULL, 'comentario', '2025-09-16 21:59:03'),
+(21, 6, 'capacitacion', 1300000.00, 'ARS', '2025-09-15 22:07:00', '2025-09-26 22:06:59', 'comentario', '2025-09-16 22:07:34'),
+(22, 6, 'capacitacion', 180000.00, 'ARS', '2025-09-26 22:07:00', '2025-09-27 21:57:59', 'mas', '2025-09-16 22:07:55'),
+(23, 10, 'capacitacion', 999999.00, 'ARS', '2025-09-26 00:03:00', NULL, 'inflacion loquita', '2025-09-18 00:03:38');
 
 -- 4) Checkouts (dep. usuarios/cursos/estados)
 INSERT INTO checkout_capacitaciones (id_capacitacion, creado_por, id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda, id_estado, creado_en) VALUES
