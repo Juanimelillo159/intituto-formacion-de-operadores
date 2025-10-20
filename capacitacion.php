@@ -41,6 +41,12 @@ $modalidades = $sql_modalidades->fetchAll(PDO::FETCH_ASSOC);
 $modalidad_nombres = array_map(fn($v) => htmlspecialchars($v['modalidad_nombre']), $modalidades);
 $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
 
+$precio_capacitacion = null;
+if (!empty($curso['id_curso'])) {
+    $cursoId = (int)$curso['id_curso'];
+    $precio_capacitacion = obtener_precio_vigente($con, $cursoId, 'capacitacion');
+}
+
 // Helpers de salida segura
 function h(?string $v, string $fallback = ''): string
 {
@@ -54,6 +60,28 @@ function p(?string $v, string $fallback = ''): string
     $v = $v ?? '';
     $v = trim($v);
     return $v !== '' ? nl2br(htmlspecialchars($v)) : $fallback;
+}
+
+function obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso): ?array
+{
+    $sql = $con->prepare(
+        "SELECT precio, moneda, vigente_desde
+           FROM curso_precio_hist
+          WHERE id_curso = :curso
+            AND tipo_curso = :tipo
+            AND vigente_desde <= NOW()
+            AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+       ORDER BY vigente_desde DESC
+          LIMIT 1"
+    );
+    $sql->execute([
+        ':curso' => $cursoId,
+        ':tipo' => $tipoCurso,
+    ]);
+    $row = $sql->fetch(PDO::FETCH_ASSOC) ?: null;
+    $sql->closeCursor();
+
+    return $row ?: null;
 }
 
 // Meta dinámicos
@@ -165,6 +193,35 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                             <h3 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Información de la Capacitación</h3>
                         </div>
                         <div class="details-body">
+                            <div class="price-summary">
+                                <div class="price-summary-title"><i class="fas fa-hand-holding-usd me-2"></i>Inversión</div>
+                                <div class="price-summary-list">
+                                    <div class="price-summary-item">
+                                        <div>
+                                            <div class="price-summary-label">Capacitación</div>
+                                            <div class="price-summary-note">
+                                                <?php if ($precio_capacitacion): ?>
+                                                    <?php if (!empty($precio_capacitacion['vigente_desde'])): ?>
+                                                        Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_capacitacion['vigente_desde'])); ?>
+                                                    <?php else: ?>
+                                                        Precio vigente disponible en el sistema.
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    Precio a confirmar con el equipo comercial.
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <div class="price-summary-value">
+                                            <?php if ($precio_capacitacion): ?>
+                                                <?php echo strtoupper($precio_capacitacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_capacitacion['precio'], 2, ',', '.'); ?>
+                                            <?php else: ?>
+                                                —
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="detail-item">
                                 <div class="detail-icon"><i class="fas fa-clock"></i></div>
                                 <div class="detail-content">
@@ -192,7 +249,7 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                 </div>
                             <?php endif; ?>
 
-                            <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo isset($curso['id_curso']) ? (int)$curso['id_curso'] : 0; ?>">
+                            <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo isset($curso['id_curso']) ? (int)$curso['id_curso'] : 0; ?>&amp;tipo=capacitacion">
                                 <i class="fas fa-user-plus me-2"></i>Inscribirse Ahora
                             </a>
                         </div>

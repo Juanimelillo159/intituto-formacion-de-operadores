@@ -16,6 +16,28 @@ function p(?string $v, string $fallback = ''): string
     return $v !== '' ? nl2br(htmlspecialchars($v)) : $fallback;
 }
 
+function obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso): ?array
+{
+    $sql = $con->prepare(
+        "SELECT precio, moneda, vigente_desde
+           FROM curso_precio_hist
+          WHERE id_curso = :curso
+            AND tipo_curso = :tipo
+            AND vigente_desde <= NOW()
+            AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+       ORDER BY vigente_desde DESC
+          LIMIT 1"
+    );
+    $sql->execute([
+        ':curso' => $cursoId,
+        ':tipo' => $tipoCurso,
+    ]);
+    $row = $sql->fetch(PDO::FETCH_ASSOC) ?: null;
+    $sql->closeCursor();
+
+    return $row ?: null;
+}
+
 // ===== Parámetros =====
 $id_certificacion = filter_input(INPUT_GET, 'id_certificacion', FILTER_VALIDATE_INT) ?: 0;
 if ($id_certificacion <= 0 && isset($_GET['id_curso'])) {
@@ -105,6 +127,11 @@ $accVig     = p($cert['vigencia'] ?? $curso_fallback['observaciones'] ?? 'Inform
 $accDocs    = p($cert['documentacion'] ?? $curso_fallback['documentacion'] ?? 'Información no disponible.');
 
 $enlaceCheckoutId = (int)($curso_fallback['id_curso'] ?? $cert['id_certificacion'] ?? $id_certificacion);
+
+$precio_certificacion = null;
+if ($enlaceCheckoutId > 0) {
+    $precio_certificacion = obtener_precio_vigente($con, $enlaceCheckoutId, 'certificacion');
+}
 
 if (!$cert && !$curso_fallback) {
     http_response_code(404);
@@ -205,6 +232,35 @@ if (!$cert && !$curso_fallback) {
                         <h3 class="mb-0"><i class="fa-solid fa-certificate me-2"></i>Información de la Certificación</h3>
                     </div>
                     <div class="details-body">
+                        <div class="price-summary">
+                            <div class="price-summary-title"><i class="fa-solid fa-hand-holding-dollar me-2"></i>Inversión</div>
+                            <div class="price-summary-list">
+                                <div class="price-summary-item">
+                                    <div>
+                                        <div class="price-summary-label">Certificación</div>
+                                        <div class="price-summary-note">
+                                            <?php if ($precio_certificacion): ?>
+                                                <?php if (!empty($precio_certificacion['vigente_desde'])): ?>
+                                                    Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_certificacion['vigente_desde'])); ?>
+                                                <?php else: ?>
+                                                    Precio vigente disponible en el sistema.
+                                                <?php endif; ?>
+                                            <?php else: ?>
+                                                Precio a confirmar con el equipo comercial.
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="price-summary-value">
+                                        <?php if ($precio_certificacion): ?>
+                                            <?php echo strtoupper($precio_certificacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_certificacion['precio'], 2, ',', '.'); ?>
+                                        <?php else: ?>
+                                            —
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="detail-item">
                             <div class="detail-icon"><i class="fa-regular fa-clock"></i></div>
                             <div class="detail-content">

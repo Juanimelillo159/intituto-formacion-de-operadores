@@ -117,19 +117,26 @@ include '../admin/footer.php';
                                                 </div>
 
                                                 <div class="row">
-                                                    <div class="col-md-6">
+                                                    <div class="col-md-4">
                                                         <div class="form-group">
                                                             <label for="complejidad" class="required-field"><i class="fas fa-layer-group"></i> Nivel de Complejidad</label>
                                                             <input required type="text" class="form-control" id="complejidad" name="complejidad" placeholder="Ej: Básico, Intermedio, Avanzado">
                                                         </div>
                                                     </div>
 
-                                                    <!-- NUEVO: PRECIO -->
-                                                    <div class="col-md-6">
+                                                    <div class="col-md-4">
                                                         <div class="form-group">
-                                                            <label for="precio" class="required-field"><i class="fas fa-dollar-sign"></i> Precio (ARS)</label>
-                                                            <input required type="text" inputmode="decimal" class="form-control" id="precio" name="precio" placeholder="Ej: 120000,00 o 120000.00">
-                                                            <small class="form-text text-muted">Podés usar coma o punto como separador decimal.</small>
+                                                            <label for="precio_capacitacion" class="required-field"><i class="fas fa-chalkboard-teacher"></i> Precio capacitación (ARS)</label>
+                                                            <input required type="text" inputmode="decimal" class="form-control" id="precio_capacitacion" name="precio_capacitacion" placeholder="Ej: 120000,00 o 120000.00">
+                                                            <small class="form-text text-muted">Usá coma o punto como separador decimal.</small>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="col-md-4">
+                                                        <div class="form-group">
+                                                            <label for="precio_certificacion"><i class="fas fa-certificate"></i> Precio certificación (ARS)</label>
+                                                            <input type="text" inputmode="decimal" class="form-control" id="precio_certificacion" name="precio_certificacion" placeholder="Ingresá el valor si aplica">
+                                                            <small class="form-text text-muted">Completalo solo si el curso tiene certificación.</small>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -272,9 +279,9 @@ include '../admin/footer.php';
                     label: 'Nivel de Complejidad'
                 },
                 {
-                    sel: '#precio',
-                    label: 'Precio'
-                } // <-- NUEVO
+                    sel: '#precio_capacitacion',
+                    label: 'Precio capacitación'
+                }
             ];
             req.forEach(c => {
                 const $el = $(c.sel);
