@@ -102,7 +102,16 @@ $capacitacionBloqueadaMensaje = null;
 $capacitacionBloqueadaLabel = null;
 $capacitacionRegistroId = 0;
 
-if ($tipo_checkout === 'capacitacion' && $curso && $currentUserId > 0) {
+$capacitacionIntent = $tipo_checkout === 'capacitacion';
+if (!$capacitacionIntent && isset($_GET['tipo'])) {
+    $tipoQuery = strtolower(trim((string)$_GET['tipo']));
+    $capacitacionIntent = in_array($tipoQuery, ['capacitacion', 'capacitaciones'], true);
+}
+if (!$capacitacionIntent && isset($_GET['id_capacitacion'])) {
+    $capacitacionIntent = true;
+}
+
+if ($curso && $currentUserId > 0 && $tipo_checkout !== 'certificacion') {
     $capDuplicadaStmt = $con->prepare('
         SELECT id_capacitacion, id_estado, creado_en
           FROM checkout_capacitaciones
@@ -138,8 +147,10 @@ if ($tipo_checkout === 'capacitacion' && $curso && $currentUserId > 0) {
                     $redirectParams['orden'] = $capacitacionRegistroId;
                 }
 
-                header('Location: gracias.php?' . http_build_query($redirectParams));
-                exit;
+                if ($capacitacionIntent || $tipo_checkout !== 'curso') {
+                    header('Location: gracias.php?' . http_build_query($redirectParams));
+                    exit;
+                }
             }
         }
     }

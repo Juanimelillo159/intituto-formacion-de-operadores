@@ -275,6 +275,27 @@ function checkout_mp_status_detail_message(?string $statusDetail): ?string
     return 'Código informado por Mercado Pago: ' . strtoupper($detail);
 }
 
+$canResumePayment = false;
+$resumePaymentLabel = null;
+$resumePaymentUrl = null;
+if (!$error && $orderData) {
+    $tipoOrden = strtolower((string)($orderData['tipo_checkout'] ?? $tipoParam));
+    $registroId = (int)($orderData['id_inscripcion'] ?? 0);
+    if ($registroId <= 0 && isset($orderData['id_capacitacion'])) {
+        $registroId = (int)$orderData['id_capacitacion'];
+    }
+    if ($registroId <= 0 && isset($orderData['id_certificacion'])) {
+        $registroId = (int)$orderData['id_certificacion'];
+    }
+
+    $estadoPagoLower = strtolower((string)$estadoPago);
+    if ($registroId > 0 && in_array($tipoOrden, ['capacitacion', 'certificacion'], true) && in_array($estadoPagoLower, ['pendiente', 'cancelado', 'rechazado'], true)) {
+        $canResumePayment = true;
+        $resumePaymentLabel = $estadoPagoLower === 'pendiente' ? 'Continuar pago' : 'Retomar pago';
+        $resumePaymentUrl = 'retomar_pago.php?tipo=' . $tipoOrden . '&id=' . $registroId;
+    }
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -666,6 +687,14 @@ function checkout_mp_status_detail_message(?string $statusDetail): ?string
                     <?php if (!empty($orderData['id_inscripcion'])): ?>
                         <div class="order-number">
                             <i class="fas fa-hashtag"></i> Orden: <?php echo str_pad((string) $orderData['id_inscripcion'], 6, '0', STR_PAD_LEFT); ?>
+                        </div>
+                    <?php endif; ?>
+
+                    <?php if ($canResumePayment && $resumePaymentUrl): ?>
+                        <div class="mt-4">
+                            <a class="btn btn-primary btn-lg" href="<?php echo htmlspecialchars($resumePaymentUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                <i class="fas fa-rotate-right me-2"></i><?php echo htmlspecialchars($resumePaymentLabel ?? 'Retomar pago', ENT_QUOTES, 'UTF-8'); ?>
+                            </a>
                         </div>
                     <?php endif; ?>
                 <?php endif; ?>

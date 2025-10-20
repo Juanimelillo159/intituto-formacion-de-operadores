@@ -249,7 +249,7 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                 </div>
                             <?php endif; ?>
 
-                            <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo isset($curso['id_curso']) ? (int)$curso['id_curso'] : 0; ?>">
+                            <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo isset($curso['id_curso']) ? (int)$curso['id_curso'] : 0; ?>&amp;tipo=capacitacion">
                                 <i class="fas fa-user-plus me-2"></i>Inscribirse Ahora
                             </a>
                         </div>

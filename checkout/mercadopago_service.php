@@ -142,6 +142,7 @@ function mp_sync_certificacion(PDO $con, int $certificacionId, string $estadoPag
         $nuevoEstado = $estadoActual === 3 ? 2 : $estadoActual;
         $mensaje = 'Pago rechazado por Mercado Pago';
     } elseif ($estadoPago === 'cancelado') {
+        $nuevoEstado = $estadoActual === 3 ? 2 : $estadoActual;
         $mensaje = 'Pago cancelado en Mercado Pago';
     }
 
