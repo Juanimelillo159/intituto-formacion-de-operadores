@@ -96,24 +96,43 @@ if ($curso) {
     $cursoDescripcion = (string)($curso['descripcion'] ?? $curso['descripcion_curso'] ?? '');
 }
 
+function checkout_obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso): ?array
+{
+    static $stmt = null;
+    if ($stmt === null) {
+        $stmt = $con->prepare("
+            SELECT precio, moneda, vigente_desde
+              FROM curso_precio_hist
+             WHERE id_curso = :curso
+               AND tipo_curso = :tipo
+               AND vigente_desde <= NOW()
+               AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+          ORDER BY vigente_desde DESC
+             LIMIT 1
+        ");
+    }
+
+    $stmt->execute([
+        ':curso' => $cursoId,
+        ':tipo' => $tipoCurso,
+    ]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    $stmt->closeCursor();
+
+    return $row ?: null;
+}
+
 $precio_vigente = null;
+$precio_capacitacion = null;
+$precio_certificacion = null;
+$tipoPrecioCheckout = $tipo_checkout === 'certificacion' ? 'certificacion' : 'capacitacion';
 if ($curso) {
-    $tipoPrecioCheckout = $tipo_checkout === 'certificacion' ? 'certificacion' : 'capacitacion';
-    $pv = $con->prepare("
-        SELECT precio, moneda, vigente_desde
-        FROM curso_precio_hist
-        WHERE id_curso = :c
-          AND tipo_curso = :t
-          AND vigente_desde <= NOW()
-          AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
-        ORDER BY vigente_desde DESC
-        LIMIT 1
-    ");
-    $pv->execute([':c' => $id_curso, ':t' => $tipoPrecioCheckout]);
-    $precio_vigente = $pv->fetch(PDO::FETCH_ASSOC);
+    $precio_capacitacion = checkout_obtener_precio_vigente($con, $id_curso, 'capacitacion');
+    $precio_certificacion = checkout_obtener_precio_vigente($con, $id_curso, 'certificacion');
+
+    $precio_vigente = $tipoPrecioCheckout === 'certificacion' ? $precio_certificacion : $precio_capacitacion;
     if (!$precio_vigente && $tipoPrecioCheckout !== 'capacitacion') {
-        $pv->execute([':c' => $id_curso, ':t' => 'capacitacion']);
-        $precio_vigente = $pv->fetch(PDO::FETCH_ASSOC);
+        $precio_vigente = $precio_capacitacion;
     }
 }
 
@@ -462,11 +481,43 @@ include '../head.php';
                                                 <div class="summary-card h-100 d-flex flex-column justify-content-between">
                                                     <h5>Inversión</h5>
                                                     <div class="price-highlight">
-                                                        <?php if ($precio_vigente): ?>
-                                                            <div class="price-value">
-                                                                <?php echo strtoupper($precio_vigente['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_vigente['precio'], 2, ',', '.'); ?>
+                                                        <?php if ($precio_capacitacion || $precio_certificacion): ?>
+                                                            <div class="price-entries">
+                                                                <div class="price-entry <?php echo $tipoPrecioCheckout === 'capacitacion' ? 'price-entry-active' : ''; ?>">
+                                                                    <div class="price-entry-label">Capacitación</div>
+                                                                    <?php if ($precio_capacitacion): ?>
+                                                                        <div class="price-entry-value">
+                                                                            <?php echo strtoupper($precio_capacitacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_capacitacion['precio'], 2, ',', '.'); ?>
+                                                                        </div>
+                                                                        <div class="price-entry-note">
+                                                                            <?php if (!empty($precio_capacitacion['vigente_desde'])): ?>
+                                                                                Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_capacitacion['vigente_desde'])); ?>
+                                                                            <?php else: ?>
+                                                                                Precio vigente disponible en el sistema.
+                                                                            <?php endif; ?>
+                                                                        </div>
+                                                                    <?php else: ?>
+                                                                        <div class="price-entry-missing">Precio a confirmar.</div>
+                                                                    <?php endif; ?>
+                                                                </div>
+                                                                <div class="price-entry <?php echo $tipoPrecioCheckout === 'certificacion' ? 'price-entry-active' : ''; ?>">
+                                                                    <div class="price-entry-label">Certificación</div>
+                                                                    <?php if ($precio_certificacion): ?>
+                                                                        <div class="price-entry-value">
+                                                                            <?php echo strtoupper($precio_certificacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_certificacion['precio'], 2, ',', '.'); ?>
+                                                                        </div>
+                                                                        <div class="price-entry-note">
+                                                                            <?php if (!empty($precio_certificacion['vigente_desde'])): ?>
+                                                                                Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_certificacion['vigente_desde'])); ?>
+                                                                            <?php else: ?>
+                                                                                Precio vigente disponible en el sistema.
+                                                                            <?php endif; ?>
+                                                                        </div>
+                                                                    <?php else: ?>
+                                                                        <div class="price-entry-missing">Precio a confirmar.</div>
+                                                                    <?php endif; ?>
+                                                                </div>
                                                             </div>
-                                                            <span class="price-note">Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_vigente['vigente_desde'])); ?></span>
                                                         <?php else: ?>
                                                             <div class="text-muted">Precio a confirmar por el equipo comercial.</div>
                                                         <?php endif; ?>
