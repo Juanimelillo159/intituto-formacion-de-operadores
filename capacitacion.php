@@ -42,11 +42,9 @@ $modalidad_nombres = array_map(fn($v) => htmlspecialchars($v['modalidad_nombre']
 $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
 
 $precio_capacitacion = null;
-$precio_certificacion = null;
 if (!empty($curso['id_curso'])) {
     $cursoId = (int)$curso['id_curso'];
     $precio_capacitacion = obtener_precio_vigente($con, $cursoId, 'capacitacion');
-    $precio_certificacion = obtener_precio_vigente($con, $cursoId, 'certificacion');
 }
 
 // Helpers de salida segura
@@ -216,29 +214,6 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                         <div class="price-summary-value">
                                             <?php if ($precio_capacitacion): ?>
                                                 <?php echo strtoupper($precio_capacitacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_capacitacion['precio'], 2, ',', '.'); ?>
-                                            <?php else: ?>
-                                                —
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <div class="price-summary-item">
-                                        <div>
-                                            <div class="price-summary-label">Certificación</div>
-                                            <div class="price-summary-note">
-                                                <?php if ($precio_certificacion): ?>
-                                                    <?php if (!empty($precio_certificacion['vigente_desde'])): ?>
-                                                        Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_certificacion['vigente_desde'])); ?>
-                                                    <?php else: ?>
-                                                        Precio vigente disponible en el sistema.
-                                                    <?php endif; ?>
-                                                <?php else: ?>
-                                                    Precio a confirmar con el equipo comercial.
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
-                                        <div class="price-summary-value">
-                                            <?php if ($precio_certificacion): ?>
-                                                <?php echo strtoupper($precio_certificacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_certificacion['precio'], 2, ',', '.'); ?>
                                             <?php else: ?>
                                                 —
                                             <?php endif; ?>

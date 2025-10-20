@@ -128,10 +128,8 @@ $accDocs    = p($cert['documentacion'] ?? $curso_fallback['documentacion'] ?? 'I
 
 $enlaceCheckoutId = (int)($curso_fallback['id_curso'] ?? $cert['id_certificacion'] ?? $id_certificacion);
 
-$precio_capacitacion = null;
 $precio_certificacion = null;
 if ($enlaceCheckoutId > 0) {
-    $precio_capacitacion = obtener_precio_vigente($con, $enlaceCheckoutId, 'capacitacion');
     $precio_certificacion = obtener_precio_vigente($con, $enlaceCheckoutId, 'certificacion');
 }
 
@@ -237,29 +235,6 @@ if (!$cert && !$curso_fallback) {
                         <div class="price-summary">
                             <div class="price-summary-title"><i class="fa-solid fa-hand-holding-dollar me-2"></i>Inversión</div>
                             <div class="price-summary-list">
-                                <div class="price-summary-item">
-                                    <div>
-                                        <div class="price-summary-label">Capacitación</div>
-                                        <div class="price-summary-note">
-                                            <?php if ($precio_capacitacion): ?>
-                                                <?php if (!empty($precio_capacitacion['vigente_desde'])): ?>
-                                                    Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_capacitacion['vigente_desde'])); ?>
-                                                <?php else: ?>
-                                                    Precio vigente disponible en el sistema.
-                                                <?php endif; ?>
-                                            <?php else: ?>
-                                                Precio a confirmar con el equipo comercial.
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <div class="price-summary-value">
-                                        <?php if ($precio_capacitacion): ?>
-                                            <?php echo strtoupper($precio_capacitacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_capacitacion['precio'], 2, ',', '.'); ?>
-                                        <?php else: ?>
-                                            —
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
                                 <div class="price-summary-item">
                                     <div>
                                         <div class="price-summary-label">Certificación</div>
