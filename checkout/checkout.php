@@ -128,6 +128,19 @@ if ($tipo_checkout === 'capacitacion' && $curso && $currentUserId > 0) {
                 2 => 'Ya tenés una inscripción activa para esta capacitación. Consultá las novedades desde Mis cursos.',
                 default => 'Ya registraste una inscripción para esta capacitación. Revisá su estado en Mis cursos antes de generar una nueva.',
             };
+
+            if ($capacitacionRegistroId > 0) {
+                $redirectParams = ['tipo' => 'capacitacion'];
+                $pagoId = checkout_find_latest_pago_for_capacitacion($con, $capacitacionRegistroId);
+                if ($pagoId !== null && $pagoId > 0) {
+                    $redirectParams['orden'] = $pagoId;
+                } else {
+                    $redirectParams['orden'] = $capacitacionRegistroId;
+                }
+
+                header('Location: gracias.php?' . http_build_query($redirectParams));
+                exit;
+            }
         }
     }
 }
@@ -197,6 +210,26 @@ function checkout_capacitacion_estado_label(?int $estado): string
     };
 }
 
+function checkout_find_latest_pago_for_capacitacion(PDO $con, int $capacitacionId): ?int
+{
+    static $stmt = null;
+    if ($stmt === null) {
+        $stmt = $con->prepare('
+            SELECT id_pago
+              FROM checkout_pagos
+             WHERE id_capacitacion = :capacitacion
+          ORDER BY id_pago DESC
+             LIMIT 1
+        ');
+    }
+
+    $stmt->execute([':capacitacion' => $capacitacionId]);
+    $pagoId = $stmt->fetchColumn();
+    $stmt->closeCursor();
+
+    return $pagoId !== false ? (int)$pagoId : null;
+}
+
 $certificacionData = null;
 $certificacionEstado = null;
 $certificacionId = 0;
@@ -243,6 +276,27 @@ if ($tipo_checkout === 'certificacion' && $curso) {
     if ($certificacionData) {
         $certificacionId = (int)$certificacionData['id_certificacion'];
         $certificacionEstado = (int)$certificacionData['id_estado'];
+        $llegoDesdeRegistro = false;
+        if ($certificacionRegistroId > 0 && $certificacionRegistroId === $certificacionId) {
+            $llegoDesdeRegistro = true;
+        } elseif ($prefetchedCertificacion && (int)($prefetchedCertificacion['id_certificacion'] ?? 0) === $certificacionId) {
+            $llegoDesdeRegistro = true;
+        }
+
+        if ($certificacionId > 0) {
+            $shouldRedirectGracias = false;
+            if ($certificacionEstado === 3 || $certificacionEstado === 1) {
+                $shouldRedirectGracias = true;
+            } elseif ($certificacionEstado === 2 && !$llegoDesdeRegistro) {
+                $shouldRedirectGracias = true;
+            }
+
+            if ($shouldRedirectGracias) {
+                header('Location: gracias_certificacion.php?' . http_build_query(['certificacion' => $certificacionId]));
+                exit;
+            }
+        }
+
         $certificacionPuedePagar = ($certificacionEstado === 2);
         $certificacionPagado = ($certificacionEstado === 3);
         $certificacionAllowSubmit = ($certificacionEstado === 4);
