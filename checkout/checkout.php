@@ -98,17 +98,23 @@ if ($curso) {
 
 $precio_vigente = null;
 if ($curso) {
+    $tipoPrecioCheckout = $tipo_checkout === 'certificacion' ? 'certificacion' : 'capacitacion';
     $pv = $con->prepare("
         SELECT precio, moneda, vigente_desde
         FROM curso_precio_hist
         WHERE id_curso = :c
+          AND tipo_curso = :t
           AND vigente_desde <= NOW()
           AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
         ORDER BY vigente_desde DESC
         LIMIT 1
     ");
-    $pv->execute([':c' => $id_curso]);
+    $pv->execute([':c' => $id_curso, ':t' => $tipoPrecioCheckout]);
     $precio_vigente = $pv->fetch(PDO::FETCH_ASSOC);
+    if (!$precio_vigente && $tipoPrecioCheckout !== 'capacitacion') {
+        $pv->execute([':c' => $id_curso, ':t' => 'capacitacion']);
+        $precio_vigente = $pv->fetch(PDO::FETCH_ASSOC);
+    }
 }
 
 function h($s)

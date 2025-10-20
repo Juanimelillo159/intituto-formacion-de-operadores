@@ -193,6 +193,7 @@ CREATE TABLE asignaciones_cursos (
 CREATE TABLE curso_precio_hist (
   id INT(11) NOT NULL AUTO_INCREMENT,
   id_curso INT(11) NOT NULL,
+  tipo_curso ENUM('capacitacion','certificacion') NOT NULL DEFAULT 'capacitacion',
   precio DECIMAL(10,2) NOT NULL,
   moneda CHAR(3) NOT NULL DEFAULT 'ARS',
   vigente_desde DATETIME NOT NULL,
