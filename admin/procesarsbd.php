@@ -166,6 +166,24 @@ try {
             }
 
             $certificacionId = (int)($_POST['id_certificacion'] ?? 0);
+            if ($certificacionId <= 0) {
+                $certDuplicadaStmt = $con->prepare('
+                    SELECT id_certificacion, id_estado
+                      FROM checkout_certificaciones
+                     WHERE creado_por = :usuario
+                       AND id_curso = :curso
+                 ORDER BY id_certificacion DESC
+                     LIMIT 1
+                ');
+                $certDuplicadaStmt->execute([
+                    ':usuario' => $usuarioId,
+                    ':curso' => $checkoutCursoId,
+                ]);
+                $certDuplicada = $certDuplicadaStmt->fetch();
+                if ($certDuplicada && in_array((int)($certDuplicada['id_estado'] ?? 0), [1, 2, 3], true)) {
+                    throw new RuntimeException('Ya tenés una solicitud en proceso para esta certificación. Revisá su estado desde Mis cursos.');
+                }
+            }
             $nombreInscrito  = trim((string)($_POST['nombre_insc'] ?? ''));
             $apellidoInscrito = trim((string)($_POST['apellido_insc'] ?? ''));
             $emailInscrito   = trim((string)($_POST['email_insc'] ?? ''));
@@ -534,6 +552,25 @@ try {
             }
             if ($estadoCert !== 2) {
                 throw new RuntimeException('Debés esperar la aprobación de la certificación antes de continuar con el pago.');
+            }
+        }
+
+        if ($checkoutTipo !== 'certificacion' && $usuarioId > 0) {
+            $capDuplicadaStmt = $con->prepare('
+                SELECT id_capacitacion, id_estado
+                  FROM checkout_capacitaciones
+                 WHERE creado_por = :usuario
+                   AND id_curso = :curso
+             ORDER BY id_capacitacion DESC
+                 LIMIT 1
+            ');
+            $capDuplicadaStmt->execute([
+                ':usuario' => $usuarioId,
+                ':curso' => $checkoutCursoId,
+            ]);
+            $capDuplicada = $capDuplicadaStmt->fetch();
+            if ($capDuplicada && in_array((int)($capDuplicada['id_estado'] ?? 0), [1, 2, 3], true)) {
+                throw new RuntimeException('Ya registraste una inscripción para esta capacitación. Revisá su estado en Mis cursos antes de generar una nueva.');
             }
         }
 

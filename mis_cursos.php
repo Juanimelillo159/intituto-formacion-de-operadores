@@ -1196,7 +1196,94 @@ SQL;
             $cursosComprados = array_values($items);
         } else {
             $cursosComprados = [];
-        } 
+        }
+
+        if ($checkoutCapacitacionesAvailable) {
+            $capResumenSelect = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? 'mods.modalidad_resumen'
+                : 'NULL AS modalidad_resumen';
+            $capResumenJoin = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? <<<SQL
+LEFT JOIN (
+    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+      FROM curso_modalidad cm
+      INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+     GROUP BY cm.id_curso
+) AS mods ON mods.id_curso = cc.id_curso
+SQL
+                : '';
+
+            $sqlCapPagadas = <<<SQL
+SELECT
+    cc.id_capacitacion,
+    cc.id_curso,
+    cc.creado_en,
+    cc.id_estado,
+    c.nombre_curso,
+    {$capResumenSelect}
+FROM checkout_capacitaciones cc
+INNER JOIN cursos c ON c.id_curso = cc.id_curso
+{$capResumenJoin}
+WHERE cc.creado_por = :usuario
+  AND cc.id_estado = 3
+ORDER BY cc.creado_en DESC, cc.id_capacitacion DESC
+SQL;
+
+            $stmtCapPagadas = $pdo->prepare($sqlCapPagadas);
+            $stmtCapPagadas->bindValue(':usuario', $userId, PDO::PARAM_INT);
+            $stmtCapPagadas->execute();
+
+            $capCursosKeys = [];
+            while ($row = $stmtCapPagadas->fetch(PDO::FETCH_ASSOC)) {
+                $rowId = (int)($row['id_capacitacion'] ?? 0);
+                $rowCursoId = (int)($row['id_curso'] ?? 0);
+                if ($rowId <= 0 || $rowCursoId <= 0) {
+                    continue;
+                }
+
+                $entryKey = 'checkout-cap-' . $rowId;
+                if (isset($capCursosKeys[$entryKey])) {
+                    continue;
+                }
+                $capCursosKeys[$entryKey] = true;
+
+                $fechaFmt = null;
+                if (!empty($row['creado_en'])) {
+                    try {
+                        $fechaFmt = (new DateTimeImmutable((string)$row['creado_en']))->format('d/m/Y H:i');
+                    } catch (Throwable $capPaidDateException) {
+                        $fechaFmt = $row['creado_en'];
+                    }
+                }
+
+                $cursosComprados[] = [
+                    'id_item'             => -abs($rowId),
+                    'id_curso'            => $rowCursoId,
+                    'tipo_curso'          => 'capacitacion',
+                    'nombre_curso'        => $row['nombre_curso'] ?: ('Curso #' . $rowCursoId),
+                    'nombre_modalidad'    => $row['modalidad_resumen'] ?? null,
+                    'pagado_en'           => $row['creado_en'] ?? null,
+                    'pagado_en_formatted' => $fechaFmt,
+                    'moneda'              => null,
+                    'precio_unitario'     => null,
+                    'cantidad'            => 1,
+                    'inscripcion'         => [
+                        'estado'   => 'Pago aprobado',
+                        'clase'    => 'bg-success',
+                        'progreso' => null,
+                    ],
+                    'origen'              => 'checkout_capacitacion',
+                ];
+            }
+        }
+
+        if (!empty($cursosComprados)) {
+            usort($cursosComprados, static function (array $left, array $right): int {
+                $leftDate = (string)($left['pagado_en'] ?? '');
+                $rightDate = (string)($right['pagado_en'] ?? '');
+                return strcmp($rightDate, $leftDate);
+            });
+        }
     }
     $asignadas = [];
     if ($asignacionesCursosAvailable) {

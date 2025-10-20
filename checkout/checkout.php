@@ -96,6 +96,42 @@ if ($curso) {
     $cursoDescripcion = (string)($curso['descripcion'] ?? $curso['descripcion_curso'] ?? '');
 }
 
+$capacitacionBloqueada = false;
+$capacitacionBloqueadaEstado = null;
+$capacitacionBloqueadaMensaje = null;
+$capacitacionBloqueadaLabel = null;
+$capacitacionRegistroId = 0;
+
+if ($tipo_checkout === 'capacitacion' && $curso && $currentUserId > 0) {
+    $capDuplicadaStmt = $con->prepare('
+        SELECT id_capacitacion, id_estado, creado_en
+          FROM checkout_capacitaciones
+         WHERE id_curso = :curso
+           AND creado_por = :usuario
+     ORDER BY id_capacitacion DESC
+         LIMIT 1
+    ');
+    $capDuplicadaStmt->execute([
+        ':curso' => $id_curso,
+        ':usuario' => $currentUserId,
+    ]);
+    $capDuplicadaRow = $capDuplicadaStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($capDuplicadaRow) {
+        $capEstado = (int)($capDuplicadaRow['id_estado'] ?? 0);
+        if (in_array($capEstado, [1, 2, 3], true)) {
+            $capacitacionBloqueada = true;
+            $capacitacionBloqueadaEstado = $capEstado;
+            $capacitacionRegistroId = (int)($capDuplicadaRow['id_capacitacion'] ?? 0);
+            $capacitacionBloqueadaLabel = checkout_capacitacion_estado_label($capEstado);
+            $capacitacionBloqueadaMensaje = match ($capEstado) {
+                3 => 'Ya registramos y aprobamos tu pago para esta capacitación. Encontrala en la sección Mis cursos.',
+                2 => 'Ya tenés una inscripción activa para esta capacitación. Consultá las novedades desde Mis cursos.',
+                default => 'Ya registraste una inscripción para esta capacitación. Revisá su estado en Mis cursos antes de generar una nueva.',
+            };
+        }
+    }
+}
+
 function checkout_obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso): ?array
 {
     static $stmt = null;
@@ -148,6 +184,16 @@ function checkout_certificacion_estado_label(?int $estado): string
         3 => 'Pago registrado',
         4 => 'Rechazada',
         default => 'En revisión',
+    };
+}
+
+function checkout_capacitacion_estado_label(?int $estado): string
+{
+    return match ($estado) {
+        2 => 'Confirmada',
+        3 => 'Pago aprobado',
+        4 => 'Rechazada',
+        default => 'Pendiente',
     };
 }
 
@@ -358,6 +404,26 @@ include '../head.php';
                                 </div>
                             </div>
                         <?php else: ?>
+                            <?php if ($tipo_checkout === 'capacitacion' && $capacitacionBloqueada && $capacitacionBloqueadaMensaje !== null): ?>
+                                <div class="checkout-content">
+                                    <div class="alert alert-warning checkout-alert" role="alert">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <i class="fas fa-info-circle mt-1"></i>
+                                            <div>
+                                                <strong>Ya registraste esta capacitación</strong>
+                                                <div class="small mt-1"><?php echo h($capacitacionBloqueadaMensaje); ?></div>
+                                                <?php if ($capacitacionBloqueadaLabel !== null): ?>
+                                                    <div class="small text-muted mt-2">Estado: <?php echo h($capacitacionBloqueadaLabel); ?></div>
+                                                <?php endif; ?>
+                                                <a href="<?php echo htmlspecialchars($base_path . 'mis_cursos.php', ENT_QUOTES, 'UTF-8'); ?>" class="small fw-semibold d-inline-flex align-items-center gap-1 mt-2">
+                                                    <i class="fas fa-arrow-right"></i>
+                                                    Ir a Mis cursos
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
                             <div class="checkout-stepper">
                                 <div class="checkout-step is-active" data-step="1">
                                     <div class="step-index">1</div>
@@ -530,7 +596,7 @@ include '../head.php';
                                         </div>
                                         <div class="nav-actions">
                                             <span></span>
-                                            <button type="button" class="btn btn-gradient btn-rounded" data-next="2">
+                                            <button type="button" class="btn btn-gradient btn-rounded" data-next="2" <?php echo ($tipo_checkout === 'capacitacion' && $capacitacionBloqueada) ? 'disabled' : ''; ?>>
                                                 Continuar al paso 2
                                                 <i class="fas fa-arrow-right ms-2"></i>
                                             </button>
@@ -947,7 +1013,7 @@ include '../head.php';
                                                 <i class="fas fa-arrow-left me-2"></i>
                                                 Volver
                                             </button>
-                                            <button type="button" class="btn btn-gradient btn-rounded" id="btnConfirmar" <?php echo ($tipo_checkout === 'certificacion' && (!$certificacionPuedePagar || $certificacionPagado)) ? 'disabled' : ''; ?>>
+                                            <button type="button" class="btn btn-gradient btn-rounded" id="btnConfirmar" <?php echo ($tipo_checkout === 'certificacion' && (!$certificacionPuedePagar || $certificacionPagado)) || ($tipo_checkout === 'capacitacion' && $capacitacionBloqueada) ? 'disabled' : ''; ?>>
                                                 <span class="btn-label">Confirmar inscripción</span>
                                                 <i class="fas fa-paper-plane ms-2"></i>
                                             </button>
@@ -980,6 +1046,8 @@ include '../head.php';
 
             const mpAvailable = <?php echo $precio_vigente ? 'true' : 'false'; ?>;
             const checkoutType = '<?php echo htmlspecialchars($tipo_checkout, ENT_QUOTES, 'UTF-8'); ?>';
+            const capacitacionBloqueada = <?php echo ($tipo_checkout === 'capacitacion' && $capacitacionBloqueada) ? 'true' : 'false'; ?>;
+            const capacitacionBloqueadaMensaje = <?php echo json_encode($capacitacionBloqueada ? $capacitacionBloqueadaMensaje : ''); ?>;
             const certificacionPuedePagar = <?php echo $certificacionPuedePagar ? 'true' : 'false'; ?>;
             const certificacionPagado = <?php echo $certificacionPagado ? 'true' : 'false'; ?>;
             const certificacionAllowSubmit = <?php echo $certificacionAllowSubmit ? 'true' : 'false'; ?>;
@@ -1196,6 +1264,10 @@ include '../head.php';
                     if (Number.isNaN(next)) {
                         return;
                     }
+                    if (checkoutType === 'capacitacion' && capacitacionBloqueada) {
+                        showAlert('info', 'Inscripción registrada', capacitacionBloqueadaMensaje || 'Ya registraste una inscripción para esta capacitación.');
+                        return;
+                    }
                     if (checkoutType === 'certificacion' && currentStep === 2 && next === 3 && (!certificacionPuedePagar && !certificacionPagado)) {
                         showAlert('info', 'Aún no podés continuar', 'Necesitamos aprobar tu documentación antes de habilitar el pago.');
                         return;
@@ -1346,6 +1418,10 @@ include '../head.php';
             };
 
             confirmButton.addEventListener('click', () => {
+                if (checkoutType === 'capacitacion' && capacitacionBloqueada) {
+                    showAlert('info', 'Inscripción registrada', capacitacionBloqueadaMensaje || 'Ya registraste una inscripción para esta capacitación.');
+                    return;
+                }
                 if (checkoutType === 'certificacion') {
                     if (certificacionPagado) {
                         showAlert('info', 'Pago registrado', 'Ya registramos el pago de tu certificación. No es necesario volver a enviar el formulario.');
