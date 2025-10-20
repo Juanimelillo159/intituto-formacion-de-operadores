@@ -72,6 +72,40 @@ function cert_estado_label(?int $estado): string
     };
 }
 
+function cert_estado_details(?int $estado): array
+{
+    return match ($estado) {
+        2 => [
+            'badge' => 'approved',
+            'tone' => 'approved',
+            'icon' => 'fas fa-circle-check',
+            'title' => 'Documentación aprobada',
+            'message' => 'Tu documentación fue validada. Avanzá al pago para finalizar la certificación.',
+        ],
+        3 => [
+            'badge' => 'paid',
+            'tone' => 'paid',
+            'icon' => 'fas fa-shield-heart',
+            'title' => 'Pago registrado',
+            'message' => 'Confirmamos tu pago y completamos la certificación. Te enviaremos las próximas indicaciones por correo.',
+        ],
+        4 => [
+            'badge' => 'rejected',
+            'tone' => 'rejected',
+            'icon' => 'fas fa-circle-xmark',
+            'title' => 'Solicitud rechazada',
+            'message' => 'Revisá el correo registrado: allí detallamos los motivos y los pasos a seguir.',
+        ],
+        default => [
+            'badge' => 'pending',
+            'tone' => 'pending',
+            'icon' => 'fas fa-hourglass-half',
+            'title' => 'Solicitud en revisión',
+            'message' => 'Estamos evaluando la documentación recibida y te avisaremos por correo ni bien tengamos novedades.',
+        ],
+    };
+}
+
 $viewData = is_array($data) ? $data : [];
 if (!$viewData && !$error) {
     $error = 'No encontramos la solicitud de certificación para mostrar.';
@@ -81,6 +115,36 @@ $nombreCurso = $viewData['curso_nombre'] ?? '';
 $nombreSolicitante = trim(($viewData['nombre'] ?? '') . ' ' . ($viewData['apellido'] ?? ''));
 $estadoValor = $viewData['estado'] ?? null;
 $estadoActual = cert_estado_label($estadoValor);
+$estadoDetalles = cert_estado_details($estadoValor);
+$estadoBadgeClass = $estadoDetalles['badge'] ?? 'pending';
+$estadoHighlightClass = 'status-' . ($estadoDetalles['tone'] ?? 'pending');
+$estadoHighlightIcon = $estadoDetalles['icon'] ?? 'fas fa-hourglass-half';
+$estadoHighlightTitle = $estadoDetalles['title'] ?? $estadoActual;
+$estadoHighlightMessage = $estadoDetalles['message'] ?? '';
+$estadoHeaderClass = match ($estadoBadgeClass) {
+    'rejected' => 'error',
+    'approved',
+    'paid' => 'success',
+    default => 'pending',
+};
+$estadoHeaderIcon = match ($estadoBadgeClass) {
+    'rejected' => 'fas fa-circle-xmark',
+    'paid' => 'fas fa-shield-heart',
+    'approved' => 'fas fa-circle-check',
+    default => 'fas fa-hourglass-half',
+};
+$estadoHeaderHeading = match ($estadoBadgeClass) {
+    'approved' => '¡Tu certificación está aprobada!',
+    'paid' => '¡Pago confirmado!',
+    'rejected' => 'Necesitamos revisar tu solicitud',
+    default => '¡Gracias por enviar tu solicitud!',
+};
+$estadoHeaderDescription = match ($estadoBadgeClass) {
+    'approved' => 'Ya podés avanzar con el pago para completar el proceso.',
+    'paid' => 'Registramos tu pago y finalizamos la certificación.',
+    'rejected' => 'Revisá tu correo para conocer los detalles y los pasos a seguir.',
+    default => 'Recibimos tu documentación y comenzaremos la revisión.',
+};
 $precioCert = $viewData['precio'] ?? null;
 $monedaCert = $viewData['moneda'] ?? 'ARS';
 $checkoutLink = null;
@@ -287,6 +351,81 @@ $backLink = '../index.php#certificaciones';
         .alert-modern i {
             font-size: 1.5rem;
             flex-shrink: 0;
+        }
+
+        .status-highlight {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            padding: 1.75rem;
+            border-radius: 18px;
+            border: 1px solid rgba(37, 99, 235, 0.15);
+            background: rgba(37, 99, 235, 0.08);
+            margin-bottom: 2rem;
+        }
+
+        .status-highlight__icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #ffffff;
+            background: var(--primary-color);
+            flex-shrink: 0;
+        }
+
+        .status-highlight__label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .status-highlight__value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-top: 0.35rem;
+        }
+
+        .status-highlight__description {
+            margin: 0.75rem 0 0;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .status-highlight.status-pending {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.3);
+        }
+
+        .status-highlight.status-pending .status-highlight__icon {
+            background: var(--warning-color);
+        }
+
+        .status-highlight.status-approved,
+        .status-highlight.status-paid {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .status-highlight.status-approved .status-highlight__icon,
+        .status-highlight.status-paid .status-highlight__icon {
+            background: var(--success-color);
+        }
+
+        .status-highlight.status-rejected {
+            background: rgba(239, 68, 68, 0.12);
+            border-color: rgba(239, 68, 68, 0.3);
+        }
+
+        .status-highlight.status-rejected .status-highlight__icon {
+            background: var(--danger-color);
         }
 
         .summary-card {
@@ -539,18 +678,23 @@ $backLink = '../index.php#certificaciones';
                             </div>
                         <?php else: ?>
                             <div class="gracias-header">
-                                <div class="icon-status success">
-                                    <i class="fas fa-circle-check"></i>
+                                <div class="icon-status <?php echo htmlspecialchars($estadoHeaderClass, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <i class="<?php echo htmlspecialchars($estadoHeaderIcon, ENT_QUOTES, 'UTF-8'); ?>"></i>
                                 </div>
-                                <h1>¡Gracias por enviar tu solicitud!</h1>
-                                <p>Recibimos tu documentación y comenzaremos la revisión</p>
+                                <h1><?php echo htmlspecialchars($estadoHeaderHeading, ENT_QUOTES, 'UTF-8'); ?></h1>
+                                <p><?php echo htmlspecialchars($estadoHeaderDescription, ENT_QUOTES, 'UTF-8'); ?></p>
                             </div>
                             <div class="gracias-content">
-                                <div class="alert-modern success">
-                                    <i class="fas fa-circle-check"></i>
-                                    <div>
-                                        <strong>Tu documentación está en revisión</strong>
-                                        <div style="margin-top: 0.5rem;">Nuestro equipo verificará el formulario y te notificará por correo apenas tengamos novedades.</div>
+                                <div class="status-highlight <?php echo htmlspecialchars($estadoHighlightClass, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <div class="status-highlight__icon">
+                                        <i class="<?php echo htmlspecialchars($estadoHighlightIcon, ENT_QUOTES, 'UTF-8'); ?>"></i>
+                                    </div>
+                                    <div class="status-highlight__body">
+                                        <div class="status-highlight__label">Estado actual</div>
+                                        <div class="status-highlight__value"><?php echo htmlspecialchars($estadoHighlightTitle, ENT_QUOTES, 'UTF-8'); ?></div>
+                                        <?php if ($estadoHighlightMessage !== ''): ?>
+                                            <p class="status-highlight__description"><?php echo htmlspecialchars($estadoHighlightMessage, ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
 
@@ -559,6 +703,25 @@ $backLink = '../index.php#certificaciones';
                                         <i class="fas fa-file-certificate" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
                                         Resumen de tu solicitud
                                     </h2>
+
+                                    <div class="summary-item">
+                                        <i class="fas fa-info-circle"></i>
+                                        <div style="flex: 1;">
+                                            <div class="summary-label">Estado</div>
+                                            <div>
+                                                <span class="badge-status <?php echo htmlspecialchars($estadoBadgeClass, ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
+                                                    <?php echo htmlspecialchars($estadoActual, ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                            </div>
+                                            <?php if ($precioCert !== null): ?>
+                                                <div style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.75rem;">
+                                                    <i class="fas fa-tag" style="margin-right: 0.5rem;"></i>
+                                                    Inversión estimada: <strong><?php echo htmlspecialchars(number_format((float) $precioCert, 2, ',', '.'), ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars($monedaCert, ENT_QUOTES, 'UTF-8'); ?></strong>
+                                                </div>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
 
                                     <div class="summary-item">
                                         <i class="fas fa-certificate"></i>
@@ -585,33 +748,6 @@ $backLink = '../index.php#certificaciones';
                                                 <div style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;">
                                                     <i class="fas fa-phone" style="margin-right: 0.5rem;"></i>
                                                     <?php echo htmlspecialchars($viewData['telefono'], ENT_QUOTES, 'UTF-8'); ?>
-                                                </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-
-                                    <div class="summary-item">
-                                        <i class="fas fa-info-circle"></i>
-                                        <div style="flex: 1;">
-                                            <div class="summary-label">Estado actual</div>
-                                            <div>
-                                                <span class="badge-status <?php
-                                                                            $estado = $viewData['estado'] ?? null;
-                                                                            echo match ($estado) {
-                                                                                2 => 'approved',
-                                                                                3 => 'paid',
-                                                                                4 => 'rejected',
-                                                                                default => 'pending'
-                                                                            };
-                                                                            ?>">
-                                                    <i class="fas fa-circle" style="font-size: 0.5rem;"></i>
-                                                    <?php echo htmlspecialchars($estadoActual, ENT_QUOTES, 'UTF-8'); ?>
-                                                </span>
-                                            </div>
-                                            <?php if ($precioCert !== null): ?>
-                                                <div style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.75rem;">
-                                                    <i class="fas fa-tag" style="margin-right: 0.5rem;"></i>
-                                                    Inversión estimada: <strong><?php echo htmlspecialchars(number_format((float) $precioCert, 2, ',', '.'), ENT_QUOTES, 'UTF-8'); ?> <?php echo htmlspecialchars($monedaCert, ENT_QUOTES, 'UTF-8'); ?></strong>
                                                 </div>
                                             <?php endif; ?>
                                         </div>
