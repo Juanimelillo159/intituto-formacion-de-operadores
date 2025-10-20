@@ -3,3 +3,6 @@ logs/mercadopago.log
 sbd.php
 logs/cursos.log
 
+mis_cursos_error.log
+logs/cursos.log
+logs/mercadopago.log
