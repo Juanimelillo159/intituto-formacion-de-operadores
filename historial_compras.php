@@ -113,9 +113,10 @@ try {
             try { $fechaFmt = (new DateTimeImmutable($fechaRaw))->format('d/m/Y H:i'); } catch (Throwable $e) {}
         }
 
+        $certId = (int)($row['id_registro'] ?? 0);
         $item = [
             'tipo'            => 'certificacion',
-            'id'              => (int)$row['id_registro'],
+            'id'              => $certId,
             'fecha'           => $fechaRaw,
             'fecha_formatted' => $fechaFmt,
             'total'           => (float)($row['total'] ?? 0),
@@ -125,6 +126,7 @@ try {
             'id_estado'       => $row['id_estado'] ?? null,
             'pdf_path'        => $row['pdf_path'] ?? null,
             'pdf_nombre'      => $row['pdf_nombre'] ?? null,
+            'certificacion_registro' => $certId,
         ];
         $certificaciones[] = $item;
         $combinado[] = $item;
@@ -214,6 +216,7 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                     <th class="text-start">Tipo</th>
                                     <th class="text-start">Curso</th>
                                     <th class="text-start">Estado</th>
+                                    <th class="text-center">Acciones</th>
                                     <th class="text-end">Total</th>
                                 </tr>
                                 </thead>
@@ -225,6 +228,33 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                         <td class="text-start"><?php echo $row['tipo'] === 'capacitacion' ? 'Capacitaci&oacute;n' : 'Certificaci&oacute;n'; ?></td>
                                         <td class="text-start"><?php echo htmlspecialchars($row['curso'] ?? 'Curso', ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td class="text-start"><?php echo htmlspecialchars($row['estado_label'] ?? '—', ENT_QUOTES, 'UTF-8'); ?></td>
+                                        <td class="text-center">
+                                            <?php if (($row['tipo'] ?? '') === 'certificacion'): ?>
+                                                <?php
+                                                    $estadoCert = isset($row['id_estado']) ? (int)$row['id_estado'] : 0;
+                                                    $certRegistro = isset($row['certificacion_registro']) ? (int)$row['certificacion_registro'] : 0;
+                                                    $cursoId = isset($row['id_curso']) ? (int)$row['id_curso'] : 0;
+                                                ?>
+                                                <div class="d-flex flex-column flex-md-row gap-2 justify-content-center">
+                                                    <?php if ($certRegistro > 0): ?>
+                                                        <a class="btn btn-sm btn-outline-primary" href="checkout/gracias_certificacion.php?certificacion=<?php echo $certRegistro; ?>">
+                                                            Ver estado solicitud
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <?php if ($estadoCert === 2 && $cursoId > 0 && $certRegistro > 0): ?>
+                                                        <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo $cursoId; ?>&amp;certificacion_registro=<?php echo $certRegistro; ?>">
+                                                            Pagar certificación
+                                                        </a>
+                                                    <?php elseif ($estadoCert === 3): ?>
+                                                        <span class="badge bg-success align-self-center">Pagado</span>
+                                                    <?php else: ?>
+                                                        <span class="text-muted align-self-center">En revisión</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted">—</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td class="text-end"><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -299,6 +329,7 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                         <th class="text-start">Curso</th>
                                         <th class="text-start">Estado</th>
                                         <th class="text-start">PDF</th>
+                                        <th class="text-start">Acciones</th>
                                         <th class="text-end">Total</th>
                                     </tr>
                                     </thead>
@@ -317,6 +348,29 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                                 <?php else: ?>
                                                     —
                                                 <?php endif; ?>
+                                            </td>
+                                            <td class="text-start">
+                                                <?php
+                                                    $estadoCert = isset($cert['id_estado']) ? (int)$cert['id_estado'] : 0;
+                                                    $certRegistro = isset($cert['certificacion_registro']) ? (int)$cert['certificacion_registro'] : 0;
+                                                    $cursoId = isset($cert['id_curso']) ? (int)$cert['id_curso'] : 0;
+                                                ?>
+                                                <div class="d-flex flex-column flex-md-row gap-2">
+                                                    <?php if ($certRegistro > 0): ?>
+                                                        <a class="btn btn-sm btn-outline-primary" href="checkout/gracias_certificacion.php?certificacion=<?php echo $certRegistro; ?>">
+                                                            Ver estado solicitud
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <?php if ($estadoCert === 2 && $cursoId > 0 && $certRegistro > 0): ?>
+                                                        <a class="btn btn-sm btn-gradient" href="checkout/checkout.php?tipo=certificacion&amp;id_curso=<?php echo $cursoId; ?>&amp;certificacion_registro=<?php echo $certRegistro; ?>">
+                                                            Pagar certificación
+                                                        </a>
+                                                    <?php elseif ($estadoCert === 3): ?>
+                                                        <span class="badge bg-success align-self-center">Pagado</span>
+                                                    <?php else: ?>
+                                                        <span class="text-muted align-self-center">En revisión</span>
+                                                    <?php endif; ?>
+                                                </div>
                                             </td>
                                             <td class="text-end"><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></td>
                                         </tr>
@@ -453,9 +507,9 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
 
     document.addEventListener('DOMContentLoaded', function() {
         // Índices de columna "Curso":
-        // recentTable: Fecha(0), Tipo(1), Curso(2), Estado(3), Total(4) => curso = 2
-        // capTable:    Fecha(0), Curso(1), Estado(2), Total(3)          => curso = 1
-        // certTable:   Fecha(0), Curso(1), Estado(2), PDF(3), Total(4)  => curso = 1
+        // recentTable: Fecha(0), Tipo(1), Curso(2), Estado(3), Acciones(4), Total(5) => curso = 2
+        // capTable:    Fecha(0), Curso(1), Estado(2), Total(3)                     => curso = 1
+        // certTable:   Fecha(0), Curso(1), Estado(2), PDF(3), Acciones(4), Total(5) => curso = 1
         setupPagerWithFilter({ tableId: 'recentTable', pagerId: 'recentPager', searchInputId: 'recentSearch', pageSize: 10, courseColIndex: 2 });
         setupPagerWithFilter({ tableId: 'capTable',    pagerId: 'capPager',    searchInputId: 'capSearch',    pageSize: 10, courseColIndex: 1 });
         setupPagerWithFilter({ tableId: 'certTable',   pagerId: 'certPager',   searchInputId: 'certSearch',   pageSize: 10, courseColIndex: 1 });

@@ -688,6 +688,7 @@ try {
     $compraItemsAvailable = $tableExists($pdo, 'compra_items');
     $checkoutCapacitacionesAvailable = $tableExists($pdo, 'checkout_capacitaciones');
     $checkoutCertificacionesAvailable = $tableExists($pdo, 'checkout_certificaciones');
+    $checkoutPagosAvailable = $tableExists($pdo, 'checkout_pagos');
     $estadosInscripcionesAvailable = $tableExists($pdo, 'estados_inscripciones');
     $asignacionesCursosAvailable = $tableExists($pdo, 'asignaciones_cursos');
     $cursoModalidadAvailable = $tableExists($pdo, 'curso_modalidad');
@@ -712,6 +713,23 @@ LEFT JOIN (
 SQL
                 : '';
 
+            $capPagosSelect = $checkoutPagosAvailable
+                ? 'pago.last_pago_id, pago.last_pago_estado'
+                : 'NULL AS last_pago_id, NULL AS last_pago_estado';
+            $capPagosJoin = $checkoutPagosAvailable
+                ? <<<SQL
+LEFT JOIN (
+    SELECT
+        id_capacitacion,
+        MAX(id_pago) AS last_pago_id,
+        SUBSTRING_INDEX(GROUP_CONCAT(estado ORDER BY id_pago DESC SEPARATOR ','), ',', 1) AS last_pago_estado
+    FROM checkout_pagos
+    WHERE id_capacitacion IS NOT NULL
+    GROUP BY id_capacitacion
+) AS pago ON pago.id_capacitacion = cc.id_capacitacion
+SQL
+                : '';
+
             $sqlCapacitaciones = <<<SQL
 SELECT
     cc.id_capacitacion,
@@ -727,6 +745,7 @@ SELECT
     c.nombre_curso,
     {$capModalidadSelect},
     est.nombre_estado AS estado_checkout,
+    {$capPagosSelect},
     u.id_usuario AS assigned_user_id,
     u.nombre AS assigned_nombre,
     u.apellido AS assigned_apellido
@@ -734,6 +753,7 @@ FROM checkout_capacitaciones cc
 LEFT JOIN cursos c ON c.id_curso = cc.id_curso
 {$capModalidadJoin}
 LEFT JOIN estados_inscripciones est ON est.id_estado = cc.id_estado
+{$capPagosJoin}
 LEFT JOIN usuarios u ON u.email = cc.email
 WHERE cc.creado_por = :usuario
 ORDER BY cc.id_curso ASC, cc.creado_en ASC, cc.id_capacitacion ASC
@@ -772,6 +792,7 @@ SQL;
                         'disponibles' => 0,
                         'can_assign' => false,
                         'purchase_items' => [],
+                        'registros_checkout' => [],
                     ];
                 } elseif ($courses[$courseKey]['nombre_modalidad'] === null && $modalidadResumen !== null) {
                     $courses[$courseKey]['nombre_modalidad'] = $modalidadResumen;
@@ -815,6 +836,18 @@ SQL;
                 }
                 if ($course['precio_unitario'] === null && $purchaseItem['precio_unitario'] !== null) {
                     $course['precio_unitario'] = $purchaseItem['precio_unitario'];
+                }
+
+                $registroCheckout = [
+                    'tipo' => 'capacitacion',
+                    'id_registro' => (int)($seat['id_capacitacion'] ?? 0),
+                    'id_curso' => $courseId,
+                    'estado' => (int)($seat['id_estado'] ?? 0),
+                    'pago_id' => isset($seat['last_pago_id']) ? (int)$seat['last_pago_id'] : 0,
+                    'pago_estado' => strtolower((string)($seat['last_pago_estado'] ?? '')),
+                ];
+                if ($registroCheckout['id_registro'] > 0) {
+                    $course['registros_checkout'][] = $registroCheckout;
                 }
 
                 $createdAt = $seat['creado_en'] ?? null;
@@ -861,6 +894,7 @@ SQL;
                         'apellido' => $seat['apellido'] ?? $seat['assigned_apellido'] ?? '',
                         'email' => $email,
                         'estado' => $stateLabel,
+                        'estado_key' => $stateKey,
                         'clase' => $stateClass,
                         'progreso' => null,
                         'id_item_compra' => (int)$seat['id_capacitacion'],
@@ -889,6 +923,23 @@ LEFT JOIN (
 SQL
                 : '';
 
+            $certPagosSelect = $checkoutPagosAvailable
+                ? 'pago.last_pago_id, pago.last_pago_estado'
+                : 'NULL AS last_pago_id, NULL AS last_pago_estado';
+            $certPagosJoin = $checkoutPagosAvailable
+                ? <<<SQL
+LEFT JOIN (
+    SELECT
+        id_certificacion,
+        MAX(id_pago) AS last_pago_id,
+        SUBSTRING_INDEX(GROUP_CONCAT(estado ORDER BY id_pago DESC SEPARATOR ','), ',', 1) AS last_pago_estado
+    FROM checkout_pagos
+    WHERE id_certificacion IS NOT NULL
+    GROUP BY id_certificacion
+) AS pago ON pago.id_certificacion = ccert.id_certificacion
+SQL
+                : '';
+
             $sqlCertificaciones = <<<SQL
             SELECT
                 ccert.id_certificacion,
@@ -907,6 +958,7 @@ SQL
                 cursos.nombre_curso,
                 {$certModalidadSelect},
                 est.nombre_estado AS estado_checkout,
+                {$certPagosSelect},
                 u.id_usuario AS assigned_user_id,
                 u.nombre AS assigned_nombre,
                 u.apellido AS assigned_apellido
@@ -914,6 +966,7 @@ SQL
             LEFT JOIN cursos ON cursos.id_curso = ccert.id_curso
 {$certModalidadJoin}
             LEFT JOIN estados_inscripciones est ON est.id_estado = ccert.id_estado
+{$certPagosJoin}
             LEFT JOIN usuarios u ON u.email = ccert.email
             WHERE ccert.creado_por = :usuario
             ORDER BY ccert.id_curso ASC, ccert.creado_en ASC, ccert.id_certificacion ASC
@@ -952,6 +1005,7 @@ SQL;
                         'disponibles' => 0,
                         'can_assign' => false,
                         'purchase_items' => [],
+                        'registros_checkout' => [],
                     ];
                 } elseif ($courses[$courseKey]['nombre_modalidad'] === null && $modalidadResumen !== null) {
                     $courses[$courseKey]['nombre_modalidad'] = $modalidadResumen;
@@ -997,6 +1051,18 @@ SQL;
                     $course['precio_unitario'] = $purchaseItem['precio_unitario'];
                 }
 
+                $registroCheckout = [
+                    'tipo' => 'certificacion',
+                    'id_registro' => (int)($cert['id_certificacion'] ?? 0),
+                    'id_curso' => $courseId,
+                    'estado' => (int)($cert['id_estado'] ?? 0),
+                    'pago_id' => isset($cert['last_pago_id']) ? (int)$cert['last_pago_id'] : 0,
+                    'pago_estado' => strtolower((string)($cert['last_pago_estado'] ?? '')),
+                ];
+                if ($registroCheckout['id_registro'] > 0) {
+                    $course['registros_checkout'][] = $registroCheckout;
+                }
+
                 $createdAt = $cert['creado_en'] ?? null;
                 if ($createdAt !== null) {
                     try {
@@ -1040,12 +1106,15 @@ SQL;
                             'apellido' => $cert['apellido'] ?? $cert['assigned_apellido'] ?? '',
                             'email' => $email,
                             'estado' => $stateLabel,
+                            'estado_key' => $stateKey,
                             'clase' => $stateClass,
                             'progreso' => null,
                             'id_item_compra' => (int)$cert['id_certificacion'],
                             'pdf_path' => $cert['pdf_path'] ?? null,
                             'pdf_nombre' => $cert['pdf_nombre'] ?? null,
                             'pdf_mime' => $cert['pdf_mime'] ?? null,
+                            'id_estado' => isset($cert['id_estado']) ? (int)$cert['id_estado'] : null,
+                            'puede_pagar' => isset($cert['id_estado']) && (int)$cert['id_estado'] === 2,
                         ];
 
                         $purchaseItem['asignaciones'][] = $assignmentData;
@@ -1192,7 +1261,94 @@ SQL;
             $cursosComprados = array_values($items);
         } else {
             $cursosComprados = [];
-        } 
+        }
+
+        if ($checkoutCapacitacionesAvailable) {
+            $capResumenSelect = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? 'mods.modalidad_resumen'
+                : 'NULL AS modalidad_resumen';
+            $capResumenJoin = ($cursoModalidadAvailable && $modalidadesAvailable)
+                ? <<<SQL
+LEFT JOIN (
+    SELECT cm.id_curso, GROUP_CONCAT(DISTINCT m.nombre_modalidad ORDER BY m.nombre_modalidad SEPARATOR ' / ') AS modalidad_resumen
+      FROM curso_modalidad cm
+      INNER JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+     GROUP BY cm.id_curso
+) AS mods ON mods.id_curso = cc.id_curso
+SQL
+                : '';
+
+            $sqlCapPagadas = <<<SQL
+SELECT
+    cc.id_capacitacion,
+    cc.id_curso,
+    cc.creado_en,
+    cc.id_estado,
+    c.nombre_curso,
+    {$capResumenSelect}
+FROM checkout_capacitaciones cc
+INNER JOIN cursos c ON c.id_curso = cc.id_curso
+{$capResumenJoin}
+WHERE cc.creado_por = :usuario
+  AND cc.id_estado = 3
+ORDER BY cc.creado_en DESC, cc.id_capacitacion DESC
+SQL;
+
+            $stmtCapPagadas = $pdo->prepare($sqlCapPagadas);
+            $stmtCapPagadas->bindValue(':usuario', $userId, PDO::PARAM_INT);
+            $stmtCapPagadas->execute();
+
+            $capCursosKeys = [];
+            while ($row = $stmtCapPagadas->fetch(PDO::FETCH_ASSOC)) {
+                $rowId = (int)($row['id_capacitacion'] ?? 0);
+                $rowCursoId = (int)($row['id_curso'] ?? 0);
+                if ($rowId <= 0 || $rowCursoId <= 0) {
+                    continue;
+                }
+
+                $entryKey = 'checkout-cap-' . $rowId;
+                if (isset($capCursosKeys[$entryKey])) {
+                    continue;
+                }
+                $capCursosKeys[$entryKey] = true;
+
+                $fechaFmt = null;
+                if (!empty($row['creado_en'])) {
+                    try {
+                        $fechaFmt = (new DateTimeImmutable((string)$row['creado_en']))->format('d/m/Y H:i');
+                    } catch (Throwable $capPaidDateException) {
+                        $fechaFmt = $row['creado_en'];
+                    }
+                }
+
+                $cursosComprados[] = [
+                    'id_item'             => -abs($rowId),
+                    'id_curso'            => $rowCursoId,
+                    'tipo_curso'          => 'capacitacion',
+                    'nombre_curso'        => $row['nombre_curso'] ?: ('Curso #' . $rowCursoId),
+                    'nombre_modalidad'    => $row['modalidad_resumen'] ?? null,
+                    'pagado_en'           => $row['creado_en'] ?? null,
+                    'pagado_en_formatted' => $fechaFmt,
+                    'moneda'              => null,
+                    'precio_unitario'     => null,
+                    'cantidad'            => 1,
+                    'inscripcion'         => [
+                        'estado'   => 'Pago aprobado',
+                        'clase'    => 'bg-success',
+                        'progreso' => null,
+                    ],
+                    'origen'              => 'checkout_capacitacion',
+                ];
+            }
+        }
+
+        if (!empty($cursosComprados)) {
+            usort($cursosComprados, static function (array $left, array $right): int {
+                $leftDate = (string)($left['pagado_en'] ?? '');
+                $rightDate = (string)($right['pagado_en'] ?? '');
+                return strcmp($rightDate, $leftDate);
+            });
+        }
     }
     $asignadas = [];
     if ($asignacionesCursosAvailable) {
@@ -1547,6 +1703,89 @@ $configActive = 'mis_cursos';
                                     <span class="course-chip">Cantidad: <?php echo (int)$curso['cantidad']; ?></span>
                                 <?php endif; ?>
                             </div>
+
+                            <?php
+                            $accionesMap = [];
+                            if (!empty($curso['registros_checkout']) && is_array($curso['registros_checkout'])) {
+                                foreach ($curso['registros_checkout'] as $registro) {
+                                    $tipoRegistro = strtolower((string)($registro['tipo'] ?? ''));
+                                    $registroId = (int)($registro['id_registro'] ?? 0);
+                                    if ($registroId <= 0) {
+                                        continue;
+                                    }
+                                    $estadoRegistro = (int)($registro['estado'] ?? 0);
+                                    $pagoEstado = strtolower((string)($registro['pago_estado'] ?? ''));
+                                    $pagoId = isset($registro['pago_id']) ? (int)$registro['pago_id'] : 0;
+
+                                    if ($tipoRegistro === 'capacitacion') {
+                                        if (in_array($estadoRegistro, [1, 2, 3], true)) {
+                                            $ordenParam = $pagoId > 0 ? $pagoId : $registroId;
+                                            $accionesMap['estado-cap-' . $registroId] = [
+                                                'label' => 'Ver estado',
+                                                'href' => 'checkout/gracias.php?' . http_build_query([
+                                                    'tipo' => 'capacitacion',
+                                                    'orden' => $ordenParam,
+                                                ]),
+                                                'variant' => 'outline-primary',
+                                                'icon' => 'fas fa-info-circle',
+                                            ];
+                                        }
+
+                                        if ($estadoRegistro !== 3) {
+                                            if ($pagoEstado === 'pendiente') {
+                                                $accionesMap['retomar-cap-' . $registroId] = [
+                                                    'label' => 'Continuar pago',
+                                                    'href' => 'checkout/retomar_pago.php?tipo=capacitacion&id=' . $registroId,
+                                                    'variant' => 'primary',
+                                                    'icon' => 'fas fa-credit-card',
+                                                ];
+                                            } elseif (in_array($pagoEstado, ['cancelado', 'rechazado'], true)) {
+                                                $accionesMap['retomar-cap-' . $registroId] = [
+                                                    'label' => 'Retomar pago',
+                                                    'href' => 'checkout/retomar_pago.php?tipo=capacitacion&id=' . $registroId,
+                                                    'variant' => 'primary',
+                                                    'icon' => 'fas fa-rotate-right',
+                                                ];
+                                            }
+                                        }
+                                    } elseif ($tipoRegistro === 'certificacion') {
+                                        $accionesMap['estado-cert-' . $registroId] = [
+                                            'label' => 'Ver estado',
+                                            'href' => 'checkout/gracias_certificacion.php?certificacion=' . $registroId,
+                                            'variant' => 'outline-primary',
+                                            'icon' => 'fas fa-info-circle',
+                                        ];
+
+                                        if (in_array($pagoEstado, ['cancelado', 'rechazado'], true) && $estadoRegistro === 2) {
+                                            $accionesMap['retomar-cert-' . $registroId] = [
+                                                'label' => 'Retomar pago',
+                                                'href' => 'checkout/retomar_pago.php?tipo=certificacion&id=' . $registroId,
+                                                'variant' => 'primary',
+                                                'icon' => 'fas fa-rotate-right',
+                                            ];
+                                        }
+                                    }
+                                }
+                            }
+
+                            $acciones = array_values($accionesMap);
+                            ?>
+                            <?php if (!empty($acciones)): ?>
+                                <div class="course-card__actions mt-3 d-flex flex-wrap gap-2">
+                                    <?php foreach ($acciones as $accion): ?>
+                                        <?php
+                                        $variant = (string)($accion['variant'] ?? 'primary');
+                                        $btnClass = $variant === 'outline-primary' ? 'btn-outline-primary' : 'btn-primary';
+                                        $icon = (string)($accion['icon'] ?? '');
+                                        ?>
+                                        <a class="btn btn-sm <?php echo htmlspecialchars($btnClass, ENT_QUOTES, 'UTF-8'); ?>"
+                                           href="<?php echo htmlspecialchars($accion['href'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            <?php if ($icon !== ''): ?><i class="<?php echo htmlspecialchars($icon, ENT_QUOTES, 'UTF-8'); ?> me-1"></i><?php endif; ?>
+                                            <?php echo htmlspecialchars($accion['label'], ENT_QUOTES, 'UTF-8'); ?>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <?php if ($inscripcion !== null && $inscripcion['progreso'] !== null): ?>
@@ -1623,14 +1862,46 @@ $configActive = 'mis_cursos';
                                                         <?php if (!empty($assignment['email'])): ?>
                                                             <span class="text-muted small d-block"><?php echo htmlspecialchars((string)$assignment['email'], ENT_QUOTES, 'UTF-8'); ?></span>
                                                         <?php endif; ?>
-                                                        <?php if ($assignment['progreso'] !== null): ?>
-                                                            <span class="text-muted small">Progreso: <?php echo (int)$assignment['progreso']; ?>%</span>
+                                                    <?php if ($assignment['progreso'] !== null): ?>
+                                                        <span class="text-muted small">Progreso: <?php echo (int)$assignment['progreso']; ?>%</span>
+                                                    <?php endif; ?>
+                                                    <?php if (($curso['tipo_curso'] ?? '') === 'certificacion'): ?>
+                                                        <?php if (!empty($assignment['pdf_path'])): ?>
+                                                            <?php
+                                                            $pdfUrl = '/' . ltrim((string)$assignment['pdf_path'], '/');
+                                                            $pdfLabel = trim((string)($assignment['pdf_nombre'] ?? 'Formulario enviado'));
+                                                            if ($pdfLabel === '') {
+                                                                $pdfLabel = 'Formulario enviado';
+                                                            }
+                                                            ?>
+                                                            <div class="small mt-2">
+                                                                <a class="link-primary" href="<?php echo htmlspecialchars($pdfUrl, ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                                                                    <i class="fas fa-file-pdf me-1"></i><?php echo htmlspecialchars($pdfLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                                                </a>
+                                                            </div>
                                                         <?php endif; ?>
-                                                    </li>
-                                                <?php endforeach; ?>
-                                            </ul>
-                                        </div>
+                                                        <?php if (!empty($assignment['puede_pagar']) && !empty($assignment['id_item_compra']) && !empty($curso['id_curso'])): ?>
+                                                            <?php
+                                                            $checkoutUrl = sprintf(
+                                                                'checkout/checkout.php?id_certificacion=%d&tipo=certificacion&certificacion_registro=%d',
+                                                                (int)$curso['id_curso'],
+                                                                (int)$assignment['id_item_compra']
+                                                            );
+                                                            ?>
+                                                            <a class="btn btn-sm btn-primary mt-2" href="<?php echo htmlspecialchars($checkoutUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                <i class="fas fa-credit-card me-1"></i>Completar pago
+                                                            </a>
+                                                        <?php elseif (isset($assignment['estado_key']) && $assignment['estado_key'] === 'pagado'): ?>
+                                                            <div class="small text-success mt-2">
+                                                                <i class="fas fa-circle-check me-1"></i>Pago registrado
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    <?php endif; ?>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
                                     </div>
+                                </div>
                                 <?php endif; ?>
                             </div>
 
