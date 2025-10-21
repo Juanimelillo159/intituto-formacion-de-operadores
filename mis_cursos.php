@@ -1445,7 +1445,7 @@ WHERE cc.email IS NOT NULL
   AND cc.email <> ''
   AND (
       u.id_usuario = :usuario1
-      OR (:email1 <> '' AND LOWER(cc.email) = LOWER(:email2))
+      OR (LOWER(cc.email) = LOWER(:email2))
   )
   AND (cc.creado_por IS NULL OR cc.creado_por <> :usuario2)
 ORDER BY cc.creado_en DESC, cc.id_capacitacion DESC
@@ -1523,7 +1523,7 @@ WHERE ccert.email IS NOT NULL
   AND ccert.email <> ''
   AND (
       u.id_usuario = :usuario1
-      OR (:email1 <> '' AND LOWER(ccert.email) = LOWER(:email2))
+      OR (LOWER(ccert.email) = LOWER(:email2))
   )
   AND (ccert.creado_por IS NULL OR ccert.creado_por <> :usuario2)
 ORDER BY ccert.creado_en DESC, ccert.id_certificacion DESC
