@@ -48,6 +48,13 @@ if ($id_curso <= 0 && isset($_GET['id_capacitacion'])) {
 if ($id_curso <= 0 && isset($_GET['id_certificacion'])) {
     $id_curso = (int)$_GET['id_certificacion'];
 }
+$tipo_checkout = isset($_GET['tipo']) ? strtolower(trim((string)$_GET['tipo'])) : '';
+if ($tipo_checkout === '' && isset($_GET['id_capacitacion'])) {
+    $tipo_checkout = 'capacitacion';
+} elseif ($tipo_checkout === '' && isset($_GET['id_certificacion'])) {
+    $tipo_checkout = 'certificacion';
+}
+
 $certificacionRegistroId = isset($_GET['certificacion_registro'])
     ? (int)$_GET['certificacion_registro']
     : 0;
@@ -77,13 +84,6 @@ if ($soloTransferencia && $tipo_checkout === 'capacitacion' && $retomarRegistroI
         $soloTransferencia = false;
         $retomarRegistroId = 0;
     }
-}
-
-$tipo_checkout = isset($_GET['tipo']) ? strtolower(trim((string)$_GET['tipo'])) : '';
-if ($tipo_checkout === '' && isset($_GET['id_capacitacion'])) {
-    $tipo_checkout = 'capacitacion';
-} elseif ($tipo_checkout === '' && isset($_GET['id_certificacion'])) {
-    $tipo_checkout = 'certificacion';
 }
 if (!in_array($tipo_checkout, ['curso', 'capacitacion', 'certificacion'], true)) {
     $tipo_checkout = 'curso';
