@@ -47,6 +47,9 @@ $normalized_base = rtrim($base_path, '/');
                 <li class="nav-item">
                     <a class="nav-link" href="<?php echo $normalized_base; ?>/index.php#contacto">Contactanos</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="<?php echo $normalized_base; ?>/politicas.php">Políticas</a>
+                </li>
                 <?php
                 $permiso = isset($_SESSION["permiso"]) ? (int)$_SESSION["permiso"] : null;
                 if (isset($_SESSION["usuario"])) {
