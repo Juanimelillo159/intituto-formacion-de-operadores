@@ -48,16 +48,42 @@ if ($id_curso <= 0 && isset($_GET['id_capacitacion'])) {
 if ($id_curso <= 0 && isset($_GET['id_certificacion'])) {
     $id_curso = (int)$_GET['id_certificacion'];
 }
-$certificacionRegistroId = isset($_GET['certificacion_registro'])
-    ? (int)$_GET['certificacion_registro']
-    : 0;
-$prefetchedCertificacion = null;
-
 $tipo_checkout = isset($_GET['tipo']) ? strtolower(trim((string)$_GET['tipo'])) : '';
 if ($tipo_checkout === '' && isset($_GET['id_capacitacion'])) {
     $tipo_checkout = 'capacitacion';
 } elseif ($tipo_checkout === '' && isset($_GET['id_certificacion'])) {
     $tipo_checkout = 'certificacion';
+}
+
+$certificacionRegistroId = isset($_GET['certificacion_registro'])
+    ? (int)$_GET['certificacion_registro']
+    : 0;
+$prefetchedCertificacion = null;
+
+$soloTransferenciaRaw = strtolower(trim((string)($_GET['solo_transferencia'] ?? '')));
+$soloTransferencia = in_array($soloTransferenciaRaw, ['1', 'true', 'si', 'sí', 'on', 'yes'], true);
+$retomarRegistroId = isset($_GET['retomar']) ? (int)$_GET['retomar'] : 0;
+$capacitacionRetryData = null;
+
+if ($soloTransferencia && $tipo_checkout === 'capacitacion' && $retomarRegistroId > 0) {
+    $retryStmt = $con->prepare('SELECT * FROM checkout_capacitaciones WHERE id_capacitacion = :id LIMIT 1');
+    $retryStmt->execute([':id' => $retomarRegistroId]);
+    $retryRow = $retryStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($retryRow && ($currentUserId <= 0 || (int)($retryRow['creado_por'] ?? 0) === $currentUserId)) {
+        $estadoRetry = (int)($retryRow['id_estado'] ?? 0);
+        if ($estadoRetry !== 3) {
+            $capacitacionRetryData = $retryRow;
+            if ($id_curso <= 0) {
+                $id_curso = (int)($retryRow['id_curso'] ?? 0);
+            }
+        } else {
+            $soloTransferencia = false;
+            $retomarRegistroId = 0;
+        }
+    } else {
+        $soloTransferencia = false;
+        $retomarRegistroId = 0;
+    }
 }
 if (!in_array($tipo_checkout, ['curso', 'capacitacion', 'certificacion'], true)) {
     $tipo_checkout = 'curso';
@@ -101,6 +127,7 @@ $capacitacionBloqueadaEstado = null;
 $capacitacionBloqueadaMensaje = null;
 $capacitacionBloqueadaLabel = null;
 $capacitacionRegistroId = 0;
+$skipCapacitacionRedirect = false;
 
 $capacitacionIntent = $tipo_checkout === 'capacitacion';
 if (!$capacitacionIntent && isset($_GET['tipo'])) {
@@ -127,10 +154,21 @@ if ($curso && $currentUserId > 0 && $tipo_checkout !== 'certificacion') {
     $capDuplicadaRow = $capDuplicadaStmt->fetch(PDO::FETCH_ASSOC) ?: null;
     if ($capDuplicadaRow) {
         $capEstado = (int)($capDuplicadaRow['id_estado'] ?? 0);
-        if (in_array($capEstado, [1, 2, 3], true)) {
+        $capacitacionRegistroId = (int)($capDuplicadaRow['id_capacitacion'] ?? 0);
+        $allowTransferRetry = $soloTransferencia
+            && $retomarRegistroId > 0
+            && $capacitacionRegistroId === $retomarRegistroId
+            && in_array($capEstado, [1, 2, 4], true);
+
+        if ($allowTransferRetry) {
+            $skipCapacitacionRedirect = true;
+            $capacitacionBloqueada = false;
+            $capacitacionBloqueadaEstado = null;
+            $capacitacionBloqueadaMensaje = null;
+            $capacitacionBloqueadaLabel = null;
+        } elseif (in_array($capEstado, [1, 2, 3], true)) {
             $capacitacionBloqueada = true;
             $capacitacionBloqueadaEstado = $capEstado;
-            $capacitacionRegistroId = (int)($capDuplicadaRow['id_capacitacion'] ?? 0);
             $capacitacionBloqueadaLabel = checkout_capacitacion_estado_label($capEstado);
             $capacitacionBloqueadaMensaje = match ($capEstado) {
                 3 => 'Ya registramos y aprobamos tu pago para esta capacitación. Encontrala en la sección Mis cursos.',
@@ -193,6 +231,17 @@ if ($curso) {
     $precio_vigente = $tipoPrecioCheckout === 'certificacion' ? $precio_certificacion : $precio_capacitacion;
     if (!$precio_vigente && $tipoPrecioCheckout !== 'capacitacion') {
         $precio_vigente = $precio_capacitacion;
+    }
+}
+
+if ($capacitacionRetryData && $tipo_checkout === 'capacitacion') {
+    $retryPrecio = isset($capacitacionRetryData['precio_total']) ? (float)$capacitacionRetryData['precio_total'] : 0.0;
+    if ($retryPrecio > 0) {
+        $precio_vigente = [
+            'precio' => $retryPrecio,
+            'moneda' => $capacitacionRetryData['moneda'] ?? ($precio_vigente['moneda'] ?? 'ARS'),
+            'vigente_desde' => $capacitacionRetryData['creado_en'] ?? null,
+        ];
     }
 }
 
@@ -373,15 +422,32 @@ $prefillCiudad = (string)($certificacionData['ciudad'] ?? ($usuarioPerfil['ciuda
 $prefillProvincia = (string)($certificacionData['provincia'] ?? ($usuarioPerfil['provincia'] ?? ''));
 $prefillPais = (string)($certificacionData['pais'] ?? ($usuarioPerfil['pais'] ?? 'Argentina'));
 if ($tipo_checkout !== 'certificacion') {
-    $prefillNombre = '';
-    $prefillApellido = '';
-    $prefillEmail = '';
-    $prefillTelefono = '';
-    $prefillDni = '';
-    $prefillDireccion = '';
-    $prefillCiudad = '';
-    $prefillProvincia = '';
-    $prefillPais = 'Argentina';
+    if ($capacitacionRetryData) {
+        $prefillNombre = (string)($capacitacionRetryData['nombre'] ?? '');
+        $prefillApellido = (string)($capacitacionRetryData['apellido'] ?? '');
+        $prefillEmail = (string)($capacitacionRetryData['email'] ?? '');
+        $prefillTelefono = (string)($capacitacionRetryData['telefono'] ?? '');
+        $prefillDni = (string)($capacitacionRetryData['dni'] ?? '');
+        $prefillDireccion = (string)($capacitacionRetryData['direccion'] ?? '');
+        $prefillCiudad = (string)($capacitacionRetryData['ciudad'] ?? '');
+        $prefillProvincia = (string)($capacitacionRetryData['provincia'] ?? '');
+        $prefillPais = (string)($capacitacionRetryData['pais'] ?? 'Argentina');
+    } else {
+        $prefillNombre = '';
+        $prefillApellido = '';
+        $prefillEmail = '';
+        $prefillTelefono = '';
+        $prefillDni = '';
+        $prefillDireccion = '';
+        $prefillCiudad = '';
+        $prefillProvincia = '';
+        $prefillPais = 'Argentina';
+    }
+}
+
+$shouldCheckTerms = (!empty($certificacionData) && (int)$certificacionData['acepta_tyc'] === 1);
+if ($capacitacionRetryData && (int)($capacitacionRetryData['acepta_tyc'] ?? 0) === 1) {
+    $shouldCheckTerms = true;
 }
 
 $certificacionFlashSuccess = $_SESSION['certificacion_success'] ?? null;
@@ -585,6 +651,10 @@ include '../head.php';
                                     <input type="hidden" name="tipo_checkout" value="<?php echo htmlspecialchars($tipo_checkout, ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="id_certificacion" value="<?php echo (int)$certificacionId; ?>">
                                     <input type="hidden" name="certificacion_estado_actual" value="<?php echo $certificacionEstado !== null ? (int)$certificacionEstado : 0; ?>">
+                                    <?php if ($soloTransferencia && $retomarRegistroId > 0 && $capacitacionRetryData): ?>
+                                        <input type="hidden" name="retomar_capacitacion" value="<?php echo (int)$retomarRegistroId; ?>">
+                                        <input type="hidden" name="solo_transferencia" value="1">
+                                    <?php endif; ?>
 
                                     <div class="step-panel active" data-step="1">
                                         <div class="row g-4 align-items-stretch">
@@ -892,7 +962,7 @@ include '../head.php';
                                             </div>
 
                                             <div class="terms-check mt-4">
-                                                <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1" <?php echo (!empty($certificacionData) && (int)$certificacionData['acepta_tyc'] === 1) ? 'checked' : ''; ?>>
+                                                <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1" <?php echo $shouldCheckTerms ? 'checked' : ''; ?>>
                                                 <label class="form-check-label" for="acepta">
                                                     Confirmo que la información es correcta y acepto los <a href="#" target="_blank" rel="noopener">Términos y Condiciones</a>.
                                                 </label>
@@ -954,7 +1024,7 @@ include '../head.php';
                                                 </div>
                                             </div>
                                             <div class="terms-check mt-4">
-                                                <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1" <?php echo (!empty($certificacionData) && (int)$certificacionData['acepta_tyc'] === 1) ? 'checked' : ''; ?>>
+                                                <input type="checkbox" class="form-check-input mt-1" id="acepta" name="acepta_tyc" value="1" <?php echo $shouldCheckTerms ? 'checked' : ''; ?>>
                                                 <label class="form-check-label" for="acepta">
                                                     Confirmo que los datos ingresados son correctos y acepto los <a href="#" target="_blank" rel="noopener">Términos y Condiciones</a>.
                                                 </label>
@@ -1008,6 +1078,17 @@ include '../head.php';
                                             <?php endif; ?>
                                             <?php if ($tipo_checkout !== 'certificacion' || $certificacionPuedePagar || $certificacionPagado): ?>
                                                 <h5>Método de pago</h5>
+                                                <?php if ($soloTransferencia): ?>
+                                                    <div class="alert alert-warning checkout-alert" role="alert">
+                                                        <div class="d-flex align-items-start gap-2">
+                                                            <i class="fas fa-info-circle mt-1"></i>
+                                                            <div>
+                                                                <strong>Solo disponible transferencia bancaria.</strong>
+                                                                <div class="small mt-1">Retomaste este pago para enviar el comprobante de tu transferencia. Mercado Pago no está habilitado en esta instancia.</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                <?php endif; ?>
                                                 <label class="payment-option">
                                                     <input type="radio" id="metodo_transfer" name="metodo_pago" value="transferencia" checked>
                                                     <div class="payment-info">
@@ -1016,10 +1097,12 @@ include '../head.php';
                                                     </div>
                                                 </label>
                                                 <label class="payment-option mt-3">
-                                                    <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago" <?php echo $precio_vigente ? '' : 'disabled'; ?>>
+                                                    <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago" <?php echo ($precio_vigente && !$soloTransferencia) ? '' : 'disabled'; ?>>
                                                     <div class="payment-info">
                                                         <strong>Mercado Pago</strong>
-                                                        <?php if ($precio_vigente): ?>
+                                                        <?php if ($soloTransferencia): ?>
+                                                            <span>Disponible únicamente cuando retomes el proceso con un nuevo pago.</span>
+                                                        <?php elseif ($precio_vigente): ?>
                                                             <span>Pagá de forma segura con tarjetas, efectivo o saldo en Mercado Pago.</span>
                                                         <?php else: ?>
                                                             <span> Disponible cuando haya un precio vigente para esta capacitación.</span>
@@ -1102,7 +1185,8 @@ include '../head.php';
                 return;
             }
 
-            const mpAvailable = <?php echo $precio_vigente ? 'true' : 'false'; ?>;
+            const mpAvailable = <?php echo ($precio_vigente && !$soloTransferencia) ? 'true' : 'false'; ?>;
+            const forceTransferOnly = <?php echo $soloTransferencia ? 'true' : 'false'; ?>;
             const checkoutType = '<?php echo htmlspecialchars($tipo_checkout, ENT_QUOTES, 'UTF-8'); ?>';
             const capacitacionBloqueada = <?php echo ($tipo_checkout === 'capacitacion' && $capacitacionBloqueada) ? 'true' : 'false'; ?>;
             const capacitacionBloqueadaMensaje = <?php echo json_encode($capacitacionBloqueada ? $capacitacionBloqueadaMensaje : ''); ?>;
@@ -1398,6 +1482,11 @@ include '../head.php';
                 if (!confirmLabel || !confirmIcon) {
                     return;
                 }
+                if (forceTransferOnly) {
+                    confirmLabel.textContent = confirmDefault.label;
+                    confirmIcon.className = confirmDefault.icon;
+                    return;
+                }
                 if (mpRadio && mpRadio.checked) {
                     confirmLabel.textContent = 'Ir a Mercado Pago';
                     confirmIcon.className = 'fas fa-credit-card ms-2';
@@ -1411,7 +1500,7 @@ include '../head.php';
                 if (!transferRadio || !mpRadio || !transferDetails || !mpDetails) {
                     return;
                 }
-                if (transferRadio.checked) {
+                if (transferRadio.checked || forceTransferOnly) {
                     transferDetails.classList.remove('hidden');
                     mpDetails.classList.add('hidden');
                 } else if (mpRadio.checked) {

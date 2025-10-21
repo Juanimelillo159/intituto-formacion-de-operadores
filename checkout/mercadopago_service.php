@@ -23,9 +23,11 @@ function mp_find_order(PDO $con, array $lookup): ?array
     }
 
     $sql = <<<SQL
-        SELECT mp.*, p.estado AS pago_estado, p.monto, p.moneda,
+        SELECT mp.*, p.metodo AS metodo_checkout, p.estado AS pago_estado, p.monto, p.moneda,
                p.id_capacitacion, p.id_certificacion,
                COALESCE(cap.id_capacitacion, cert.id_certificacion) AS id_inscripcion,
+               cap.id_curso AS id_curso_cap,
+               cert.id_curso AS id_curso_cert,
                CASE
                    WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'
                    WHEN p.id_certificacion IS NOT NULL THEN 'certificacion'

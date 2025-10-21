@@ -7,6 +7,18 @@ require_once __DIR__ . '/sbd.php';
 $page_title = "Registro | Instituto de Formación";
 $page_description = "Crea tu cuenta en el Instituto de Formación de Operadores";
 
+$session_user = $_SESSION['usuario'] ?? null;
+$session_user_id = $_SESSION['id_usuario'] ?? null;
+$has_active_session = false;
+
+if ($session_user_id && is_numeric($session_user_id) && (int)$session_user_id > 0) {
+    $has_active_session = true;
+} elseif (is_array($session_user) && isset($session_user['id_usuario']) && is_numeric($session_user['id_usuario'])) {
+    $has_active_session = (int)$session_user['id_usuario'] > 0;
+} elseif (!empty($session_user) && !is_array($session_user)) {
+    $has_active_session = true;
+}
+
 // Mensajes flash (del handler admin/registro.php)
 $registro_mensaje = $_SESSION['registro_mensaje'] ?? null;
 $registro_tipo    = $_SESSION['registro_tipo'] ?? 'info';
@@ -45,64 +57,71 @@ $include_google_auth = true;
               </div>
             <?php endif; ?>
 
-            <!-- Formulario clásico: names alineados con admin/registro.php -->
-            <form method="POST" action="register.php" id="form-registro" novalidate>
-              <div class="row g-3">
-                <div class="col-12 col-sm-6">
-                  <label for="nombre" class="form-label">Nombre</label>
-                  <input type="text" class="form-control" name="nombre" id="nombre" required autocomplete="given-name">
-                </div>
+            <?php if ($has_active_session): ?>
+              <div class="alert alert-info text-center" role="alert">
+                Ya tenés una sesión iniciada. Si necesitás actualizar tus datos, visitá la sección <a href="configuracion.php" class="alert-link">Configuración</a> o consultá tus cursos desde <a href="mis_cursos.php" class="alert-link">Mis cursos</a>.
+              </div>
+            <?php else: ?>
+              <!-- Formulario clásico: names alineados con admin/registro.php -->
+              <form method="POST" action="register.php" id="form-registro" novalidate>
+                <div class="row g-3">
+                  <div class="col-12 col-sm-6">
+                    <label for="nombre" class="form-label">Nombre</label>
+                    <input type="text" class="form-control" name="nombre" id="nombre" required autocomplete="given-name">
+                  </div>
 
-                <div class="col-12 col-sm-6">
-                  <label for="apellido" class="form-label">Apellido</label>
-                  <input type="text" class="form-control" name="apellido" id="apellido" required autocomplete="family-name">
-                </div>
+                  <div class="col-12 col-sm-6">
+                    <label for="apellido" class="form-label">Apellido</label>
+                    <input type="text" class="form-control" name="apellido" id="apellido" required autocomplete="family-name">
+                  </div>
 
-                <div class="col-12">
-                  <label for="telefono" class="form-label">Número de teléfono</label>
-                  <input type="tel" class="form-control" name="telefono" id="telefono" required
-                         autocomplete="tel" inputmode="tel"
-                         pattern="[0-9+()\s-]{6,}"
-                         title="Ingresa un número de teléfono válido.">
-                </div>
+                  <div class="col-12">
+                    <label for="telefono" class="form-label">Número de teléfono</label>
+                    <input type="tel" class="form-control" name="telefono" id="telefono" required
+                           autocomplete="tel" inputmode="tel"
+                           pattern="[0-9+()\s-]{6,}"
+                           title="Ingresa un número de teléfono válido.">
+                  </div>
 
-                <div class="col-12">
-                  <label for="email" class="form-label">Correo electrónico</label>
-                  <input type="email" class="form-control" name="email" id="email" required autocomplete="email">
-                </div>
+                  <div class="col-12">
+                    <label for="email" class="form-label">Correo electrónico</label>
+                    <input type="email" class="form-control" name="email" id="email" required autocomplete="email">
+                  </div>
 
-                <div class="col-12 col-sm-6">
-                  <label for="clave" class="form-label">Contraseña</label>
-                  <input type="password" class="form-control" name="clave" id="clave" required autocomplete="new-password">
-                </div>
+                  <div class="col-12 col-sm-6">
+                    <label for="clave" class="form-label">Contraseña</label>
+                    <input type="password" class="form-control" name="clave" id="clave" required autocomplete="new-password">
+                  </div>
 
-                <div class="col-12 col-sm-6">
-                  <label for="confirmar_clave" class="form-label">Repetir contraseña</label>
-                  <input type="password" class="form-control" name="confirmar_clave" id="confirmar_clave" required autocomplete="new-password">
-                </div>
+                  <div class="col-12 col-sm-6">
+                    <label for="confirmar_clave" class="form-label">Repetir contraseña</label>
+                    <input type="password" class="form-control" name="confirmar_clave" id="confirmar_clave" required autocomplete="new-password">
+                  </div>
 
-                <div class="col-12">
-                  <div class="form-check">
-                    <input class="form-check-input" type="checkbox" name="aceptar_terminos" id="aceptar_terminos" required>
-                    <label class="form-check-label" for="aceptar_terminos">
-                      Acepto los <a href="index.php">Términos y condiciones</a>
-                    </label>
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="aceptar_terminos" id="aceptar_terminos" required>
+                      <label class="form-check-label" for="aceptar_terminos">
+                        Acepto los <a href="index.php">Términos y condiciones</a>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div class="col-12">
+                    <button type="submit" name="registrar_usuario" class="btn btn-primary w-100" id="btn-registrar">
+                      Crear cuenta
+                    </button>
                   </div>
                 </div>
+              </form>
 
-                <div class="col-12">
-                  <button type="submit" name="registrar_usuario" class="btn btn-primary w-100" id="btn-registrar">
-                    Crear cuenta
-                  </button>
-                </div>
+             <!-- Google: mensaje + botón centrado -->
+              <div class="text-center mt-3"><span class="text-muted"> o </span></div>
+              <div id="googleSignInMessage" role="alert" style="display:none;"></div>
+              <div class="d-flex justify-content-center mt-3">
+                <div id="googleSignInButton"></div>
               </div>
-            </form>
-
-           <!-- Google: mensaje + botón centrado -->
-            <div class="text-center mt-3"><span class="text-muted"> o </span></div>
-            <div id="googleSignInMessage" role="alert" style="display:none;"></div>
-            <div class="d-flex justify-content-center mt-3">
-            <div id="googleSignInButton"></div>
+            <?php endif; ?>
 
           </div><!--/card-body-->
         </div><!--/card-->
