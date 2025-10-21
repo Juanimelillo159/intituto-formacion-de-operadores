@@ -55,3 +55,5 @@
 {"ts":"2025-10-21T02:55:06+02:00","event":"mp_preference_created","context":{"pago":49,"registro":71,"preference":"1578491289-e5068f0d-7b24-4d25-9458-a603faede276","monto":140000,"moneda":"ARS"}}
 {"ts":"2025-10-21T02:55:38+02:00","event":"mp_webhook_skip","context":{"reason":"sin_payment_id","query":{"id":"34907016767","topic":"merchant_order"},"body":{"resource":"https:\/\/api.mercadolibre.com\/merchant_orders\/34907016767","topic":"merchant_order"}}}
 {"ts":"2025-10-21T02:56:37+02:00","event":"mp_return_payment_error","context":{"payment_id":"null"},"error":{"type":"InvalidArgumentException","message":"El identificador de pago no es válido."}}
+{"ts":"2025-10-21T03:45:58+02:00","event":"mp_preference_created","context":{"pago":50,"registro":72,"preference":"1578491289-a28a7d20-34e3-4997-b612-28bba96199b7","monto":999999,"moneda":"ARS"}}
+{"ts":"2025-10-21T03:48:49+02:00","event":"mp_return_error","context":{"error":"No recibimos la información del pago."},"error":{"type":"RuntimeException","message":"No recibimos la información del pago."}}
