@@ -71,6 +71,8 @@ SELECT
     p.moneda AS pago_moneda,
     p.id_capacitacion,
     p.id_certificacion,
+    cap.id_curso AS id_curso_cap,
+    cert.id_curso AS id_curso_cert,
     COALESCE(cap.id_capacitacion, cert.id_certificacion) AS id_registro,
     CASE
         WHEN p.id_capacitacion IS NOT NULL THEN 'capacitacion'
@@ -122,7 +124,11 @@ SQL;
             'monto' => isset($row['precio_total']) ? (float) $row['precio_total'] : (isset($row['monto']) ? (float) $row['monto'] : 0.0),
             'moneda' => $row['moneda_registro'] ?? ($row['pago_moneda'] ?? 'ARS'),
             'payment_type' => $row['metodo'] ?? $manualMetodo,
+            'payment_method' => $row['metodo'] ?? $manualMetodo,
             'payment_id' => null,
+            'id_curso' => isset($row['id_curso_cap']) && (int) $row['id_curso_cap'] > 0
+                ? (int) $row['id_curso_cap']
+                : (isset($row['id_curso_cert']) ? (int) $row['id_curso_cert'] : 0),
         ];
 
         if (!empty($orderData['tipo_checkout']) && in_array($orderData['tipo_checkout'], ['curso', 'capacitacion', 'certificacion'], true)) {
@@ -181,6 +187,10 @@ SQL;
         }
 
         $orderData = $mpRow;
+        $orderData['payment_method'] = $mpRow['metodo_checkout'] ?? 'mercado_pago';
+        $orderData['id_curso'] = isset($mpRow['id_curso_cap']) && (int) $mpRow['id_curso_cap'] > 0
+            ? (int) $mpRow['id_curso_cap']
+            : (isset($mpRow['id_curso_cert']) ? (int) $mpRow['id_curso_cert'] : ($orderData['id_curso'] ?? 0));
         $estadoPago = (string) ($mpRow['pago_estado'] ?? 'pendiente');
         $mpStatus = (string) ($mpRow['status'] ?? '');
         $statusDetail = (string) ($mpRow['status_detail'] ?? '');
@@ -281,6 +291,7 @@ function checkout_mp_status_detail_message(?string $statusDetail): ?string
 $canResumePayment = false;
 $resumePaymentLabel = null;
 $resumePaymentUrl = null;
+$changePaymentUrl = null;
 if (!$error && $orderData) {
     $tipoOrden = strtolower((string)($orderData['tipo_checkout'] ?? $tipoParam));
     $registroId = (int)($orderData['id_inscripcion'] ?? 0);
@@ -296,6 +307,31 @@ if (!$error && $orderData) {
         $canResumePayment = true;
         $resumePaymentLabel = $estadoPagoLower === 'pendiente' ? 'Continuar pago' : 'Retomar pago';
         $resumePaymentUrl = 'retomar_pago.php?tipo=' . $tipoOrden . '&id=' . $registroId;
+        $paymentMethod = strtolower((string)($orderData['payment_method'] ?? ''));
+        $paymentTypeRaw = strtolower((string)($orderData['payment_type'] ?? ''));
+        if ($paymentMethod === '' && $paymentTypeRaw !== '') {
+            $paymentMethod = 'mercado_pago';
+        }
+        if (in_array($paymentMethod, ['credit_card', 'debit_card', 'account_money', 'ticket', 'atm'], true)) {
+            $paymentMethod = 'mercado_pago';
+        }
+        if ($paymentMethod === 'mercado_pago') {
+            $changeParams = [
+                'tipo' => $tipoOrden,
+                'solo_transferencia' => 1,
+            ];
+            if (!empty($orderData['id_curso'])) {
+                $changeParams['id_curso'] = (int)$orderData['id_curso'];
+            }
+            if ($tipoOrden === 'certificacion') {
+                $changeParams['certificacion_registro'] = $registroId;
+            } else {
+                $changeParams['retomar'] = $registroId;
+            }
+            if (!empty($changeParams['id_curso']) || $tipoOrden === 'certificacion') {
+                $changePaymentUrl = 'checkout.php?' . http_build_query($changeParams);
+            }
+        }
     }
 }
 
@@ -694,10 +730,15 @@ if (!$error && $orderData) {
                     <?php endif; ?>
 
                     <?php if ($canResumePayment && $resumePaymentUrl): ?>
-                        <div class="mt-4">
+                        <div class="mt-4 d-flex flex-column flex-sm-row justify-content-center gap-2">
                             <a class="btn btn-primary btn-lg" href="<?php echo htmlspecialchars($resumePaymentUrl, ENT_QUOTES, 'UTF-8'); ?>">
                                 <i class="fas fa-rotate-right me-2"></i><?php echo htmlspecialchars($resumePaymentLabel ?? 'Retomar pago', ENT_QUOTES, 'UTF-8'); ?>
                             </a>
+                            <?php if ($changePaymentUrl): ?>
+                                <a class="btn btn-outline-primary btn-lg" href="<?php echo htmlspecialchars($changePaymentUrl, ENT_QUOTES, 'UTF-8'); ?>">
+                                    <i class="fas fa-right-left me-2"></i>Cambiar método de pago
+                                </a>
+                            <?php endif; ?>
                         </div>
                     <?php endif; ?>
                 <?php endif; ?>

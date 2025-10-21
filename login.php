@@ -7,6 +7,18 @@ require_once __DIR__ . '/sbd.php';
 $page_title = "Login | Instituto de Formación";
 $page_description = "Pagina de inicio de sesión del Instituto de Formación de Operadores";
 
+$session_user = $_SESSION['usuario'] ?? null;
+$session_user_id = $_SESSION['id_usuario'] ?? null;
+$has_active_session = false;
+
+if ($session_user_id && is_numeric($session_user_id) && (int)$session_user_id > 0) {
+    $has_active_session = true;
+} elseif (is_array($session_user) && isset($session_user['id_usuario']) && is_numeric($session_user['id_usuario'])) {
+    $has_active_session = (int)$session_user['id_usuario'] > 0;
+} elseif (!empty($session_user) && !is_array($session_user)) {
+    $has_active_session = true;
+}
+
 $login_mensaje = $_SESSION['login_mensaje'] ?? null;
 $login_tipo    = $_SESSION['login_tipo'] ?? 'info';
 
@@ -25,39 +37,46 @@ $include_google_auth = true;
 
 <section class="content-wrapper">
   <div class="container">
-    <div class="login-container">
-      <div class="login-logo">
-        <img src="logos/LOGO PNG_Mesa de trabajo 1.png" alt="Instituto de Formación de Operadores">
+      <div class="login-container">
+        <div class="login-logo">
+          <img src="logos/LOGO PNG_Mesa de trabajo 1.png" alt="Instituto de Formación de Operadores">
+        </div>
+
+        <?php if ($login_mensaje !== null): ?>
+          <div class="alert alert-<?php echo htmlspecialchars($login_tipo); ?> text-center" role="alert">
+            <?php echo $login_mensaje; ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($has_active_session): ?>
+          <div class="alert alert-info text-center" role="alert">
+            Ya tenés una sesión iniciada. Podés continuar desde <a href="mis_cursos.php" class="alert-link">Mis cursos</a> o visitar el <a href="index.php" class="alert-link">inicio</a>.
+          </div>
+        <?php else: ?>
+          <form method="POST" action="admin/sesion.php" id="form-login">
+            <div class="mb-3">
+              <label for="email" class="form-label">Correo electrónico</label>
+              <input type="email" class="form-control" name="email" id="email" required>
+            </div>
+            <div class="mb-3">
+              <label for="clave" class="form-label">Contraseña</label>
+              <input type="password" class="form-control" name="clave" id="clave" required>
+            </div>
+            <button type="submit" name="iniciar_sesion" class="btn btn-primary w-100">Iniciar sesión</button>
+            <div class="text-center mt-2">
+              <a href="recuperar.php">Olvidaste tu contraseña?</a>
+            </div>
+            <p class="text-center mt-3">No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
+          </form>
+
+          <div class="text-center mt-3"><span class="text-muted"> o </span></div>
+          <div id="googleSignInMessage" role="alert" style="display:none;"></div>
+          <div class="d-flex justify-content-center mt-3">
+            <div id="googleSignInButton"></div>
+          </div>
+        <?php endif; ?>
+
       </div>
-
-      <?php if ($login_mensaje !== null): ?>
-        <div class="alert alert-<?php echo htmlspecialchars($login_tipo); ?> text-center" role="alert">
-          <?php echo $login_mensaje; ?>
-        </div>
-      <?php endif; ?>
-
-      <form method="POST" action="admin/sesion.php" id="form-login">
-        <div class="mb-3">
-          <label for="email" class="form-label">Correo electrónico</label>
-          <input type="email" class="form-control" name="email" id="email" required>
-        </div>
-        <div class="mb-3">
-          <label for="clave" class="form-label">Contraseña</label>
-          <input type="password" class="form-control" name="clave" id="clave" required>
-        </div>
-        <button type="submit" name="iniciar_sesion" class="btn btn-primary w-100">Iniciar sesión</button>
-        <div class="text-center mt-2">
-          <a href="recuperar.php">Olvidaste tu contraseña?</a>
-        </div>
-        <p class="text-center mt-3">No tienes cuenta? <a href="registro.php">Crear cuenta</a></p>
-      </form>
-
-      <div class="text-center mt-3"><span class="text-muted"> o </span></div>
-      <div id="googleSignInMessage" role="alert" style="display:none;"></div>
-      <div class="d-flex justify-content-center mt-3">
-        <div id="googleSignInButton"></div>
-      </div>
-
     </div>
   </div>
 </section>

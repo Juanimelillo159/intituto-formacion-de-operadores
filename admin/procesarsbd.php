@@ -506,13 +506,15 @@ try {
         $checkoutTipo = $tipoCheckoutRaw;
         $obsPagoRaw = trim((string)($_POST['obs_pago'] ?? ''));
         if (function_exists('mb_substr')) {
-            $observacionesPago = mb_substr($obsPagoRaw, 0, 250, 'UTF-8');
-        } else {
-            $observacionesPago = substr($obsPagoRaw, 0, 250);
-        }
+        $observacionesPago = mb_substr($obsPagoRaw, 0, 250, 'UTF-8');
+    } else {
+        $observacionesPago = substr($obsPagoRaw, 0, 250);
+    }
         $precioInput = isset($_POST['precio_checkout']) ? (float)$_POST['precio_checkout'] : 0.0;
         $certificacionId = (int)($_POST['id_certificacion'] ?? 0);
         $certificacionRow = null;
+        $retomarCapacitacionId = isset($_POST['retomar_capacitacion']) ? (int)$_POST['retomar_capacitacion'] : 0;
+        $capacitacionRow = null;
 
         if ($checkoutCursoId <= 0) {
             throw new InvalidArgumentException('Curso inválido.');
@@ -531,7 +533,32 @@ try {
             throw new InvalidArgumentException('Método de pago inválido.');
         }
 
+        if ($retomarCapacitacionId > 0 && $metodoPago !== 'transferencia') {
+            throw new InvalidArgumentException('Para completar el cambio de método debés adjuntar el comprobante de transferencia.');
+        }
+
         $usuarioId = obtener_usuario_id_de_sesion();
+
+        if ($retomarCapacitacionId > 0) {
+            $capStmt = $con->prepare('SELECT * FROM checkout_capacitaciones WHERE id_capacitacion = :id LIMIT 1');
+            $capStmt->execute([':id' => $retomarCapacitacionId]);
+            $capacitacionRow = $capStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$capacitacionRow) {
+                throw new RuntimeException('No encontramos la inscripción que querés actualizar.');
+            }
+            if ($usuarioId > 0 && (int)($capacitacionRow['creado_por'] ?? 0) !== $usuarioId) {
+                throw new RuntimeException('No tenés autorización para actualizar esta inscripción.');
+            }
+            $estadoCapActual = (int)($capacitacionRow['id_estado'] ?? 0);
+            if ($estadoCapActual === 3) {
+                throw new RuntimeException('Esta inscripción ya registra un pago aprobado.');
+            }
+            $checkoutCursoId = (int)($capacitacionRow['id_curso'] ?? 0);
+            if ($checkoutCursoId <= 0) {
+                throw new RuntimeException('La inscripción original no tiene un curso válido asociado.');
+            }
+            $checkoutTipo = 'capacitacion';
+        }
 
         if ($checkoutTipo === 'certificacion') {
             if ($certificacionId <= 0) {
@@ -555,7 +582,7 @@ try {
             }
         }
 
-        if ($checkoutTipo !== 'certificacion' && $usuarioId > 0) {
+        if ($checkoutTipo !== 'certificacion' && $usuarioId > 0 && $retomarCapacitacionId <= 0) {
             $capDuplicadaStmt = $con->prepare('
                 SELECT id_capacitacion, id_estado
                   FROM checkout_capacitaciones
@@ -676,32 +703,85 @@ try {
         $registroId = 0;
 
         if ($checkoutTipo !== 'certificacion') {
-            $capacitacionStmt = $con->prepare("
-              INSERT INTO checkout_capacitaciones (
-                creado_por, id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda
-              ) VALUES (
-                :creado_por, :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, :acepta, :precio, :moneda
-              )
-            ");
-            $capacitacionStmt->execute([
-                ':creado_por' => $usuarioId > 0 ? $usuarioId : null,
-                ':curso' => $checkoutCursoId,
-                ':nombre' => $nombreInscrito,
-                ':apellido' => $apellidoInscrito,
-                ':email' => $emailInscrito,
-                ':telefono' => $telefonoInscrito,
-                ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
-                ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
-                ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
-                ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
-                ':pais' => $paisInsc,
-                ':acepta' => $aceptaTyC,
-                ':precio' => $precioFinal,
-                ':moneda' => strtoupper($monedaPrecio),
-            ]);
+            if ($retomarCapacitacionId > 0 && $capacitacionRow) {
+                $capacitacionId = $retomarCapacitacionId;
+                $registroId = $capacitacionId;
+                $updateCapacitacion = $con->prepare('
+                    UPDATE checkout_capacitaciones
+                       SET nombre = :nombre,
+                           apellido = :apellido,
+                           email = :email,
+                           telefono = :telefono,
+                           dni = :dni,
+                           direccion = :direccion,
+                           ciudad = :ciudad,
+                           provincia = :provincia,
+                           pais = :pais,
+                           acepta_tyc = 1,
+                           precio_total = :precio,
+                           moneda = :moneda
+                     WHERE id_capacitacion = :id
+                ');
+                $updateCapacitacion->execute([
+                    ':nombre' => $nombreInscrito,
+                    ':apellido' => $apellidoInscrito,
+                    ':email' => $emailInscrito,
+                    ':telefono' => $telefonoInscrito,
+                    ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
+                    ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
+                    ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
+                    ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
+                    ':pais' => $paisInsc,
+                    ':precio' => $precioFinal,
+                    ':moneda' => strtoupper($monedaPrecio),
+                    ':id' => $capacitacionId,
+                ]);
 
-            $capacitacionId = (int)$con->lastInsertId();
-            $registroId = $capacitacionId;
+                $cancelNota = 'Cambio de método de pago a transferencia el ' . date('d/m/Y H:i');
+                $cancelStmt = $con->prepare("
+                    UPDATE checkout_pagos
+                       SET estado = :estado,
+                           observaciones = CASE
+                               WHEN observaciones IS NULL OR observaciones = '' THEN :nota
+                               ELSE CONCAT(:nota, ' | ', observaciones)
+                           END
+                     WHERE id_capacitacion = :capacitacion
+                       AND metodo = 'mercado_pago'
+                       AND estado = 'pendiente'
+                ");
+                $cancelStmt->execute([
+                    ':estado' => 'cancelado',
+                    ':nota' => $cancelNota,
+                    ':capacitacion' => $capacitacionId,
+                ]);
+            } else {
+                $capacitacionStmt = $con->prepare("
+                  INSERT INTO checkout_capacitaciones (
+                    creado_por, id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda
+                  ) VALUES (
+                    :creado_por, :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, :acepta, :precio, :moneda
+                  )
+                ");
+                $capacitacionStmt->execute([
+                    ':creado_por' => $usuarioId > 0 ? $usuarioId : null,
+                    ':curso' => $checkoutCursoId,
+                    ':nombre' => $nombreInscrito,
+                    ':apellido' => $apellidoInscrito,
+                    ':email' => $emailInscrito,
+                    ':telefono' => $telefonoInscrito,
+                    ':dni' => $dniInscrito !== '' ? $dniInscrito : null,
+                    ':direccion' => $direccionInsc !== '' ? $direccionInsc : null,
+                    ':ciudad' => $ciudadInsc !== '' ? $ciudadInsc : null,
+                    ':provincia' => $provinciaInsc !== '' ? $provinciaInsc : null,
+                    ':pais' => $paisInsc,
+                    ':acepta' => $aceptaTyC,
+                    ':precio' => $precioFinal,
+                    ':moneda' => strtoupper($monedaPrecio),
+                ]);
+
+                $capacitacionId = (int)$con->lastInsertId();
+                $registroId = $capacitacionId;
+            }
 
             $pagoStmt = $con->prepare("
               INSERT INTO checkout_pagos (
