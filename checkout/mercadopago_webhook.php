@@ -8,6 +8,8 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/mercadopago_common.php';
 require_once __DIR__ . '/mercadopago_service.php';
 
+use MercadoPago\Exceptions\MPApiException;
+
 $response = ['success' => false];
 $statusCode = 200;
 
@@ -61,9 +63,17 @@ try {
     $response['status'] = $updated['status'] ?? null;
     $response['estado_pago'] = $updated['pago_estado'] ?? null;
 } catch (Throwable $exception) {
-    $statusCode = 500;
+    $statusCode = $exception instanceof InvalidArgumentException ? 400 : 500;
     $response['message'] = $exception->getMessage();
-    mp_log('mp_webhook_error', ['error' => $exception->getMessage()]);
+    if (mp_is_debug()) {
+        $mpException = $exception instanceof MPApiException
+            ? $exception
+            : ($exception->getPrevious() instanceof MPApiException ? $exception->getPrevious() : null);
+        if ($mpException) {
+            $response['debug'] = mp_api_exception_debug($mpException);
+        }
+    }
+    mp_log('mp_webhook_error', ['error' => $exception->getMessage()], $exception);
 }
 
 http_response_code($statusCode);

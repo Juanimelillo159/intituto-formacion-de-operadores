@@ -44,19 +44,53 @@ if (!function_exists('checkout_env')) {
  */
 function mp_base_url(): string
 {
-    $base = MP_BASE_URL;
-    if ($base !== '' && $base !== null) {
+    $base = defined('MP_BASE_URL') ? trim((string) MP_BASE_URL) : '';
+    if ($base !== '') {
+        if (!preg_match('#^[a-z][a-z0-9+.-]*://#i', $base)) {
+            $base = 'https://' . ltrim($base, '/');
+        }
+
         return rtrim($base, '/');
     }
 
-    $scheme = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
+    $scheme = (!empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
     $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? 'localhost');
-    $host = trim((string)$host);
+    $host = trim((string) $host);
     if ($host === '') {
         $host = 'localhost';
     }
 
     return $scheme . '://' . $host;
+}
+
+function mp_absolute_url(string $url, string $defaultPath = ''): string
+{
+    $trimmed = trim($url);
+    if ($trimmed === '') {
+        $trimmed = $defaultPath;
+    }
+
+    if ($trimmed === '') {
+        return mp_base_url();
+    }
+
+    if (preg_match('#^[a-z][a-z0-9+.-]*://#i', $trimmed)) {
+        return rtrim($trimmed, '/');
+    }
+
+    if (strpos($trimmed, '//') === 0) {
+        return 'https:' . rtrim($trimmed, '/');
+    }
+
+    if ($trimmed[0] === '/') {
+        return rtrim(mp_base_url(), '/') . $trimmed;
+    }
+
+    if (preg_match('#^[a-z0-9.-]+(:\d+)?(/.*)?$#i', $trimmed)) {
+        return 'https://' . ltrim($trimmed, '/');
+    }
+
+    return rtrim(mp_base_url(), '/') . '/' . ltrim($trimmed, '/');
 }
 
 function mp_is_debug(): bool
@@ -79,22 +113,22 @@ function mp_is_debug(): bool
 
 function mp_url_success(): string
 {
-    return MP_URL_SUCCESS ?: (mp_base_url() . '/checkout/gracias.php');
+    return mp_absolute_url(MP_URL_SUCCESS, '/checkout/gracias.php');
 }
 
 function mp_url_failure(): string
 {
-    return MP_URL_FAILURE ?: mp_url_success();
+    return mp_absolute_url(MP_URL_FAILURE, '/checkout/gracias.php');
 }
 
 function mp_url_pending(): string
 {
-    return MP_URL_PENDING ?: mp_url_success();
+    return mp_absolute_url(MP_URL_PENDING, '/checkout/gracias.php');
 }
 
 function mp_notification_url(): string
 {
-    return MP_URL_WEBHOOK ?: (mp_base_url() . '/checkout/mercadopago_webhook.php');
+    return mp_absolute_url(MP_URL_WEBHOOK, '/checkout/mercadopago_webhook.php');
 }
 
 /**
@@ -256,7 +290,17 @@ function mp_fetch_payment(string $paymentId): array
 
     mp_configure_sdk();
     $client = new PaymentClient();
-    $payment = $client->get((int) $numericId);
+
+    try {
+        $payment = $client->get((int) $numericId);
+    } catch (\TypeError $typeError) {
+        mp_log('mp_payment_id_invalid', [
+            'original' => $paymentId,
+            'normalized' => $numericId,
+        ], $typeError);
+
+        throw new \InvalidArgumentException('Mercado Pago devolvió un identificador de pago inválido.', 0, $typeError);
+    }
 
     return json_decode(json_encode($payment), true) ?: [];
 }
