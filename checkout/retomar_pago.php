@@ -53,11 +53,12 @@ $redirectGracias = static function (string $tipoCheckout, int $registroId, ?int 
     if ($tipoCheckout === 'certificacion') {
         header('Location: gracias_certificacion.php?' . http_build_query(['certificacion' => $registroId]));
     } else {
-        $params = ['tipo' => 'capacitacion'];
+        $params = [
+            'tipo' => 'capacitacion',
+            'orden' => $registroId,
+        ];
         if ($pagoId !== null && $pagoId > 0) {
-            $params['orden'] = $pagoId;
-        } else {
-            $params['orden'] = $registroId;
+            $params['pago'] = $pagoId;
         }
         header('Location: gracias.php?' . http_build_query($params));
     }
