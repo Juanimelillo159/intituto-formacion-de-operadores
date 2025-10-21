@@ -339,7 +339,7 @@ if (!$error && $orderData) {
 <!DOCTYPE html>
 <html lang="es">
 <?php include __DIR__ . '/../head.php'; ?>
-<head>
+
     <!-- Añadiendo estilos modernos consistentes con curso-detalle.php -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -677,8 +677,8 @@ if (!$error && $orderData) {
             }
         }
     </style>
-</head>
-<body>
+
+<body class="checkout-page d-flex flex-column min-vh-100">
 <?php include __DIR__ . '/../nav.php'; ?>
 
 <main class="checkout-main">
