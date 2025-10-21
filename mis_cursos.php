@@ -1453,7 +1453,6 @@ SQL;
             $stmtCapFallback = $pdo->prepare($sqlCapFallback);
             $stmtCapFallback->bindValue(':usuario1', $userId, PDO::PARAM_INT);
             $stmtCapFallback->bindValue(':usuario2', $userId, PDO::PARAM_INT);
-            $stmtCapFallback->bindValue(':email1', $userEmail, PDO::PARAM_STR);
             $stmtCapFallback->bindValue(':email2', $userEmail, PDO::PARAM_STR);
             $stmtCapFallback->execute();
 
@@ -1531,7 +1530,6 @@ SQL;
             $stmtCertFallback = $pdo->prepare($sqlCertFallback);
             $stmtCertFallback->bindValue(':usuario1', $userId, PDO::PARAM_INT);
             $stmtCertFallback->bindValue(':usuario2', $userId, PDO::PARAM_INT);
-            $stmtCertFallback->bindValue(':email1', $userEmail, PDO::PARAM_STR);
             $stmtCertFallback->bindValue(':email2', $userEmail, PDO::PARAM_STR);
             $stmtCertFallback->execute();
 
