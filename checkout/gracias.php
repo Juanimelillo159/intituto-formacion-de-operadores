@@ -4,7 +4,6 @@ declare(strict_types=1);
 session_start();
 
 require_once __DIR__ . '/../sbd.php';
-require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/mercadopago_service.php';
 
 $page_title = 'Gracias por tu compra | Instituto de Formación';
@@ -143,6 +142,10 @@ SQL;
         $error = $exception->getMessage();
     }
 } else {
+    // Carga diferida del autoload de Composer solo cuando se vuelve de Mercado Pago
+    // para evitar el chequeo de plataforma en entornos con PHP < 8.2 cuando solo
+    // se consulta el estado manual por "orden".
+    require_once __DIR__ . '/../vendor/autoload.php';
     try {
         if (!isset($con) || !($con instanceof PDO)) {
             throw new RuntimeException('No se pudo conectar con la base de datos.');

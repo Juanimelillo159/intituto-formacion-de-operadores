@@ -1720,15 +1720,7 @@ $configActive = 'mis_cursos';
                                     if ($tipoRegistro === 'capacitacion') {
                                         if (in_array($estadoRegistro, [1, 2, 3], true)) {
                                             $ordenParam = $pagoId > 0 ? $pagoId : $registroId;
-                                            $accionesMap['estado-cap-' . $registroId] = [
-                                                'label' => 'Ver estado',
-                                                'href' => 'checkout/gracias.php?' . http_build_query([
-                                                    'tipo' => 'capacitacion',
-                                                    'orden' => $ordenParam,
-                                                ]),
-                                                'variant' => 'outline-primary',
-                                                'icon' => 'fas fa-info-circle',
-                                            ];
+                                            // Botón "Ver estado" se muestra en Historial de compras
                                         }
 
                                         if ($estadoRegistro !== 3) {
@@ -1749,12 +1741,7 @@ $configActive = 'mis_cursos';
                                             }
                                         }
                                     } elseif ($tipoRegistro === 'certificacion') {
-                                        $accionesMap['estado-cert-' . $registroId] = [
-                                            'label' => 'Ver estado',
-                                            'href' => 'checkout/gracias_certificacion.php?certificacion=' . $registroId,
-                                            'variant' => 'outline-primary',
-                                            'icon' => 'fas fa-info-circle',
-                                        ];
+                                        // Botón "Ver estado" se muestra en Historial de compras
 
                                         if (in_array($pagoEstado, ['cancelado', 'rechazado'], true) && $estadoRegistro === 2) {
                                             $accionesMap['retomar-cert-' . $registroId] = [

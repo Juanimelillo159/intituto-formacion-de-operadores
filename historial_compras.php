@@ -251,8 +251,17 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                                         <span class="text-muted align-self-center">En revisión</span>
                                                     <?php endif; ?>
                                                 </div>
+                                            <?php elseif (($row['tipo'] ?? '') === 'capacitacion'): ?>
+                                                <?php $ordenId = isset($row['id']) ? (int)$row['id'] : 0; ?>
+                                                <?php if ($ordenId > 0): ?>
+                                                    <a class="btn btn-sm btn-outline-primary" href="checkout/gracias.php?<?php echo http_build_query(['tipo' => 'capacitacion', 'orden' => $ordenId]); ?>">
+                                                        Ver estado
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="text-muted">-</span>
+                                                <?php endif; ?>
                                             <?php else: ?>
-                                                <span class="text-muted">—</span>
+                                                <span class="text-muted">-</span>
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end"><?php echo htmlspecialchars($totalLabel, ENT_QUOTES, 'UTF-8'); ?></td>
