@@ -177,12 +177,13 @@ if ($curso && $currentUserId > 0 && $tipo_checkout !== 'certificacion') {
             };
 
             if ($capacitacionRegistroId > 0) {
-                $redirectParams = ['tipo' => 'capacitacion'];
+                $redirectParams = [
+                    'tipo' => 'capacitacion',
+                    'orden' => $capacitacionRegistroId,
+                ];
                 $pagoId = checkout_find_latest_pago_for_capacitacion($con, $capacitacionRegistroId);
                 if ($pagoId !== null && $pagoId > 0) {
-                    $redirectParams['orden'] = $pagoId;
-                } else {
-                    $redirectParams['orden'] = $capacitacionRegistroId;
+                    $redirectParams['pago'] = $pagoId;
                 }
 
                 if ($capacitacionIntent || $tipo_checkout !== 'curso') {
