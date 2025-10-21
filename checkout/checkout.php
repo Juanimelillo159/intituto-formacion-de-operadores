@@ -611,48 +611,41 @@ include '../head.php';
                                             <div class="col-lg-5">
                                                 <div class="summary-card h-100 d-flex flex-column justify-content-between">
                                                     <h5>Inversión</h5>
+                                                    <h5>Inversión</h5>
                                                     <div class="price-highlight">
-                                                        <?php if ($precio_capacitacion || $precio_certificacion): ?>
-                                                            <div class="price-entries">
-                                                                <div class="price-entry <?php echo $tipoPrecioCheckout === 'capacitacion' ? 'price-entry-active' : ''; ?>">
-                                                                    <div class="price-entry-label">Capacitación</div>
-                                                                    <?php if ($precio_capacitacion): ?>
-                                                                        <div class="price-entry-value">
-                                                                            <?php echo strtoupper($precio_capacitacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_capacitacion['precio'], 2, ',', '.'); ?>
-                                                                        </div>
-                                                                        <div class="price-entry-note">
-                                                                            <?php if (!empty($precio_capacitacion['vigente_desde'])): ?>
-                                                                                Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_capacitacion['vigente_desde'])); ?>
-                                                                            <?php else: ?>
-                                                                                Precio vigente disponible en el sistema.
-                                                                            <?php endif; ?>
-                                                                        </div>
-                                                                    <?php else: ?>
-                                                                        <div class="price-entry-missing">Precio a confirmar.</div>
-                                                                    <?php endif; ?>
-                                                                </div>
-                                                                <div class="price-entry <?php echo $tipoPrecioCheckout === 'certificacion' ? 'price-entry-active' : ''; ?>">
-                                                                    <div class="price-entry-label">Certificación</div>
-                                                                    <?php if ($precio_certificacion): ?>
-                                                                        <div class="price-entry-value">
-                                                                            <?php echo strtoupper($precio_certificacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_certificacion['precio'], 2, ',', '.'); ?>
-                                                                        </div>
-                                                                        <div class="price-entry-note">
-                                                                            <?php if (!empty($precio_certificacion['vigente_desde'])): ?>
-                                                                                Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_certificacion['vigente_desde'])); ?>
-                                                                            <?php else: ?>
-                                                                                Precio vigente disponible en el sistema.
-                                                                            <?php endif; ?>
-                                                                        </div>
-                                                                    <?php else: ?>
-                                                                        <div class="price-entry-missing">Precio a confirmar.</div>
-                                                                    <?php endif; ?>
-                                                                </div>
+                                                        <?php
+                                                        // Usamos la misma lógica que arriba: si es certificación, mostramos certificación; sino, capacitación
+                                                        $esCertificacion = ($tipo_checkout === 'certificacion');
+                                                        $label = $esCertificacion ? 'Certificación' : 'Capacitación';
+                                                        $precioSeleccionado = $esCertificacion ? $precio_certificacion : $precio_capacitacion;
+                                                        ?>
+                                                        <div class="price-entries">
+                                                            <div class="price-entry price-entry-active">
+                                                                <div class="price-entry-label"><?php echo h($label); ?></div>
+                                                                <?php if ($precioSeleccionado): ?>
+                                                                    <div class="price-entry-value">
+                                                                        <?php echo strtoupper($precioSeleccionado['moneda'] ?? 'ARS'); ?>
+                                                                        <?php echo number_format((float)$precioSeleccionado['precio'], 2, ',', '.'); ?>
+                                                                    </div>
+                                                                    <div class="price-entry-note">
+                                                                        <?php if (!empty($precioSeleccionado['vigente_desde'])): ?>
+                                                                            Vigente desde <?php echo date('d/m/Y H:i', strtotime($precioSeleccionado['vigente_desde'])); ?>
+                                                                        <?php else: ?>
+                                                                            Precio vigente disponible en el sistema.
+                                                                        <?php endif; ?>
+                                                                    </div>
+                                                                <?php else: ?>
+                                                                    <div class="price-entry-missing">Precio a confirmar.</div>
+                                                                <?php endif; ?>
                                                             </div>
-                                                        <?php else: ?>
-                                                            <div class="text-muted">Precio a confirmar por el equipo comercial.</div>
+                                                        </div>
+                                                        <?php if (!$precioSeleccionado): ?>
+                                                            <div class="small text-muted mt-3">
+                                                                El equipo se pondrá en contacto para coordinar disponibilidad, medios de pago y comenzar tu proceso.
+                                                            </div>
                                                         <?php endif; ?>
                                                     </div>
+
                                                     <div class="small text-muted mt-3">
                                                         <?php echo h($priceHelper); ?>
                                                     </div>
