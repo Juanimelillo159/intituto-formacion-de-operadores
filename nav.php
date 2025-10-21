@@ -55,7 +55,7 @@ $normalized_base = rtrim($base_path, '/');
                 if (isset($_SESSION["usuario"])) {
                     ?>
                     <li class="nav-item dropdown user-menu">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center justify-content-center user-menu-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center justify-content-center user-menu-toggle" href="javascript:void(0)" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <span class="user-menu-icon" aria-hidden="true">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" focusable="false" role="img" aria-hidden="true">
                                     <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-3.3 0-10 1.65-10 5v3h20v-3c0-3.35-6.7-5-10-5Z" />
@@ -95,3 +95,38 @@ $normalized_base = rtrim($base_path, '/');
     </div>
 </nav>
 
+
+<script>
+  // Refuerza el toggle del dropdown del usuario incluso si hay conflicto de librerías
+  (function () {
+    function bindUserMenuToggle() {
+      var toggles = document.querySelectorAll('.user-menu-toggle[data-bs-toggle="dropdown"]');
+      if (!toggles.length) return;
+      toggles.forEach(function (toggle) {
+        // Evita múltiples listeners
+        if (toggle.__userMenuBound) return;
+        toggle.__userMenuBound = true;
+        toggle.addEventListener('click', function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (window.bootstrap && bootstrap.Dropdown) {
+            try {
+              var instance = bootstrap.Dropdown.getOrCreateInstance(toggle);
+              instance.toggle();
+            } catch (err) {
+              // Si algo falla, no rompemos la interacción
+            }
+          }
+        });
+      });
+    }
+
+    // Intenta enlazar al cargar el DOM y reintenta cuando cargue la página (por si Bootstrap va al final)
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bindUserMenuToggle);
+    } else {
+      bindUserMenuToggle();
+    }
+    window.addEventListener('load', bindUserMenuToggle);
+  })();
+</script>
