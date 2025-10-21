@@ -1444,15 +1444,17 @@ LEFT JOIN usuarios u ON u.email = cc.email
 WHERE cc.email IS NOT NULL
   AND cc.email <> ''
   AND (
-      u.id_usuario = :usuario
-      OR (:email <> '' AND LOWER(cc.email) = LOWER(:email))
+      u.id_usuario = :usuario1
+      OR (:email1 <> '' AND LOWER(cc.email) = LOWER(:email2))
   )
-  AND (cc.creado_por IS NULL OR cc.creado_por <> :usuario)
+  AND (cc.creado_por IS NULL OR cc.creado_por <> :usuario2)
 ORDER BY cc.creado_en DESC, cc.id_capacitacion DESC
 SQL;
             $stmtCapFallback = $pdo->prepare($sqlCapFallback);
-            $stmtCapFallback->bindValue(':usuario', $userId, PDO::PARAM_INT);
-            $stmtCapFallback->bindValue(':email', $userEmail, PDO::PARAM_STR);
+            $stmtCapFallback->bindValue(':usuario1', $userId, PDO::PARAM_INT);
+            $stmtCapFallback->bindValue(':usuario2', $userId, PDO::PARAM_INT);
+            $stmtCapFallback->bindValue(':email1', $userEmail, PDO::PARAM_STR);
+            $stmtCapFallback->bindValue(':email2', $userEmail, PDO::PARAM_STR);
             $stmtCapFallback->execute();
 
             while ($row = $stmtCapFallback->fetch(PDO::FETCH_ASSOC)) {
@@ -1520,15 +1522,17 @@ LEFT JOIN usuarios u ON u.email = ccert.email
 WHERE ccert.email IS NOT NULL
   AND ccert.email <> ''
   AND (
-      u.id_usuario = :usuario
-      OR (:email <> '' AND LOWER(ccert.email) = LOWER(:email))
+      u.id_usuario = :usuario1
+      OR (:email1 <> '' AND LOWER(ccert.email) = LOWER(:email2))
   )
-  AND (ccert.creado_por IS NULL OR ccert.creado_por <> :usuario)
+  AND (ccert.creado_por IS NULL OR ccert.creado_por <> :usuario2)
 ORDER BY ccert.creado_en DESC, ccert.id_certificacion DESC
 SQL;
             $stmtCertFallback = $pdo->prepare($sqlCertFallback);
-            $stmtCertFallback->bindValue(':usuario', $userId, PDO::PARAM_INT);
-            $stmtCertFallback->bindValue(':email', $userEmail, PDO::PARAM_STR);
+            $stmtCertFallback->bindValue(':usuario1', $userId, PDO::PARAM_INT);
+            $stmtCertFallback->bindValue(':usuario2', $userId, PDO::PARAM_INT);
+            $stmtCertFallback->bindValue(':email1', $userEmail, PDO::PARAM_STR);
+            $stmtCertFallback->bindValue(':email2', $userEmail, PDO::PARAM_STR);
             $stmtCertFallback->execute();
 
             while ($row = $stmtCertFallback->fetch(PDO::FETCH_ASSOC)) {

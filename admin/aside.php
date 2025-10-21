@@ -102,6 +102,13 @@
             </li>
 
             <li class="nav-item">
+              <a href="pedidos_inscripciones.php" class="nav-link">
+                <i class="fas fa-solid fa-clipboard-list"></i>
+                <p>Pedidos de inscripción</p>
+              </a>
+            </li>
+
+            <li class="nav-item">
               <a href="pagos.php" class="nav-link">
                 <i class="fas fa-solid fa-receipt"></i>
                 <p>Pagos</p>
