@@ -196,6 +196,7 @@ if ($contacto_mensaje !== null) {
               </div>
             <?php endif; ?>
             <form form action="enviar.php" method="POST">
+              <p class="text-muted mb-3">Enviar un mail para preguntas generales o solicitar cuenta de Empresas para gestionar Pedidos de Inscripciones a Cursos</p>
               <div class="mb-3">
                 <input type="text" class="form-control" name="nombre" placeholder="Nombre" required>
               </div>
@@ -214,7 +215,7 @@ if ($contacto_mensaje !== null) {
             </form>
           </div>
           <div class="col-md-6 p-5">
-            <img src="assets/imagenes/fondo/contactanos.webp" alt="Asesoramiento" class="img-fluid contact-image">
+            <img src="assets/imagenes/fondo/asesoramiento-empresas.jpg" alt="Asesoramiento y cuenta de empresas" class="img-fluid contact-image">
           </div>
         </div>
       </div>

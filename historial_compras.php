@@ -33,13 +33,57 @@ $formatMoney = static function (float $amount, ?string $currency = null): string
 $capacitaciones = [];
 $certificaciones = [];
 $combinado = [];
+$pedidos = [];
+$permiso = null;
 $errorMessage = null;
 
 try {
     $pdo = getPdo();
 
-    // CAPACITACIONES
-    $sqlCap = <<<SQL
+    // Permiso del usuario (2 = común, 3 = empresa)
+    try {
+        $stPerm = $pdo->prepare('SELECT id_permiso FROM usuarios WHERE id_usuario = :id LIMIT 1');
+        $stPerm->bindValue(':id', $userId, PDO::PARAM_INT);
+        $stPerm->execute();
+        $permiso = (int)($stPerm->fetchColumn() ?: 0);
+    } catch (Throwable $ePerm) {
+        $permiso = null;
+    }
+
+    // Si es empresa (permiso = 3), mostrar solo pedidos de inscripciones
+    if ($permiso === 3) {
+        // Pedidos de inscripciones
+        $stP = $pdo->prepare('SELECT id, created_at, COALESCE(estado,1) AS estado FROM inscripcion_pedidos WHERE usuario_id = :u ORDER BY created_at DESC, id DESC');
+        $stP->bindValue(':u', $userId, PDO::PARAM_INT);
+        $stP->execute();
+        $rows = $stP->fetchAll(PDO::FETCH_ASSOC);
+
+        if ($rows) {
+            foreach ($rows as $r) {
+                $pid = (int)($r['id'] ?? 0);
+                $pedidos[$pid] = [
+                    'id' => $pid,
+                    'fecha' => $r['created_at'] ?? null,
+                    'estado' => isset($r['estado']) ? (int)$r['estado'] : 1,
+                    'detalles' => [],
+                ];
+            }
+
+            $ids = implode(',', array_map('intval', array_keys($pedidos)));
+            if ($ids !== '') {
+                $sqlD = "SELECT d.pedido_id, d.curso_id, c.nombre_curso, d.tipo, d.turno, d.asistentes, d.ubicacion, d.created_at FROM inscripcion_pedidos_detalle d LEFT JOIN cursos c ON c.id_curso = d.curso_id WHERE d.pedido_id IN ($ids) ORDER BY d.pedido_id, d.id";
+                $stD = $pdo->query($sqlD);
+                while ($d = $stD->fetch(PDO::FETCH_ASSOC)) {
+                    $pid = (int)($d['pedido_id'] ?? 0);
+                    if (isset($pedidos[$pid])) {
+                        $pedidos[$pid]['detalles'][] = $d;
+                    }
+                }
+            }
+        }
+    } else {
+        // CAPACITACIONES
+        $sqlCap = <<<SQL
         SELECT
             cc.id_capacitacion            AS id_registro,
             cc.creado_en                  AS fecha,
@@ -60,7 +104,7 @@ try {
     $stmtCap->bindValue(':user', $userId, PDO::PARAM_INT);
     $stmtCap->execute();
 
-    while ($row = $stmtCap->fetch(PDO::FETCH_ASSOC)) {
+    while ($row = ($permiso === 3 ? false : $stmtCap->fetch(PDO::FETCH_ASSOC))) {
         $fechaRaw = $row['fecha'] ?? null;
         $fechaFmt = $fechaRaw;
         if (!empty($fechaRaw)) {
@@ -83,7 +127,7 @@ try {
     }
 
     // CERTIFICACIONES
-    $sqlCert = <<<SQL
+        $sqlCert = <<<SQL
         SELECT
             ct.id_certificacion           AS id_registro,
             ct.creado_en                  AS fecha,
@@ -106,7 +150,7 @@ try {
     $stmtCert->bindValue(':user', $userId, PDO::PARAM_INT);
     $stmtCert->execute();
 
-    while ($row = $stmtCert->fetch(PDO::FETCH_ASSOC)) {
+    while ($row = ($permiso === 3 ? false : $stmtCert->fetch(PDO::FETCH_ASSOC))) {
         $fechaRaw = $row['fecha'] ?? null;
         $fechaFmt = $fechaRaw;
         if (!empty($fechaRaw)) {
@@ -130,6 +174,7 @@ try {
         ];
         $certificaciones[] = $item;
         $combinado[] = $item;
+    }
     }
 
     // Orden combinado por fecha DESC
@@ -184,6 +229,66 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                 <?php if ($errorMessage !== null): ?>
                     <div class="config-card shadow text-center">
                         <p class="mb-0"><?php echo htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?></p>
+                    </div>
+
+                <?php elseif ($permiso === 3): ?>
+                    <?php
+                        $estadoMap = [1 => 'Pendiente', 2 => 'Aprobado', 3 => 'Rechazado'];
+                        $pedidoDetalleId = isset($_GET['pedido']) ? (int)$_GET['pedido'] : 0;
+                        $pedidoDetalle = ($pedidoDetalleId > 0 && isset($pedidos[$pedidoDetalleId])) ? $pedidos[$pedidoDetalleId] : null;
+                    ?>
+
+                    <?php if ($pedidoDetalle): ?>
+                        <div class="config-card shadow mb-4 text-start" id="pedido">
+                            <h5 class="mb-3">Detalle del pedido #<?php echo $pedidoDetalleId; ?></h5>
+                            <p class="mb-1"><strong>Fecha:</strong> <?php echo htmlspecialchars((string)($pedidoDetalle['fecha'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
+                            <p class="mb-3"><strong>Estado:</strong> <?php echo htmlspecialchars($estadoMap[$pedidoDetalle['estado']] ?? 'Pendiente', ENT_QUOTES, 'UTF-8'); ?></p>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="table-light"><tr><th>Curso</th><th>Tipo</th><th>Turno</th><th>Asistentes</th><th>Ubicación</th></tr></thead>
+                                    <tbody>
+                                    <?php foreach (($pedidoDetalle['detalles'] ?? []) as $d): ?>
+                                        <tr>
+                                            <td><?php echo htmlspecialchars($d['nombre_curso'] ?? ($d['curso_id'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars($d['tipo'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars($d['turno'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars((string)($d['asistentes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td><?php echo htmlspecialchars($d['ubicacion'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <a href="historial_compras.php" class="btn btn-outline-secondary btn-sm">Volver al listado</a>
+                        </div>
+                    <?php endif; ?>
+
+                    <div class="config-card shadow mb-4 text-start">
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center border-bottom pb-2 mb-3 gap-2">
+                            <div>
+                                <h5 class="mb-0">Pedidos de Inscripciones</h5>
+                                <span class="text-muted small"><?php echo count($pedidos); ?> registro(s)</span>
+                            </div>
+                        </div>
+                        <?php if (empty($pedidos)): ?>
+                            <p class="mb-0 text-muted">No hay pedidos realizados.</p>
+                        <?php else: ?>
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle">
+                                    <thead class="table-light"><tr><th class="text-start">Fecha</th><th class="text-start">Pedido</th><th class="text-start">Estado</th><th class="text-start">Acciones</th></tr></thead>
+                                    <tbody>
+                                    <?php foreach ($pedidos as $p): ?>
+                                        <tr>
+                                            <td class="text-start"><?php echo htmlspecialchars($p['fecha'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-start">#<?php echo (int)$p['id']; ?></td>
+                                            <td class="text-start"><?php echo htmlspecialchars($estadoMap[$p['estado']] ?? 'Pendiente', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-start"><a class="btn btn-sm btn-outline-primary" href="historial_compras.php?pedido=<?php echo (int)$p['id']; ?>#pedido">Ver detalle</a></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endif; ?>
                     </div>
 
                 <?php elseif (empty($combinado)): ?>
