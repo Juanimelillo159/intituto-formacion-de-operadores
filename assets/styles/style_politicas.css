@@ -13,7 +13,6 @@
 
 body.politicas-page {
     background: linear-gradient(135deg, rgba(0, 20, 174, 0.06), rgba(0, 189, 163, 0.08));
-    font-family: 'aller_lt', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: var(--color-text-dark);
 }
 
@@ -67,7 +66,6 @@ body.politicas-page {
 }
 
 .policy-hero h1 {
-    font-family: 'aller_b', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     font-size: clamp(2.4rem, 5vw, 3.4rem);
     margin: 1.5rem 0 1rem;
 }
@@ -94,7 +92,6 @@ body.politicas-page {
 }
 
 .policy-showcase h2 {
-    font-family: 'aller_b';
     font-size: 2.2rem;
     color: var(--color-secondary);
     margin-bottom: 1.2rem;

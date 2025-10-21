@@ -23,7 +23,6 @@
   /* Base compartida (mismas reglas que la otra página) */
   body {
       background: linear-gradient(135deg, #f7f7fb 0%, #e6f6f3 100%);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       line-height: 1.6;
   }
 
