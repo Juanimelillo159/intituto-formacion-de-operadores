@@ -23,6 +23,9 @@ const MP_URL_FAILURE = MP_BASE_URL . '/checkout/gracias.php';
 const MP_URL_PENDING = MP_BASE_URL . '/checkout/gracias.php';
 const MP_URL_WEBHOOK = MP_BASE_URL . '/checkout/mercadopago_webhook.php';
 
+// Activa información adicional de depuración cuando CHECKOUT_DEBUG=1.
+const MP_DEBUG = false;
+
 return [
     'public_key' => MP_PUBLIC_KEY,
     'access_token' => MP_ACCESS_TOKEN,
@@ -32,4 +35,5 @@ return [
     'failure_url' => MP_URL_FAILURE,
     'pending_url' => MP_URL_PENDING,
     'notification_url' => MP_URL_WEBHOOK,
+    'debug' => MP_DEBUG,
 ];

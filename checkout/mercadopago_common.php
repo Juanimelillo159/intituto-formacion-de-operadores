@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use MercadoPago\Client\Payment\PaymentClient;
+use MercadoPago\Exceptions\MPApiException;
 use MercadoPago\MercadoPagoConfig;
 
 require_once __DIR__ . '/mp_config.php';
@@ -56,6 +57,24 @@ function mp_base_url(): string
     }
 
     return $scheme . '://' . $host;
+}
+
+function mp_is_debug(): bool
+{
+    static $debug;
+    if ($debug !== null) {
+        return $debug;
+    }
+
+    $env = checkout_env('CHECKOUT_DEBUG');
+    if ($env !== null) {
+        $value = strtolower($env);
+        $debug = in_array($value, ['1', 'true', 'on', 'yes'], true);
+        return $debug;
+    }
+
+    $debug = defined('MP_DEBUG') ? (bool) MP_DEBUG : false;
+    return $debug;
 }
 
 function mp_url_success(): string
@@ -122,11 +141,28 @@ function mp_log(string $event, array $context = [], ?Throwable $error = null): v
                 'type' => get_class($error),
                 'message' => $error->getMessage(),
             ];
+            if ($error instanceof MPApiException) {
+                $row['error']['status'] = $error->getStatusCode();
+                $row['error']['response'] = $error->getApiResponse();
+            } elseif (($previous = $error->getPrevious()) instanceof MPApiException) {
+                $row['error']['status'] = $previous->getStatusCode();
+                $row['error']['response'] = $previous->getApiResponse();
+            }
         }
         @file_put_contents($dir . '/mercadopago.log', json_encode($row, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
     } catch (Throwable $logError) {
         // Ignorar errores de logueo.
     }
+}
+
+function mp_api_exception_debug(MPApiException $exception): array
+{
+    return [
+        'status_code' => $exception->getStatusCode(),
+        'message' => $exception->getMessage(),
+        'response' => $exception->getApiResponse(),
+        'causes' => $exception->getApiResponse()['cause'] ?? null,
+    ];
 }
 
 /**

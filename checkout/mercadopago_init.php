@@ -221,8 +221,21 @@ try {
         $preference = $client->create($preferenceRequest);
     } catch (MPApiException $exception) {
         $con->rollBack();
-        mp_log('mp_preference_error', ['curso' => $cursoId, 'pago' => $pagoId], $exception);
-        throw new RuntimeException('No pudimos crear la preferencia de pago. Intentalo nuevamente.');
+        $debugInfo = mp_api_exception_debug($exception);
+        mp_log('mp_preference_error', [
+            'curso' => $cursoId,
+            'pago' => $pagoId,
+            'debug' => $debugInfo,
+        ], $exception);
+
+        $errorMessage = 'No pudimos crear la preferencia de pago. Intentalo nuevamente.';
+        if (mp_is_debug()) {
+            $status = $debugInfo['status_code'] ?? 'desconocido';
+            $detail = $debugInfo['message'] ?? 'sin descripción';
+            $errorMessage = sprintf('Mercado Pago devolvió un error (%s): %s', (string) $status, $detail);
+        }
+
+        throw new RuntimeException($errorMessage, 0, $exception);
     }
 
     $preferenceId = (string)($preference->id ?? '');
@@ -259,7 +272,16 @@ try {
         $responseCode = $exception instanceof InvalidArgumentException ? 400 : 500;
     }
     $response['message'] = $exception->getMessage();
-    mp_log('mp_preference_failed', ['error' => $exception->getMessage()]);
+    if (mp_is_debug()) {
+        $mpException = $exception instanceof MPApiException ? $exception : ($exception->getPrevious() instanceof MPApiException ? $exception->getPrevious() : null);
+        if ($mpException) {
+            $response['debug'] = mp_api_exception_debug($mpException);
+        }
+    }
+    mp_log('mp_preference_failed', [
+        'error' => $exception->getMessage(),
+        'debug' => $response['debug'] ?? null,
+    ], $exception);
 }
 
 http_response_code($responseCode);
