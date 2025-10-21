@@ -1162,7 +1162,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $coursesError === null) {
 
                 input.className = 'form-control';
 
-                input.placeholder = 'Ej. Planta central, sala A';
+                input.placeholder = 'Ej. Rio Gallegos / Caleta Olivia';
 
                 input.dataset.itemName = item.name;
 
