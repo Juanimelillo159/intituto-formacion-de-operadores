@@ -1,33 +1,43 @@
 <?php
 class Database
 {
-/*     private $hostname = "localhost";
-    private $database = "formacionoperadores";
-    private $username = "root";
-    private $password = "";
-    private $charset = "utf8"; */
+    private array $local = [
+        'host' => '127.0.0.1', 'port' => '3306',
+        'name' => 'formacionoperadores', 'user' => 'root', 'pass' => '', 'charset' => 'utf8'
+    ];
 
-        private $hostname = "127.0.0.1:3306";
-        private $database = "u910416176_formacionopera";
-        private $username = "u910416176_formacionopera";
-        private $password = "8wO;T@NIyT";
-        private $charset = "utf8"; 
+    private array $prod = [
+        'host' => '127.0.0.1', 'port' => '3306',
+        'name' => 'u910416176_formacionopera', 'user' => 'u910416176_formacionopera',
+        'pass' => '8wO;T@NIyT', 'charset' => 'utf8'
+    ];
 
-    function conectar()
+    private function isLocal(): bool
     {
+        $host = $_SERVER['HTTP_HOST'] ?? 'cli';
+        return in_array($host, ['localhost', '127.0.0.1']) || str_ends_with($host, '.test');
+    }
+
+    public function conectar(): PDO
+    {
+        $c = $this->isLocal() ? $this->local : $this->prod;
+
+        $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s',
+            $c['host'], $c['port'], $c['name'], $c['charset']
+        );
+
+        $options = [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_EMULATE_PREPARES => false
+        ];
+
         try {
-            $conexion = "mysql:host=" . $this->hostname . "; dbname=" . $this->database . ";charset=" . $this->charset;
-            $options = [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_EMULATE_PREPARES => FALSE
-            ];
-            $pdo = new PDO($conexion, $this->username, $this->password, $options);
-            return $pdo;
+            return new PDO($dsn, $c['user'], $c['pass'], $options);
         } catch (PDOException $e) {
-            echo 'Error conexion: ' . $e->getMessage();
-            exit;
+            die('Error de conexión: ' . $e->getMessage());
         }
     }
 }
-$db = new Database();
+
+$db  = new Database();
 $con = $db->conectar();
