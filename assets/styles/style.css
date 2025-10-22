@@ -667,3 +667,40 @@ section[id] {
     color: var(--color-dark);
 }
 
+@media (max-width: 991.98px) {
+    .navbar .user-menu {
+        width: 100%;
+        margin-top: 0.75rem;
+        display: flex;
+        justify-content: center;
+    }
+
+    .navbar .user-menu .user-menu-toggle {
+        width: 48px;
+        height: 48px;
+    }
+
+    .navbar .user-menu .dropdown-menu {
+        position: static;
+        float: none;
+        width: 100%;
+        margin-top: 0.5rem;
+        box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+        border-radius: 16px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        padding: 0.75rem 0;
+    }
+
+    .navbar .user-menu .dropdown-menu.show {
+        display: block;
+    }
+
+    .navbar .user-menu .dropdown-item {
+        padding: 0.75rem 1.25rem;
+    }
+
+    .navbar .user-menu .dropdown-divider {
+        margin: 0.35rem 0;
+    }
+}
+

@@ -103,6 +103,8 @@ CREATE TABLE checkout_certificaciones (
   apellido VARCHAR(100) DEFAULT NULL,
   email VARCHAR(255) DEFAULT NULL,
   telefono VARCHAR(30) DEFAULT NULL,
+  tenia_certificacion_previa TINYINT(1) NOT NULL DEFAULT 0,
+  certificacion_emitida_por VARCHAR(180) DEFAULT NULL,
   PRIMARY KEY (id_certificacion),
   CONSTRAINT fk_certificaciones_usuarios FOREIGN KEY (creado_por) REFERENCES usuarios (id_usuario),
   CONSTRAINT fk_certificaciones_cursos FOREIGN KEY (id_curso) REFERENCES cursos (id_curso),
