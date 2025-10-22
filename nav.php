@@ -55,7 +55,7 @@ $normalized_base = rtrim($base_path, '/');
                 if (isset($_SESSION["usuario"])) {
                     ?>
                     <li class="nav-item dropdown user-menu">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center justify-content-center user-menu-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center justify-content-center user-menu-toggle" href="#" id="userMenu" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" aria-haspopup="true" aria-label="Abrir menú de usuario">
                             <span class="user-menu-icon" aria-hidden="true">
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" focusable="false" role="img" aria-hidden="true">
                                     <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-3.3 0-10 1.65-10 5v3h20v-3c0-3.35-6.7-5-10-5Z" />
@@ -94,4 +94,57 @@ $normalized_base = rtrim($base_path, '/');
         </div>
     </div>
 </nav>
+<script>
+    (function () {
+        const script = document.currentScript;
+        const nav = script ? script.previousElementSibling : null;
+        const toggle = nav ? nav.querySelector('#userMenu') : null;
+        const menu = nav ? nav.querySelector('.user-menu .dropdown-menu') : null;
+        const parentItem = nav ? nav.querySelector('.user-menu') : null;
+
+        if (!toggle || !menu || !parentItem) {
+            return;
+        }
+
+        const closeFallbackMenu = () => {
+            if (!menu.classList.contains('show')) {
+                return;
+            }
+            menu.classList.remove('show');
+            parentItem.classList.remove('show');
+            toggle.setAttribute('aria-expanded', 'false');
+        };
+
+        const handleDocumentClick = (event) => {
+            if (window.bootstrap && typeof window.bootstrap.Dropdown === 'function') {
+                return;
+            }
+            if (!menu.contains(event.target) && !toggle.contains(event.target)) {
+                closeFallbackMenu();
+            }
+        };
+
+        document.addEventListener('click', handleDocumentClick);
+
+        toggle.addEventListener('click', (event) => {
+            if (window.bootstrap && typeof window.bootstrap.Dropdown === 'function') {
+                window.bootstrap.Dropdown.getOrCreateInstance(toggle, { autoClose: 'outside' });
+                return;
+            }
+            event.preventDefault();
+            const isOpen = menu.classList.toggle('show');
+            parentItem.classList.toggle('show', isOpen);
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
+        toggle.addEventListener('keydown', (event) => {
+            if (window.bootstrap && typeof window.bootstrap.Dropdown === 'function') {
+                return;
+            }
+            if (event.key === 'Escape') {
+                closeFallbackMenu();
+            }
+        });
+    })();
+</script>
 
