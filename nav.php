@@ -72,7 +72,9 @@ $normalized_base = rtrim($base_path, '/');
                                 <li><a class="dropdown-item" href="inscripciones.php">Inscripciones</a></li>
                                 <li><a class="dropdown-item" href="solicitudes_inscripciones.php">Solicitudes Inscripciones</a></li>
                             <?php } ?>
-                            <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/mis_cursos.php">Mis cursos</a></li>
+                            <?php if ($permiso !== 3) { ?>
+                                <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/mis_cursos.php">Mis cursos</a></li>
+                            <?php } ?>
                             <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/historial_compras.php">Historial de compras</a></li>
                             <li><a class="dropdown-item" href="<?php echo $normalized_base; ?>/configuracion.php">Panel de configuracion</a></li>
                             <li><hr class="dropdown-divider"></li>
