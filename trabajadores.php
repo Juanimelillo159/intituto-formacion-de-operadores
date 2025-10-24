@@ -72,10 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $emailInput = trim((string)($_POST['email'] ?? ''));
         $assignValues = ['nombre' => $nombre, 'apellido' => $apellido, 'email' => $emailInput];
 
-        $response = [
-            'type' => 'danger',
-            'message' => 'No pudimos asignar al trabajador. Revisa los datos e intenta nuevamente.',
-        ];
+        $response = ['type' => 'danger', 'message' => 'No pudimos crear al trabajador. Revisa los datos e intenta nuevamente.'];
         $nextTab = 'assign';
 
         if ($nombre === '' || $apellido === '' || $emailInput === '') {
@@ -84,71 +81,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $response['message'] = 'Ingresa un correo electronico valido.';
         } else {
             try {
-                $stmt = $pdo->prepare('SELECT id_usuario, id_permiso, nombre, apellido FROM usuarios WHERE email = ? LIMIT 1');
-                $stmt->execute([$emailInput]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if (!$user) {
-                    $response['message'] = 'No existe un usuario con ese correo. Crea la cuenta antes de asignarlo.';
-                } elseif ((int)$user['id_permiso'] === 1) {
-                    $response['message'] = 'No puedes modificar el perfil de un administrador.';
-                } elseif ((int)$user['id_permiso'] === $managerPermiso) {
-                    $response['message'] = 'No puedes modificar el perfil de otro gestor.';
-                } else {
-                    $targetId = (int)$user['id_usuario'];
-                    $alreadyWorker = (int)$user['id_permiso'] === $workerPermiso;
-
-                    $relationQuery = $pdo->prepare('SELECT 1 FROM empresa_trabajadores WHERE id_empresa = ? AND id_trabajador = ? LIMIT 1');
-                    $relationQuery->execute([$currentUserId, $targetId]);
-                    $relationExists = (bool)$relationQuery->fetchColumn();
-
-                    $ownershipCheck = $pdo->prepare('SELECT COUNT(*) FROM empresa_trabajadores WHERE id_trabajador = ? AND id_empresa <> ?');
-                    $ownershipCheck->execute([$targetId, $currentUserId]);
-                    $assignedElsewhere = ((int)$ownershipCheck->fetchColumn()) > 0;
-
-                    if (!$relationExists && $assignedElsewhere) {
-                        $response['type'] = 'danger';
-                        $response['message'] = 'El trabajador ya esta asignado a otra empresa de RRHH.';
-                    } else {
-                        $pdo->beginTransaction();
-
-                        $update = $pdo->prepare('UPDATE usuarios SET nombre = ?, apellido = ?, id_permiso = ? WHERE id_usuario = ?');
-                        $update->execute([$nombre, $apellido, $workerPermiso, $targetId]);
-
-                        if (!$relationExists) {
-                            $link = $pdo->prepare('INSERT INTO empresa_trabajadores (id_empresa, id_trabajador, asignado_en) VALUES (?, ?, NOW())');
-                            $link->execute([$currentUserId, $targetId]);
-                        }
-
-                        if ($assignedElsewhere) {
-                            // Remove links with other HR accounts to keep the worker exclusive
-                            $cleanup = $pdo->prepare('DELETE FROM empresa_trabajadores WHERE id_trabajador = ? AND id_empresa <> ?');
-                            $cleanup->execute([$targetId, $currentUserId]);
-                        }
-
-                        $pdo->commit();
-
-                        if ($relationExists) {
-                            $response['type'] = $assignedElsewhere ? 'success' : 'info';
-                            $response['message'] = $assignedElsewhere
-                                ? 'Actualizamos los datos del trabajador y confirmamos la asignacion con tu empresa.'
-                                : 'El trabajador ya estaba asignado a tu empresa. Se actualizaron sus datos.';
-                        } else {
-                            $response['type'] = $alreadyWorker ? 'info' : 'success';
-                            $response['message'] = $alreadyWorker
-                                ? 'El trabajador ya tenia acceso. Actualizamos la relacion con tu empresa.'
-                                : 'Trabajador asignado correctamente.';
-                        }
-
-                        $assignValues = ['nombre' => '', 'apellido' => '', 'email' => ''];
-                        $nextTab = 'worker_' . $targetId;
-                    }
-                }
+                $stmt = $pdo->prepare('INSERT INTO trabajadores (nombre, apellido, email, creado_por) VALUES (?, ?, ?, ?)');
+                $stmt->execute([$nombre, $apellido, $emailInput, $currentUserId]);
+                $newId = (int)$pdo->lastInsertId();
+                $response = ['type' => 'success', 'message' => 'Trabajador creado correctamente.'];
+                $assignValues = ['nombre' => '', 'apellido' => '', 'email' => ''];
+                $nextTab = 'worker_' . $newId;
             } catch (Throwable $exception) {
-                if ($pdo->inTransaction()) {
-                    $pdo->rollBack();
-                }
-                $response['message'] = 'No pudimos actualizar la informacion. Detalle: ' . $exception->getMessage();
+                $response['message'] = 'No pudimos crear al trabajador: ' . $exception->getMessage();
             }
         }
 
@@ -159,74 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    if ($action === 'change_profile') {
-        $userId = isset($_POST['user_id']) ? (int)$_POST['user_id'] : 0;
-        $targetProfile = isset($_POST['target_profile']) ? (int)$_POST['target_profile'] : 0;
-
-        $response = [
-            'type' => 'danger',
-            'message' => 'No pudimos procesar la solicitud. Intenta nuevamente.',
-        ];
-        $nextTab = 'assign';
-
-        if ($userId > 0 && in_array($targetProfile, $allowedTargetProfiles, true)) {
-            try {
-                $stmt = $pdo->prepare('SELECT id_usuario, id_permiso, email, nombre, apellido FROM usuarios WHERE id_usuario = ? LIMIT 1');
-                $stmt->execute([$userId]);
-                $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-                if (!$user) {
-                    $response['message'] = 'No encontramos al usuario seleccionado.';
-                } elseif ((int)$user['id_permiso'] === 1) {
-                    $response['message'] = 'No puedes modificar el perfil de un administrador.';
-                } elseif ((int)$user['id_permiso'] === $managerPermiso && $targetProfile !== $managerPermiso) {
-                    $response['message'] = 'No puedes modificar el perfil de un gestor.';
-                    $nextTab = 'assign';
-                } elseif ($userId === $currentUserId && $targetProfile !== $managerPermiso) {
-                    $response['message'] = 'No puedes quitar tu propio perfil de trabajador.';
-                    $nextTab = 'assign';
-                } elseif ((int)$user['id_permiso'] === $targetProfile) {
-                    $response['type'] = 'info';
-                    $response['message'] = 'El usuario ya tiene ese perfil asignado.';
-                    $nextTab = 'worker_' . $userId;
-                } else {
-                    $pdo->beginTransaction();
-
-                    $update = $pdo->prepare('UPDATE usuarios SET id_permiso = ? WHERE id_usuario = ?');
-                    $update->execute([$targetProfile, $userId]);
-
-                    if ($targetProfile === 2) {
-                        $unlink = $pdo->prepare('DELETE FROM empresa_trabajadores WHERE id_empresa = ? AND id_trabajador = ?');
-                        $unlink->execute([$currentUserId, $userId]);
-                        $nextTab = 'assign';
-                    }
-
-                    $pdo->commit();
-
-                    $fullName = trim((string)($user['nombre'] ?? '') . ' ' . (string)($user['apellido'] ?? ''));
-                    if ($fullName === '') {
-                        $fullName = (string)($user['email'] ?? 'Usuario');
-                    }
-
-                    $perfilNombre = $profileLabels[$targetProfile] ?? ('Perfil ' . $targetProfile);
-                    $response['type'] = 'success';
-                    $response['message'] = sprintf('Se actualizo el perfil de %s a %s.', $fullName, $perfilNombre);
-                }
-            } catch (Throwable $exception) {
-                if ($pdo->inTransaction()) {
-                    $pdo->rollBack();
-                }
-                $response['message'] = 'No pudimos actualizar el perfil. Intenta nuevamente.';
-            }
-        } else {
-            $response['message'] = 'Solicitud invalida. Revisa los datos e intenta de nuevo.';
-        }
-
-        $_SESSION['trabajadores_feedback'] = $response;
-        $_SESSION['trabajadores_active_tab'] = $nextTab;
-        header('Location: trabajadores.php');
-        exit;
-    }
+    // Acciones antiguas ya no aplican en el nuevo modelo
 
     $_SESSION['trabajadores_feedback'] = ['type' => 'danger', 'message' => 'Accion no reconocida.'];
     $_SESSION['trabajadores_active_tab'] = 'assign';
@@ -238,15 +111,8 @@ $workers = [];
 $loadError = null;
 
 try {
-    $sqlWorkers = <<<SQL
-SELECT u.id_usuario, u.email, u.nombre, u.apellido, u.telefono
-FROM empresa_trabajadores et
-INNER JOIN usuarios u ON u.id_usuario = et.id_trabajador
-WHERE et.id_empresa = ? AND u.id_permiso = ?
-ORDER BY u.nombre ASC, u.apellido ASC, u.email ASC
-SQL;
-    $stmt = $pdo->prepare($sqlWorkers);
-    $stmt->execute([$currentUserId, $workerPermiso]);
+    $stmt = $pdo->prepare('SELECT id_trabajador, nombre, apellido, email, telefono FROM trabajadores WHERE creado_por = ? ORDER BY nombre ASC, apellido ASC, email ASC');
+    $stmt->execute([$currentUserId]);
     $workers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $exception) {
     error_log('trabajadores.php workers query: ' . $exception->getMessage());
@@ -306,7 +172,7 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
                         </li>
                         <?php foreach ($workers as $worker): ?>
                             <?php
-                                $workerId = (int)($worker['id_usuario'] ?? 0);
+                                $workerId = (int)($worker['id_trabajador'] ?? 0);
                                 $tabKey = 'worker_' . $workerId;
                                 $isActive = $activeTab === $tabKey;
                                 $fullName = trim((string)($worker['nombre'] ?? '') . ' ' . (string)($worker['apellido'] ?? ''));
@@ -358,7 +224,7 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
 
                         <?php foreach ($workers as $worker): ?>
                             <?php
-                                $workerId = (int)($worker['id_usuario'] ?? 0);
+                                $workerId = (int)($worker['id_trabajador'] ?? 0);
                                 $tabKey = 'worker_' . $workerId;
                                 $isActive = $activeTab === $tabKey;
                                 $fullName = trim((string)($worker['nombre'] ?? '') . ' ' . (string)($worker['apellido'] ?? ''));
@@ -369,41 +235,16 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
                                 $telefono = (string)($worker['telefono'] ?? '');
                             ?>
                             <div class="tab-pane fade <?php echo $isActive ? 'show active' : ''; ?>" id="panel-worker-<?php echo $workerId; ?>" role="tabpanel" aria-labelledby="tab-worker-<?php echo $workerId; ?>">
-                                <div class="row g-4">
-                                    <div class="col-12 col-lg-8">
-                                        <div class="card border-0 shadow-sm">
-                                            <div class="card-body">
-                                                <h2 class="h5 mb-3">Detalle del trabajador</h2>
-                                                <p class="mb-1"><strong>Nombre:</strong> <?php echo htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'); ?></p>
-                                                <?php if ($email !== ''): ?>
-                                                    <p class="mb-1"><strong>Correo:</strong> <?php echo htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?></p>
-                                                <?php endif; ?>
-                                                <?php if ($telefono !== ''): ?>
-                                                    <p class="mb-1"><strong>Telefono:</strong> <?php echo htmlspecialchars($telefono, ENT_QUOTES, 'UTF-8'); ?></p>
-                                                <?php endif; ?>
-                                                <p class="text-muted small mb-0">Perfil actual: Trabajador asignado</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-12 col-lg-4">
-                                        <div class="card border-0 bg-light">
-                                            <div class="card-body">
-                                                <h3 class="h6">Acciones rapidas</h3>
-                                                <form method="POST" class="mb-0">
-                                                    <input type="hidden" name="action" value="change_profile">
-                                                    <input type="hidden" name="user_id" value="<?php echo $workerId; ?>">
-                                                    <input type="hidden" name="target_profile" value="2">
-                                                    <button type="submit" class="btn btn-outline-secondary w-100"<?php echo ($workerId === $currentUserId) ? ' disabled' : ''; ?>>
-                                                        Cambiar a Usuario
-                                                    </button>
-                                                </form>
-                                                <?php if ($workerId === $currentUserId): ?>
-                                                    <p class="text-muted small mt-2">No puedes quitar tu propio perfil.</p>
-                                                <?php else: ?>
-                                                    <p class="text-muted small mt-2">El trabajador perdera el acceso especial y volvera a ser usuario estandar.</p>
-                                                <?php endif; ?>
-                                            </div>
-                                        </div>
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-body">
+                                        <h2 class="h5 mb-3">Detalle del trabajador</h2>
+                                        <p class="mb-1"><strong>Nombre:</strong> <?php echo htmlspecialchars($fullName, ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <?php if ($email !== ''): ?>
+                                            <p class="mb-1"><strong>Correo:</strong> <?php echo htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <?php endif; ?>
+                                        <?php if ($telefono !== ''): ?>
+                                            <p class="mb-1"><strong>Teléfono:</strong> <?php echo htmlspecialchars($telefono, ENT_QUOTES, 'UTF-8'); ?></p>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
