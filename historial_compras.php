@@ -203,7 +203,7 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
 ?>
 <!DOCTYPE html>
 <html lang="es">
-<?php include 'head.php'; ?>
+<?php $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.css">'; include 'head.php'; ?>
 <body class="config-page d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
@@ -244,8 +244,17 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                             <p class="mb-1"><strong>Fecha:</strong> <?php echo htmlspecialchars((string)($pedidoDetalle['fecha'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
                             <p class="mb-3"><strong>Estado:</strong> <?php echo htmlspecialchars($estadoMap[$pedidoDetalle['estado']] ?? 'Pendiente', ENT_QUOTES, 'UTF-8'); ?></p>
                             <div class="table-responsive">
-                                <table class="table table-sm">
-                                    <thead class="table-light"><tr><th>Curso</th><th>Tipo</th><th>Turno</th><th>Asistentes</th><th>Ubicación</th></tr></thead>
+                                <table class="table table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Curso</th>
+                                            <th>Tipo</th>
+                                            <th>Turno</th>
+                                            <th>Asistentes</th>
+                                            <th>Ubicación</th>
+                                            <th class="text-start">Acciones</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                     <?php foreach (($pedidoDetalle['detalles'] ?? []) as $d): ?>
                                         <tr>
@@ -254,6 +263,22 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                                             <td><?php echo htmlspecialchars($d['turno'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?php echo htmlspecialchars((string)($d['asistentes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td><?php echo htmlspecialchars($d['ubicacion'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
+                                            <td class="text-start">
+                                                <?php
+                                                    $tipoDet = strtolower((string)($d['tipo'] ?? ''));
+                                                    $isCert = ($tipoDet === 'certificacion' || $tipoDet === 'certificación');
+                                                    $cursoId = isset($d['curso_id']) ? (int)$d['curso_id'] : 0;
+                                                    $asistCnt = isset($d['asistentes']) ? (int)$d['asistentes'] : 0;
+                                                    $pedidoIdForLink = isset($pedidoDetalleId) ? (int)$pedidoDetalleId : 0;
+                                                ?>
+                                                <?php if ($isCert): ?>
+                                                    <a class="btn btn-sm btn-outline-success" href="validar_asistentes.php?pedido_id=<?php echo $pedidoIdForLink; ?>&curso_id=<?php echo $cursoId; ?>&asistentes=<?php echo $asistCnt; ?>">
+                                                        <i class="fas fa-user-check me-1"></i>Validar Asistentes
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">-</span>
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                     </tbody>
