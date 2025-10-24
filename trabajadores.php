@@ -60,32 +60,45 @@ $allowedTargetProfiles = [2];
 
 $feedback = $_SESSION['trabajadores_feedback'] ?? null;
 $activeTab = $_SESSION['trabajadores_active_tab'] ?? 'assign';
-$assignValues = $_SESSION['trabajadores_form_values'] ?? ['nombre' => '', 'apellido' => '', 'email' => ''];
+$assignValues = $_SESSION['trabajadores_form_values'] ?? [
+    'nombre' => '', 'apellido' => '', 'dni' => '', 'email' => '', 'telefono' => '',
+    'direccion' => '', 'ciudad' => '', 'provincia' => '', 'pais' => ''
+];
 unset($_SESSION['trabajadores_feedback'], $_SESSION['trabajadores_active_tab'], $_SESSION['trabajadores_form_values']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'assign_worker') {
-        $nombre = trim((string)($_POST['nombre'] ?? ''));
-        $apellido = trim((string)($_POST['apellido'] ?? ''));
-        $emailInput = trim((string)($_POST['email'] ?? ''));
-        $assignValues = ['nombre' => $nombre, 'apellido' => $apellido, 'email' => $emailInput];
+        $nombre    = trim((string)($_POST['nombre'] ?? ''));
+        $apellido  = trim((string)($_POST['apellido'] ?? ''));
+        $dni       = trim((string)($_POST['dni'] ?? ''));
+        $emailInput= trim((string)($_POST['email'] ?? ''));
+        $telefono  = trim((string)($_POST['telefono'] ?? ''));
+        $direccion = trim((string)($_POST['direccion'] ?? ''));
+        $ciudad    = trim((string)($_POST['ciudad'] ?? ''));
+        $provincia = trim((string)($_POST['provincia'] ?? ''));
+        $pais      = trim((string)($_POST['pais'] ?? ''));
+        $assignValues = [
+            'nombre' => $nombre, 'apellido' => $apellido, 'dni' => $dni, 'email' => $emailInput,
+            'telefono' => $telefono, 'direccion' => $direccion, 'ciudad' => $ciudad,
+            'provincia' => $provincia, 'pais' => $pais
+        ];
 
         $response = ['type' => 'danger', 'message' => 'No pudimos crear al trabajador. Revisa los datos e intenta nuevamente.'];
         $nextTab = 'assign';
 
-        if ($nombre === '' || $apellido === '' || $emailInput === '') {
-            $response['message'] = 'Completa nombre, apellido y correo electronico.';
+        if ($nombre === '' || $apellido === '' || $dni === '' || $emailInput === '') {
+            $response['message'] = 'Completá Nombre, Apellido, DNI y Correo electrónico.';
         } elseif (!filter_var($emailInput, FILTER_VALIDATE_EMAIL)) {
-            $response['message'] = 'Ingresa un correo electronico valido.';
+            $response['message'] = 'Ingresá un correo electrónico válido.';
         } else {
             try {
-                $stmt = $pdo->prepare('INSERT INTO trabajadores (nombre, apellido, email, creado_por) VALUES (?, ?, ?, ?)');
-                $stmt->execute([$nombre, $apellido, $emailInput, $currentUserId]);
+                $stmt = $pdo->prepare('INSERT INTO trabajadores (nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, creado_por) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
+                $stmt->execute([$nombre, $apellido, $emailInput !== '' ? $emailInput : null, $telefono !== '' ? $telefono : null, $dni, $direccion !== '' ? $direccion : null, $ciudad !== '' ? $ciudad : null, $provincia !== '' ? $provincia : null, $pais !== '' ? $pais : null, $currentUserId]);
                 $newId = (int)$pdo->lastInsertId();
                 $response = ['type' => 'success', 'message' => 'Trabajador creado correctamente.'];
-                $assignValues = ['nombre' => '', 'apellido' => '', 'email' => ''];
+                $assignValues = ['nombre' => '', 'apellido' => '', 'dni' => '', 'email' => '', 'telefono' => '', 'direccion' => '', 'ciudad' => '', 'provincia' => '', 'pais' => ''];
                 $nextTab = 'worker_' . $newId;
             } catch (Throwable $exception) {
                 $response['message'] = 'No pudimos crear al trabajador: ' . $exception->getMessage();
@@ -98,10 +111,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: trabajadores.php');
         exit;
     }
+    if ($action === 'delete_worker') {
+        $workerId = isset($_POST['worker_id']) ? (int)$_POST['worker_id'] : 0;
+        $response = ['type' => 'danger', 'message' => 'No se pudo eliminar el trabajador.'];
+        $nextTab = 'assign';
+        if ($workerId > 0) {
+            try {
+                // Verificar pertenencia y referencias
+                $stOwn = $pdo->prepare('SELECT COUNT(*) FROM trabajadores WHERE id_trabajador = ? AND creado_por = ?');
+                $stOwn->execute([$workerId, $currentUserId]);
+                $own = (int)$stOwn->fetchColumn() > 0;
 
-    // Acciones antiguas ya no aplican en el nuevo modelo
+                if ($own) {
+                    $stRef = $pdo->prepare('SELECT COUNT(*) FROM solicitudes_certificacion_asistentes WHERE id_trabajador = ?');
+                    $stRef->execute([$workerId]);
+                    $refs = (int)$stRef->fetchColumn();
+                    if ($refs === 0) {
+                        $del = $pdo->prepare('DELETE FROM trabajadores WHERE id_trabajador = ? AND creado_por = ?');
+                        $del->execute([$workerId, $currentUserId]);
+                        $response = ['type' => 'success', 'message' => 'Trabajador eliminado.'];
+                    } else {
+                        $response = ['type' => 'warning', 'message' => 'No se puede eliminar: está vinculado a solicitudes.'];
+                        $nextTab = 'worker_' . $workerId;
+                    }
+                } else {
+                    $response = ['type' => 'danger', 'message' => 'No encontré el trabajador o no te pertenece.'];
+                }
+            } catch (Throwable $e) {
+                $response = ['type' => 'danger', 'message' => 'Error al eliminar: ' . $e->getMessage()];
+            }
+        }
+        $_SESSION['trabajadores_feedback'] = $response;
+        $_SESSION['trabajadores_active_tab'] = $nextTab;
+        header('Location: trabajadores.php');
+        exit;
+    }
 
-    $_SESSION['trabajadores_feedback'] = ['type' => 'danger', 'message' => 'Accion no reconocida.'];
+    // Acciones no reconocidas
+    $_SESSION['trabajadores_feedback'] = ['type' => 'danger', 'message' => 'Acción no reconocida.'];
     $_SESSION['trabajadores_active_tab'] = 'assign';
     header('Location: trabajadores.php');
     exit;
@@ -111,7 +158,7 @@ $workers = [];
 $loadError = null;
 
 try {
-    $stmt = $pdo->prepare('SELECT id_trabajador, nombre, apellido, email, telefono FROM trabajadores WHERE creado_por = ? ORDER BY nombre ASC, apellido ASC, email ASC');
+    $stmt = $pdo->prepare('SELECT id_trabajador, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais FROM trabajadores WHERE creado_por = ? ORDER BY nombre ASC, apellido ASC, email ASC');
     $stmt->execute([$currentUserId]);
     $workers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 } catch (Throwable $exception) {
@@ -203,10 +250,33 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
                                                 <label for="worker-apellido" class="form-label">Apellido</label>
                                                 <input type="text" class="form-control" id="worker-apellido" name="apellido" value="<?php echo htmlspecialchars((string)$assignValues['apellido'], ENT_QUOTES, 'UTF-8'); ?>" required>
                                             </div>
-                                            <div class="col-12">
-                                                <label for="worker-email" class="form-label">Correo electronico</label>
+                                            <div class="col-md-6">
+                                                <label for="worker-dni" class="form-label">DNI</label>
+                                                <input type="text" class="form-control" id="worker-dni" name="dni" value="<?php echo htmlspecialchars((string)$assignValues['dni'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="worker-pais" class="form-label">País</label>
+                                                <input type="text" class="form-control" id="worker-pais" name="pais" value="<?php echo htmlspecialchars((string)$assignValues['pais'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="worker-email" class="form-label">Correo electrónico</label>
                                                 <input type="email" class="form-control" id="worker-email" name="email" value="<?php echo htmlspecialchars((string)$assignValues['email'], ENT_QUOTES, 'UTF-8'); ?>" required>
-                                                <div class="form-text">Si ya existe una cuenta con este correo, la convertira en trabajador asignado.</div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="worker-telefono" class="form-label">Teléfono</label>
+                                                <input type="text" class="form-control" id="worker-telefono" name="telefono" value="<?php echo htmlspecialchars((string)$assignValues['telefono'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            </div>
+                                            <div class="col-12">
+                                                <label for="worker-direccion" class="form-label">Dirección</label>
+                                                <input type="text" class="form-control" id="worker-direccion" name="direccion" value="<?php echo htmlspecialchars((string)$assignValues['direccion'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="worker-ciudad" class="form-label">Ciudad</label>
+                                                <input type="text" class="form-control" id="worker-ciudad" name="ciudad" value="<?php echo htmlspecialchars((string)$assignValues['ciudad'], ENT_QUOTES, 'UTF-8'); ?>">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label for="worker-provincia" class="form-label">Provincia</label>
+                                                <input type="text" class="form-control" id="worker-provincia" name="provincia" value="<?php echo htmlspecialchars((string)$assignValues['provincia'], ENT_QUOTES, 'UTF-8'); ?>">
                                             </div>
                                         </div>
                                         <div class="text-end mt-4">
@@ -242,6 +312,20 @@ $allowedAlertTypes = ['success', 'info', 'warning', 'danger'];
                                         <?php if ($email !== ''): ?>
                                             <p class="mb-1"><strong>Correo:</strong> <?php echo htmlspecialchars($email, ENT_QUOTES, 'UTF-8'); ?></p>
                                         <?php endif; ?>
+                                        <div class="row g-2 mt-2">
+                                            <?php if (!empty($worker['dni'])): ?><div class="col-md-6"><strong>DNI:</strong> <?php echo htmlspecialchars((string)$worker['dni'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+                                            <?php if (!empty($worker['direccion'])): ?><div class="col-md-6"><strong>Dirección:</strong> <?php echo htmlspecialchars((string)$worker['direccion'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+                                            <?php if (!empty($worker['ciudad'])): ?><div class="col-md-6"><strong>Ciudad:</strong> <?php echo htmlspecialchars((string)$worker['ciudad'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+                                            <?php if (!empty($worker['provincia'])): ?><div class="col-md-6"><strong>Provincia:</strong> <?php echo htmlspecialchars((string)$worker['provincia'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+                                            <?php if (!empty($worker['pais'])): ?><div class="col-md-6"><strong>País:</strong> <?php echo htmlspecialchars((string)$worker['pais'], ENT_QUOTES, 'UTF-8'); ?></div><?php endif; ?>
+                                        </div>
+                                        <div class="text-end mt-3">
+                                            <form method="post" onsubmit="return confirm('¿Eliminar este trabajador? Esta acción no se puede deshacer.');">
+                                                <input type="hidden" name="action" value="delete_worker">
+                                                <input type="hidden" name="worker_id" value="<?php echo $workerId; ?>">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                                            </form>
+                                        </div>
                                         <?php if ($telefono !== ''): ?>
                                             <p class="mb-1"><strong>Teléfono:</strong> <?php echo htmlspecialchars($telefono, ENT_QUOTES, 'UTF-8'); ?></p>
                                         <?php endif; ?>

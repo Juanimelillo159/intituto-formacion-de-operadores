@@ -20,22 +20,33 @@ if ($permiso !== 3) {
 $pedidoId   = isset($_GET['pedido_id']) ? (int)$_GET['pedido_id'] : 0;
 $cursoId    = isset($_GET['curso_id']) ? (int)$_GET['curso_id'] : 0;
 $asistentes = isset($_GET['asistentes']) ? max(0, (int)$_GET['asistentes']) : 0;
+$solicitudIdParam = isset($_GET['solicitud_id']) ? (int)$_GET['solicitud_id'] : 0;
 
 // Inicializar valores de POST (aún sin persistir en DB)
 $messages = [];
 $existingPrefill = [];
 $existingPdfs = [];
 
-// Cargar última solicitud guardada para este pedido/curso/usuario y usarla como prellenado
+// Cargar solicitud guardada (por id si viene) o la última para este pedido/curso/usuario y usarla como prellenado
 try {
     if ($pedidoId > 0 && $cursoId > 0 && $currentUserId > 0) {
         $pdo = getPdo();
-        $stLast = $pdo->prepare('SELECT id_solicitud FROM solicitudes_certificacion WHERE pedido_id = :p AND curso_id = :c AND creado_por = :u ORDER BY creado_en DESC, id_solicitud DESC LIMIT 1');
-        $stLast->bindValue(':p', $pedidoId, PDO::PARAM_INT);
-        $stLast->bindValue(':c', $cursoId, PDO::PARAM_INT);
-        $stLast->bindValue(':u', $currentUserId, PDO::PARAM_INT);
-        $stLast->execute();
-        $lastId = (int)($stLast->fetchColumn() ?: 0);
+        $lastId = 0;
+        if ($solicitudIdParam > 0) {
+            $stChk = $pdo->prepare('SELECT id_solicitud FROM solicitudes_certificacion WHERE id_solicitud = :id AND creado_por = :u LIMIT 1');
+            $stChk->bindValue(':id', $solicitudIdParam, PDO::PARAM_INT);
+            $stChk->bindValue(':u', $currentUserId, PDO::PARAM_INT);
+            $stChk->execute();
+            $lastId = (int)($stChk->fetchColumn() ?: 0);
+        }
+        if ($lastId <= 0) {
+            $stLast = $pdo->prepare('SELECT id_solicitud FROM solicitudes_certificacion WHERE pedido_id = :p AND curso_id = :c AND creado_por = :u ORDER BY creado_en DESC, id_solicitud DESC LIMIT 1');
+            $stLast->bindValue(':p', $pedidoId, PDO::PARAM_INT);
+            $stLast->bindValue(':c', $cursoId, PDO::PARAM_INT);
+            $stLast->bindValue(':u', $currentUserId, PDO::PARAM_INT);
+            $stLast->execute();
+            $lastId = (int)($stLast->fetchColumn() ?: 0);
+        }
         if ($lastId > 0) {
             $stA = $pdo->prepare('SELECT a.id, a.pdf_path, a.pdf_nombre, t.nombre, t.apellido, t.email, t.telefono, t.dni, t.direccion, t.ciudad, t.provincia, t.pais
                                   FROM solicitudes_certificacion_asistentes a
@@ -93,10 +104,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo = getPdo();
             $pdo->beginTransaction();
 
-            // Buscar última solicitud existente para este pedido/curso/usuario; si no existe, crearla
-            $stFindSol = $pdo->prepare('SELECT id_solicitud FROM solicitudes_certificacion WHERE pedido_id = ? AND curso_id = ? AND creado_por = ? ORDER BY creado_en DESC, id_solicitud DESC LIMIT 1');
-            $stFindSol->execute([(int)$pedidoId, (int)$cursoId, ($currentUserId > 0 ? $currentUserId : null)]);
-            $solicitudId = (int)($stFindSol->fetchColumn() ?: 0);
+            // Usar solicitud existente si viene por parámetro y pertenece a este usuario; si no, buscar la última; si no hay, crearla
+            $solicitudId = 0;
+            if ($solicitudIdParam > 0) {
+                $stSolChk = $pdo->prepare('SELECT id_solicitud FROM solicitudes_certificacion WHERE id_solicitud = ? AND creado_por = ? LIMIT 1');
+                $stSolChk->execute([$solicitudIdParam, ($currentUserId > 0 ? $currentUserId : null)]);
+                $solicitudId = (int)($stSolChk->fetchColumn() ?: 0);
+            }
+            if ($solicitudId <= 0) {
+                $stFindSol = $pdo->prepare('SELECT id_solicitud FROM solicitudes_certificacion WHERE pedido_id = ? AND curso_id = ? AND creado_por = ? ORDER BY creado_en DESC, id_solicitud DESC LIMIT 1');
+                $stFindSol->execute([(int)$pedidoId, (int)$cursoId, ($currentUserId > 0 ? $currentUserId : null)]);
+                $solicitudId = (int)($stFindSol->fetchColumn() ?: 0);
+            }
             if ($solicitudId <= 0) {
                 $stInsSol = $pdo->prepare('INSERT INTO solicitudes_certificacion (pedido_id, curso_id, creado_por) VALUES (?, ?, ?)');
                 $stInsSol->execute([(int)$pedidoId, (int)$cursoId, ($currentUserId > 0 ? $currentUserId : null)]);
