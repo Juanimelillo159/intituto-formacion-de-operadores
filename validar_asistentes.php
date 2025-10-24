@@ -23,80 +23,135 @@ $asistentes = isset($_GET['asistentes']) ? max(0, (int)$_GET['asistentes']) : 0;
 
 // Inicializar valores de POST (aún sin persistir en DB)
 $messages = [];
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Por ahora no guardamos en base, solo validamos mínimamente y dejamos listo para integrar
-    // Validación de PDFs por asistente si existen
-    if (isset($_FILES['asistentes']) && is_array($_FILES['asistentes'])) {
-        $files = $_FILES['asistentes'];
-        if (isset($files['name']) && is_array($files['name'])) {
-            foreach ($files['name'] as $idx => $names) {
-                if (is_array($names) && array_key_exists('pdf', $names)) {
-                    $name = (string)$names['pdf'];
-                    if ($name !== '') {
-                        $type = (string)($files['type'][$idx]['pdf'] ?? '');
-                        if (stripos($type, 'pdf') === false) {
-                            $messages[] = ['type' => 'danger', 'text' => 'El archivo del asistente #' . ((int)$idx + 1) . ' debe ser PDF.'];
-                        }
-                    }
-                }
+$existingPrefill = [];
+$existingPdfs = [];
+
+// Cargar última solicitud guardada para este pedido/curso/usuario y usarla como prellenado
+try {
+    if ($pedidoId > 0 && $cursoId > 0 && $currentUserId > 0) {
+        $pdo = getPdo();
+        $stLast = $pdo->prepare('SELECT id_solicitud FROM solicitudes_certificacion WHERE pedido_id = :p AND curso_id = :c AND creado_por = :u ORDER BY creado_en DESC, id_solicitud DESC LIMIT 1');
+        $stLast->bindValue(':p', $pedidoId, PDO::PARAM_INT);
+        $stLast->bindValue(':c', $cursoId, PDO::PARAM_INT);
+        $stLast->bindValue(':u', $currentUserId, PDO::PARAM_INT);
+        $stLast->execute();
+        $lastId = (int)($stLast->fetchColumn() ?: 0);
+        if ($lastId > 0) {
+            $stA = $pdo->prepare('SELECT a.id, a.pdf_path, a.pdf_nombre, t.nombre, t.apellido, t.email, t.telefono, t.dni, t.direccion, t.ciudad, t.provincia, t.pais
+                                  FROM solicitudes_certificacion_asistentes a
+                                  LEFT JOIN trabajadores t ON t.id_trabajador = a.id_trabajador
+                                  WHERE a.id_solicitud = :id
+                                  ORDER BY a.id ASC');
+            $stA->bindValue(':id', $lastId, PDO::PARAM_INT);
+            $stA->execute();
+            $rows = $stA->fetchAll(PDO::FETCH_ASSOC);
+            $i = 0;
+            foreach ($rows as $r) {
+                $existingPrefill[$i] = [
+                    'nombre'    => (string)($r['nombre'] ?? ''),
+                    'apellido'  => (string)($r['apellido'] ?? ''),
+                    'dni'       => (string)($r['dni'] ?? ''),
+                    'email'     => (string)($r['email'] ?? ''),
+                    'telefono'  => (string)($r['telefono'] ?? ''),
+                    'direccion' => (string)($r['direccion'] ?? ''),
+                    'ciudad'    => (string)($r['ciudad'] ?? ''),
+                    'provincia' => (string)($r['provincia'] ?? ''),
+                    'pais'      => (string)($r['pais'] ?? ''),
+                ];
+                $existingPdfs[$i] = [
+                    'path'   => (string)($r['pdf_path'] ?? ''),
+                    'nombre' => (string)($r['pdf_nombre'] ?? ''),
+                ];
+                $i++;
             }
         }
     }
-
-    // Recolectar asistentes enviados
+} catch (Throwable $eLoad) {
+    // No interrumpir si falla el prellenado
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Requerir que todos los asistentes esperados tengan Nombre y Apellido
+    $totalAsist = max(1, $asistentes);
     $enviados = isset($_POST['asistentes']) && is_array($_POST['asistentes']) ? $_POST['asistentes'] : [];
-    $cantidadRecibida = count($enviados);
-    if ($cantidadRecibida === 0) {
-        $messages[] = ['type' => 'warning', 'text' => 'No se recibieron datos de asistentes.'];
+    $incompletos = [];
+    for ($i = 0; $i < $totalAsist; $i++) {
+        $a = $enviados[$i] ?? [];
+        $nombre    = trim((string)($a['nombre'] ?? ''));
+        $apellido  = trim((string)($a['apellido'] ?? ''));
+        $dni       = trim((string)($a['dni'] ?? ''));
+        $email     = trim((string)($a['email'] ?? ''));
+        if ($nombre === '' || $apellido === '' || $dni === '' || $email === '') {
+            $incompletos[] = $i + 1; // 1-based
+        }
+    }
+
+    if (!empty($incompletos)) {
+        $messages[] = ['type' => 'danger', 'text' => 'Debes completar todos los asistentes con Nombre, Apellido, DNI y Email. Faltan datos en: ' . implode(', ', $incompletos) . '.'];
     } else {
-        // Intentar guardar en BD si existen tablas (solicitudes_certificacion, trabajadores, solicitudes_certificacion_asistentes)
+        // Guardar todos los asistentes
         try {
             $pdo = getPdo();
             $pdo->beginTransaction();
 
-            // Crear solicitud
-            $stInsSol = $pdo->prepare('INSERT INTO solicitudes_certificacion (pedido_id, curso_id, creado_por) VALUES (?, ?, ?)');
-            $stInsSol->execute([(int)$pedidoId, (int)$cursoId, ($currentUserId > 0 ? $currentUserId : null)]);
-            $solicitudId = (int)$pdo->lastInsertId();
-
-            // Preparar consultas trabajador
-            $stFindTrabDni = $pdo->prepare('SELECT id_trabajador FROM trabajadores WHERE dni = ? LIMIT 1');
-            $stFindTrabEmail = $pdo->prepare('SELECT id_trabajador FROM trabajadores WHERE email = ? LIMIT 1');
-            $stInsTrab = $pdo->prepare('INSERT INTO trabajadores (nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, creado_por) VALUES (:nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, :creado_por)');
-
-            $uploadBaseDir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'asistentes';
-            if (!is_dir($uploadBaseDir)) {
-                @mkdir($uploadBaseDir, 0775, true);
+            // Buscar última solicitud existente para este pedido/curso/usuario; si no existe, crearla
+            $stFindSol = $pdo->prepare('SELECT id_solicitud FROM solicitudes_certificacion WHERE pedido_id = ? AND curso_id = ? AND creado_por = ? ORDER BY creado_en DESC, id_solicitud DESC LIMIT 1');
+            $stFindSol->execute([(int)$pedidoId, (int)$cursoId, ($currentUserId > 0 ? $currentUserId : null)]);
+            $solicitudId = (int)($stFindSol->fetchColumn() ?: 0);
+            if ($solicitudId <= 0) {
+                $stInsSol = $pdo->prepare('INSERT INTO solicitudes_certificacion (pedido_id, curso_id, creado_por) VALUES (?, ?, ?)');
+                $stInsSol->execute([(int)$pedidoId, (int)$cursoId, ($currentUserId > 0 ? $currentUserId : null)]);
+                $solicitudId = (int)$pdo->lastInsertId();
             }
 
-            $stInsSolAsis = $pdo->prepare('INSERT INTO solicitudes_certificacion_asistentes (id_solicitud, id_trabajador, pdf_path, pdf_nombre) VALUES (?, ?, ?, ?)');
+            $stFindTrabDni = $pdo->prepare('SELECT id_trabajador, creado_por FROM trabajadores WHERE dni = ? LIMIT 1');
+            $stFindTrabEmail = $pdo->prepare('SELECT id_trabajador, creado_por FROM trabajadores WHERE email = ? LIMIT 1');
+            $stInsTrab = $pdo->prepare('INSERT INTO trabajadores (nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, creado_por) VALUES (:nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, :creado_por)');
+            $stClaimTrab = $pdo->prepare('UPDATE trabajadores SET creado_por = :uid WHERE id_trabajador = :id AND (creado_por IS NULL OR creado_por = 0)');
 
-            foreach ($enviados as $idx => $a) {
+            $uploadBaseDir = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'asistentes';
+            if (!is_dir($uploadBaseDir)) { @mkdir($uploadBaseDir, 0775, true); }
+
+            // Cargar asistentes existentes para conservar PDF si no se reemplaza y actualizar en su lugar
+            $stGetAsis = $pdo->prepare('SELECT id, pdf_path, pdf_nombre FROM solicitudes_certificacion_asistentes WHERE id_solicitud = ? ORDER BY id ASC');
+            $stGetAsis->execute([$solicitudId]);
+            $existingRows = $stGetAsis->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $stInsSolAsis = $pdo->prepare('INSERT INTO solicitudes_certificacion_asistentes (id_solicitud, id_trabajador, pdf_path, pdf_nombre) VALUES (?, ?, ?, ?)');
+            $stUpdSolAsis = $pdo->prepare('UPDATE solicitudes_certificacion_asistentes SET id_trabajador = ?, pdf_path = ?, pdf_nombre = ? WHERE id = ?');
+            $stDelSolAsis = $pdo->prepare('DELETE FROM solicitudes_certificacion_asistentes WHERE id = ?');
+
+            for ($i = 0; $i < $totalAsist; $i++) {
+                $a = $enviados[$i] ?? [];
                 $nombre    = trim((string)($a['nombre'] ?? ''));
                 $apellido  = trim((string)($a['apellido'] ?? ''));
                 $dni       = trim((string)($a['dni'] ?? ''));
-                $pais      = trim((string)($a['pais'] ?? ''));
                 $email     = trim((string)($a['email'] ?? ''));
                 $telefono  = trim((string)($a['telefono'] ?? ''));
                 $direccion = trim((string)($a['direccion'] ?? ''));
                 $ciudad    = trim((string)($a['ciudad'] ?? ''));
                 $provincia = trim((string)($a['provincia'] ?? ''));
+                $pais      = trim((string)($a['pais'] ?? ''));
 
-                // Buscar trabajador existente por DNI o Email
-                $trabId = 0;
-                if ($dni !== '') {
+                $trabId = 0; $trabCreadoPor = null;
+                if ($dni !== '') { $stFindTrabDni->execute([$dni]); $trabId = (int)($stFindTrabDni->fetchColumn() ?: 0); }
+                if ($trabId <= 0 && $email !== '') { $stFindTrabEmail->execute([$email]); $trabId = (int)($stFindTrabEmail->fetchColumn() ?: 0); }
+
+                // Si existe trabajador pero sin propietario, reclamarlo para esta cuenta
+                if ($trabId <= 0 && $dni !== '') {
                     $stFindTrabDni->execute([$dni]);
-                    $trabId = (int)($stFindTrabDni->fetchColumn() ?: 0);
+                    $row = $stFindTrabDni->fetch(PDO::FETCH_ASSOC);
+                    if ($row) { $trabId = (int)$row['id_trabajador']; $trabCreadoPor = (int)($row['creado_por'] ?? 0); }
                 }
                 if ($trabId <= 0 && $email !== '') {
                     $stFindTrabEmail->execute([$email]);
-                    $trabId = (int)($stFindTrabEmail->fetchColumn() ?: 0);
+                    $row = $stFindTrabEmail->fetch(PDO::FETCH_ASSOC);
+                    if ($row) { $trabId = (int)$row['id_trabajador']; $trabCreadoPor = (int)($row['creado_por'] ?? 0); }
                 }
 
                 if ($trabId <= 0) {
                     $stInsTrab->execute([
-                        ':nombre'   => $nombre !== '' ? $nombre : null,
-                        ':apellido' => $apellido !== '' ? $apellido : null,
+                        ':nombre'   => $nombre,
+                        ':apellido' => $apellido,
                         ':email'    => $email !== '' ? $email : null,
                         ':telefono' => $telefono !== '' ? $telefono : null,
                         ':dni'      => $dni !== '' ? $dni : null,
@@ -107,35 +162,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':creado_por' => $currentUserId > 0 ? $currentUserId : null,
                     ]);
                     $trabId = (int)$pdo->lastInsertId();
-                }
-
-                // Guardar PDF si se subió
-                $pdfPath = null; $pdfNombre = null;
-                if (isset($_FILES['asistentes']['name'][$idx]['pdf'])) {
-                    $origName = (string)($_FILES['asistentes']['name'][$idx]['pdf'] ?? '');
-                    $tmpName  = (string)($_FILES['asistentes']['tmp_name'][$idx]['pdf'] ?? '');
-                    $error    = (int)($_FILES['asistentes']['error'][$idx]['pdf'] ?? UPLOAD_ERR_NO_FILE);
-                    $type     = (string)($_FILES['asistentes']['type'][$idx]['pdf'] ?? '');
-                    if ($error === UPLOAD_ERR_OK && $tmpName !== '' && stripos($type, 'pdf') !== false) {
-                        $safeBase = preg_replace('/[^A-Za-z0-9_\.-]+/', '_', pathinfo($origName, PATHINFO_FILENAME));
-                        $destName = sprintf('sol_%d_asist_%d_%s.pdf', $solicitudId, (int)$idx + 1, $safeBase !== '' ? $safeBase : 'documento');
-                        $destPath = $uploadBaseDir . DIRECTORY_SEPARATOR . $destName;
-                        if (@move_uploaded_file($tmpName, $destPath)) {
-                            $pdfPath = 'uploads/asistentes/' . $destName;
-                            $pdfNombre = $origName;
-                        }
+                } else {
+                    if ($currentUserId > 0 && ($trabCreadoPor === null || $trabCreadoPor === 0)) {
+                        $stClaimTrab->execute([':uid' => $currentUserId, ':id' => $trabId]);
                     }
                 }
 
-                $stInsSolAsis->execute([$solicitudId, $trabId, $pdfPath, $pdfNombre]);
+                // PDF por asistente
+                $pdfPath = null; $pdfNombre = null;
+                if (isset($_FILES['asistentes']['name'][$i]['pdf'])) {
+                    $origName = (string)($_FILES['asistentes']['name'][$i]['pdf'] ?? '');
+                    $tmpName  = (string)($_FILES['asistentes']['tmp_name'][$i]['pdf'] ?? '');
+                    $error    = (int)($_FILES['asistentes']['error'][$i]['pdf'] ?? UPLOAD_ERR_NO_FILE);
+                    $type     = (string)($_FILES['asistentes']['type'][$i]['pdf'] ?? '');
+                    if ($error === UPLOAD_ERR_OK && $tmpName !== '' && stripos($type, 'pdf') !== false) {
+                        $safeBase = preg_replace('/[^A-Za-z0-9_\.-]+/', '_', pathinfo($origName, PATHINFO_FILENAME));
+                        $destName = sprintf('sol_%d_asist_%d_%s.pdf', $solicitudId, (int)$i + 1, $safeBase !== '' ? $safeBase : 'documento');
+                        $destPath = $uploadBaseDir . DIRECTORY_SEPARATOR . $destName;
+                        if (@move_uploaded_file($tmpName, $destPath)) { $pdfPath = 'uploads/asistentes/' . $destName; $pdfNombre = $origName; }
+                    }
+                }
+
+                // Si no subieron PDF nuevo y existe uno previo en misma posición, conservarlo
+                if ($pdfPath === null && isset($existingRows[$i])) {
+                    $pdfPath = $existingRows[$i]['pdf_path'] ?? null;
+                    $pdfNombre = $existingRows[$i]['pdf_nombre'] ?? null;
+                }
+
+                if (isset($existingRows[$i])) {
+                    $stUpdSolAsis->execute([$trabId, $pdfPath, $pdfNombre, (int)$existingRows[$i]['id']]);
+                } else {
+                    $stInsSolAsis->execute([$solicitudId, $trabId, $pdfPath, $pdfNombre]);
+                }
+            }
+
+            // Eliminar asistentes sobrantes si antes había más que ahora
+            $existingCount = count($existingRows);
+            if ($existingCount > $totalAsist) {
+                for ($j = $totalAsist; $j < $existingCount; $j++) {
+                    $stDelSolAsis->execute([(int)$existingRows[$j]['id']]);
+                }
             }
 
             $pdo->commit();
             $messages[] = ['type' => 'success', 'text' => 'Solicitud registrada y asistentes guardados correctamente.'];
         } catch (Throwable $e) {
-            if (isset($pdo) && $pdo instanceof PDO) {
-                try { $pdo->rollBack(); } catch (Throwable $e2) {}
-            }
+            if (isset($pdo) && $pdo instanceof PDO) { try { $pdo->rollBack(); } catch (Throwable $e2) {} }
             $messages[] = ['type' => 'danger', 'text' => 'No se pudo guardar en la base de datos: ' . $e->getMessage()];
         }
     }
@@ -224,7 +296,7 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
             <h5 class="mb-3">Datos de asistentes</h5>
             <p class="text-muted small mb-4">Cantidad de asistentes esperada: <?php echo (int)$asistentes; ?>. Completá los datos por cada asistente y subí su PDF correspondiente.</p>
 
-            <?php $totalAsist = max(1, $asistentes); ?>
+            <?php $totalAsist = max(1, $asistentes); $prefill = $_POST['asistentes'] ?? $existingPrefill; ?>
             <ul class="nav nav-pills config-tabs flex-column flex-md-row gap-2" id="asistentesTabs" role="tablist">
                 <?php for ($i = 0; $i < $totalAsist; $i++): $active = ($i === 0); ?>
                     <li class="nav-item" role="presentation">
@@ -248,19 +320,19 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
                                     <div class="row g-3">
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold mb-1">Nombre</label>
-                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][nombre]" style="border-radius: 8px;"/>
+                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][nombre]" value="<?php echo htmlspecialchars((string)($prefill[$i]['nombre'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required style="border-radius: 8px;"/>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold mb-1">Apellido</label>
-                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][apellido]" style="border-radius: 8px;"/>
+                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][apellido]" value="<?php echo htmlspecialchars((string)($prefill[$i]['apellido'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required style="border-radius: 8px;"/>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold mb-1">DNI / Documento</label>
-                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][dni]" style="border-radius: 8px;"/>
+                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][dni]" value="<?php echo htmlspecialchars((string)($prefill[$i]['dni'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required style="border-radius: 8px;"/>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold mb-1">País</label>
-                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][pais]" style="border-radius: 8px;"/>
+                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][pais]" value="<?php echo htmlspecialchars((string)($prefill[$i]['pais'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" style="border-radius: 8px;"/>
                                         </div>
                                     </div>
                                 </div>
@@ -275,11 +347,11 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
                                     <div class="row g-3">
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold mb-1">Email</label>
-                                            <input type="email" class="form-control" name="asistentes[<?php echo $i; ?>][email]" autocomplete="email" style="border-radius: 8px;"/>
+                                            <input type="email" class="form-control" name="asistentes[<?php echo $i; ?>][email]" value="<?php echo htmlspecialchars((string)($prefill[$i]['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" required autocomplete="email" style="border-radius: 8px;"/>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold mb-1">Teléfono</label>
-                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][telefono]" autocomplete="tel" style="border-radius: 8px;"/>
+                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][telefono]" value="<?php echo htmlspecialchars((string)($prefill[$i]['telefono'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" autocomplete="tel" style="border-radius: 8px;"/>
                                         </div>
                                     </div>
                                 </div>
@@ -294,26 +366,37 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
                                     <div class="row g-3">
                                         <div class="col-12">
                                             <label class="form-label small fw-semibold mb-1">Calle y número</label>
-                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][direccion]" autocomplete="address-line1" style="border-radius: 8px;"/>
+                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][direccion]" value="<?php echo htmlspecialchars((string)($prefill[$i]['direccion'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" autocomplete="address-line1" style="border-radius: 8px;"/>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold mb-1">Ciudad</label>
-                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][ciudad]" autocomplete="address-level2" style="border-radius: 8px;"/>
+                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][ciudad]" value="<?php echo htmlspecialchars((string)($prefill[$i]['ciudad'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" autocomplete="address-level2" style="border-radius: 8px;"/>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label small fw-semibold mb-1">Provincia / Estado</label>
-                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][provincia]" autocomplete="address-level1" style="border-radius: 8px;"/>
+                                            <input type="text" class="form-control" name="asistentes[<?php echo $i; ?>][provincia]" value="<?php echo htmlspecialchars((string)($prefill[$i]['provincia'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" autocomplete="address-level1" style="border-radius: 8px;"/>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- PDF del asistente -->
-                            <div class="col-12">
-                                <label class="form-label small fw-semibold mb-1"><i class="fas fa-cloud-upload-alt me-2" style="color:#2563eb;"></i>Subir PDF del asistente <?php echo $i + 1; ?></label>
-                                <input type="file" class="form-control" name="asistentes[<?php echo $i; ?>][pdf]" accept="application/pdf" style="border-radius: 8px;"/>
-                                <div class="small text-muted mt-2"><i class="fas fa-info-circle me-1"></i>Se valida el tipo de archivo al enviar.</div>
-                            </div>
+                                <div class="col-12">
+                                    <label class="form-label small fw-semibold mb-1"><i class="fas fa-cloud-upload-alt me-2" style="color:#2563eb;"></i>Subir PDF del asistente <?php echo $i + 1; ?></label>
+                                    <input type="file" class="form-control" name="asistentes[<?php echo $i; ?>][pdf]" accept="application/pdf" style="border-radius: 8px;"/>
+                                    <?php $pdfInfo = $existingPdfs[$i] ?? null; if ($pdfInfo && !empty($pdfInfo['path'])): ?>
+                                        <div class="mt-2">
+                                            <a class="btn btn-sm btn-outline-primary" href="<?php echo htmlspecialchars((string)$pdfInfo['path'], ENT_QUOTES, 'UTF-8'); ?>" target="_blank" rel="noopener">
+                                                <i class="fas fa-file-pdf me-1"></i>Ver PDF actual
+                                            </a>
+                                            <?php if (!empty($pdfInfo['nombre'])): ?>
+                                                <span class="small text-muted ms-2"><?php echo htmlspecialchars((string)$pdfInfo['nombre'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php else: ?>
+                                        <div class="small text-muted mt-2"><i class="fas fa-info-circle me-1"></i>Se valida el tipo de archivo al enviar.</div>
+                                    <?php endif; ?>
+                                </div>
                         </div>
                     </div>
                 <?php endfor; ?>
@@ -334,5 +417,31 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.c
 <?php include __DIR__ . '/footer.php'; ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  (function(){
+    const form = document.querySelector('form[method="post"]');
+    if (!form) return;
+    form.addEventListener('submit', function(e){
+      const total = <?php echo (int)max(1, $asistentes); ?>;
+      for (let i = 0; i < total; i++) {
+        const nombre = form.querySelector(`[name="asistentes[${i}][nombre]"]`);
+        const apellido = form.querySelector(`[name="asistentes[${i}][apellido]"]`);
+        const dni = form.querySelector(`[name="asistentes[${i}][dni]"]`);
+        const email = form.querySelector(`[name="asistentes[${i}][email]"]`);
+        const emailOk = email && email.value.trim() !== '' && /.+@.+\..+/.test(email.value.trim());
+        const ok = nombre && nombre.value.trim() !== '' && apellido && apellido.value.trim() !== '' && dni && dni.value.trim() !== '' && emailOk;
+        if (!ok) {
+          e.preventDefault();
+          const tabBtn = document.getElementById(`tab-asistente-${i}`);
+          if (tabBtn) {
+            try { new bootstrap.Tab(tabBtn).show(); } catch(_e){}
+          }
+          alert('Completá Nombre, Apellido, DNI y Email válido para todos los asistentes. Faltan datos en el asistente ' + (i+1));
+          return false;
+        }
+      }
+    });
+  })();
+</script>
 </body>
 </html>
