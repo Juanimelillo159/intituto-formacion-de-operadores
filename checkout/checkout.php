@@ -468,6 +468,13 @@ if ($certificacionFlashSuccess !== null) {
     }
 }
 
+$certificacionShowSuccessAlert = ($certificacionSuccessMessage !== null);
+if ($certificacionShowSuccessAlert && $certificacionEstado !== null) {
+    if (in_array($certificacionEstado, [2, 3], true)) {
+        $certificacionShowSuccessAlert = false;
+    }
+}
+
 $certificacionErrorMessage = null;
 if ($certificacionFlashError !== null) {
     $certificacionErrorMessage = is_array($certificacionFlashError)
@@ -619,7 +626,7 @@ include '../head.php';
                                         </div>
                                     </div>
                                 <?php endif; ?>
-                                <?php if ($certificacionSuccessMessage): ?>
+                                <?php if ($certificacionShowSuccessAlert): ?>
                                     <div class="alert alert-success checkout-alert" role="alert">
                                         <div class="d-flex align-items-start gap-2">
                                             <i class="fas fa-file-circle-check mt-1"></i>
