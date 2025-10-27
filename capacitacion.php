@@ -42,10 +42,13 @@ $modalidad_nombres = array_map(fn($v) => htmlspecialchars($v['modalidad_nombre']
 $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
 
 $precio_capacitacion = null;
+$enlaceCheckoutCapacitacion = 0;
 if (!empty($curso['id_curso'])) {
     $cursoId = (int)$curso['id_curso'];
     $precio_capacitacion = obtener_precio_vigente($con, $cursoId, 'capacitacion');
+    $enlaceCheckoutCapacitacion = $cursoId;
 }
+$inscripcion_capacitacion_disponible = $precio_capacitacion !== null && $enlaceCheckoutCapacitacion > 0;
 
 // Helpers de salida segura
 function h(?string $v, string $fallback = ''): string
@@ -249,9 +252,16 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                 </div>
                             <?php endif; ?>
 
-                            <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo isset($curso['id_curso']) ? (int)$curso['id_curso'] : 0; ?>&amp;tipo=capacitacion">
-                                <i class="fas fa-user-plus me-2"></i>Inscribirse Ahora
-                            </a>
+                            <?php if ($inscripcion_capacitacion_disponible): ?>
+                                <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo $enlaceCheckoutCapacitacion; ?>&amp;tipo=capacitacion">
+                                    <i class="fas fa-user-plus me-2"></i>Inscribirse Ahora
+                                </a>
+                            <?php else: ?>
+                                <button class="enroll-button" type="button" disabled aria-disabled="true">
+                                    <i class="fas fa-user-plus me-2"></i>Inscribirse Ahora
+                                </button>
+                                <p class="enroll-button-note">Contactá al equipo comercial para conocer el valor y completar tu inscripción.</p>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
