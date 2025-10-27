@@ -134,15 +134,27 @@ if (!$googleSub) { jerr('sub faltante'); }
 try {
     $con->beginTransaction();
 
-    $stmt = $con->prepare('SELECT id_usuario, email, id_permiso FROM usuarios WHERE email = :email LIMIT 1');
+    $stmt = $con->prepare('SELECT id_usuario, email, id_permiso, google_sub FROM usuarios WHERE email = :email LIMIT 1');
     $stmt->bindValue(':email', $email);
     $stmt->execute();
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if ($user) {
         $id = (int)$user['id_usuario'];
+        $existingSub = $user['google_sub'] ?? null;
+
+        if (empty($existingSub)) {
+            if ($con->inTransaction()) { $con->rollBack(); }
+            jerr('Este correo ya tiene una cuenta creada con usuario y contraseña. Inicia sesión con tus credenciales.');
+        }
+
+        if (!hash_equals((string)$existingSub, (string)$googleSub)) {
+            if ($con->inTransaction()) { $con->rollBack(); }
+            jerr('La cuenta de Google no coincide con la asociada previamente. Usa la misma cuenta de Google que empleaste al registrarte.');
+        }
+
         $upd = $con->prepare('UPDATE usuarios
-            SET google_sub = COALESCE(google_sub, :sub),
+            SET google_sub = :sub,
                 verificado = 1,
                 nombre = COALESCE(NULLIF(nombre, \'\'), :nombre),
                 apellido = COALESCE(NULLIF(apellido, \'\'), :apellido),
