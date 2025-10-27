@@ -819,20 +819,6 @@ include '../head.php';
                                                                     <i class="fas fa-info-circle" style="color: #2563eb;"></i>
                                                                     <span class="small" style="color: #2563eb;">Guardá como PDF</span>
                                                                 </div>
-                                                                <div class="mt-3">
-                                                                    <input type="hidden" name="tenia_certificacion_previa" id="certificacion_previa_hidden" value="<?php echo $certTieneCertificacionPrevia ? '1' : '0'; ?>">
-                                                                    <div class="form-check">
-                                                                        <input class="form-check-input" type="checkbox" value="1" id="certificacion_previa" <?php echo $certTieneCertificacionPrevia ? 'checked' : ''; ?> <?php echo $certificacionAllowSubmit ? '' : 'disabled'; ?>>
-                                                                        <label class="form-check-label small fw-semibold" for="certificacion_previa">
-                                                                            Ya tengo una certificación emitida previamente
-                                                                        </label>
-                                                                    </div>
-                                                                    <div id="certificacion_previa_wrapper" class="mt-3 <?php echo $certTieneCertificacionPrevia ? '' : 'd-none'; ?>">
-                                                                        <label for="certificacion_previa_emisor" class="form-label small fw-semibold mb-1">¿Qué ente la emitió?</label>
-                                                                        <input type="text" class="form-control" id="certificacion_previa_emisor" name="certificacion_emitida_por" value="<?php echo h($certEntidadEmisoraValue); ?>" placeholder="Ej.: Ministerio de Trabajo" <?php echo $certificacionAllowSubmit ? '' : 'readonly'; ?> style="border-radius: 8px;">
-                                                                        <div class="form-text">Indicá el organismo u organización que emitió la certificación.</div>
-                                                                    </div>
-                                                                </div>
                                                             </div>
                                                         </div>
 
@@ -928,6 +914,27 @@ include '../head.php';
                                                                             <label for="cert_pais" class="form-label small fw-semibold mb-1">País</label>
                                                                             <input type="text" class="form-control" id="cert_pais" name="pais_insc" value="<?php echo h($certPaisValue); ?>" <?php echo $certInputsReadonly; ?> style="border-radius: 8px;">
                                                                         </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Certificación previa -->
+                                                            <div class="col-12">
+                                                                <div class="p-3 rounded-3" style="background: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6;">
+                                                                    <h6 class="mb-3" style="color: #1d4ed8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                                        <i class="fas fa-certificate me-2"></i>Certificación previa
+                                                                    </h6>
+                                                                    <input type="hidden" name="tenia_certificacion_previa" id="certificacion_previa_hidden" value="<?php echo $certTieneCertificacionPrevia ? '1' : '0'; ?>">
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox" value="1" id="certificacion_previa" <?php echo $certTieneCertificacionPrevia ? 'checked' : ''; ?> <?php echo $certificacionAllowSubmit ? '' : 'disabled'; ?>>
+                                                                        <label class="form-check-label small fw-semibold" for="certificacion_previa">
+                                                                            Ya tengo una certificación emitida previamente
+                                                                        </label>
+                                                                    </div>
+                                                                    <div id="certificacion_previa_wrapper" class="mt-3 <?php echo $certTieneCertificacionPrevia ? '' : 'd-none'; ?>">
+                                                                        <label for="certificacion_previa_emisor" class="form-label small fw-semibold mb-1">¿Qué ente la emitió?</label>
+                                                                        <input type="text" class="form-control" id="certificacion_previa_emisor" name="certificacion_emitida_por" value="<?php echo h($certEntidadEmisoraValue); ?>" placeholder="Ej.: Ministerio de Trabajo" <?php echo $certificacionAllowSubmit ? '' : 'readonly'; ?> style="border-radius: 8px;">
+                                                                        <div class="form-text">Indicá el organismo u organización que emitió la certificación.</div>
                                                                     </div>
                                                                 </div>
                                                             </div>
