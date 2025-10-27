@@ -26,6 +26,51 @@ $normalized_base = rtrim($base_path, '/');
 ?>
 
 <style>
+    .user-menu {
+        position: relative;
+    }
+
+    .user-menu-toggle {
+        cursor: pointer;
+    }
+
+    .user-menu-dropdown {
+        position: absolute;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        min-width: 14rem;
+        padding: 0.5rem 0;
+        margin: 0;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 0.75rem;
+        background-color: #fff;
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.1);
+        display: none;
+        list-style: none;
+        z-index: 1050;
+    }
+
+    .user-menu.show > .user-menu-dropdown,
+    .user-menu-dropdown.show {
+        display: block;
+    }
+
+    .user-menu-dropdown .dropdown-item {
+        padding: 0.65rem 1.25rem;
+        font-size: 0.95rem;
+    }
+
+    .user-menu-dropdown .dropdown-item:hover,
+    .user-menu-dropdown .dropdown-item:focus {
+        background-color: #f8f9fa;
+        color: #212529;
+    }
+
+    .user-menu-dropdown .dropdown-divider {
+        margin: 0.5rem 0;
+        border-top-color: rgba(0, 0, 0, 0.08);
+    }
+
     .mobile-nav-buttons {
         display: flex;
         gap: 0.75rem;
@@ -297,7 +342,12 @@ $normalized_base = rtrim($base_path, '/');
 <script>
     (function () {
         const script = document.currentScript;
-        const nav = script ? script.previousElementSibling : null;
+        let nav = script ? script.previousElementSibling : null;
+
+        if (!nav || !(nav instanceof HTMLElement) || !nav.matches('nav.navbar')) {
+            nav = document.querySelector('nav.navbar');
+        }
+
         const toggle = nav ? nav.querySelector('#userMenu') : null;
         const menu = nav ? nav.querySelector('.user-menu .dropdown-menu') : null;
         const parentItem = nav ? nav.querySelector('.user-menu') : null;
