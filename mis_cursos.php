@@ -1605,10 +1605,7 @@ $configActive = 'mis_cursos';
 <main class="config-main flex-grow-1 py-5">
     <div class="container">
         <div class="row g-4 align-items-start position-relative">
-            <!-- Sidebar dentro del flujo (mobile/tablet) -->
-            <div class="col-12 d-xl-none mb-4">
-                <?php include 'config_sidebar.php'; ?>
-            </div>
+          
 
             <!-- Contenido de cursos -->
             <div class="col-12 col-xl-10 mx-auto mis-cursos-content">
