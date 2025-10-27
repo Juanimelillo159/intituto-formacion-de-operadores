@@ -229,6 +229,30 @@ body {
     color: #fff;
 }
 
+.enroll-button[disabled],
+.enroll-button.disabled,
+.enroll-button[aria-disabled="true"] {
+    background: #adb5bd;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+    opacity: .8;
+}
+
+.enroll-button[disabled]:hover,
+.enroll-button.disabled:hover,
+.enroll-button[aria-disabled="true"]:hover {
+    box-shadow: none;
+    transform: none;
+}
+
+.enroll-button-note {
+    font-size: .9rem;
+    color: #6c757d;
+    margin-top: 12px;
+    text-align: center;
+}
+
 .objectives-list {
     background: #fff;
     border-radius: var(--border-radius);

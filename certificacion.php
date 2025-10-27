@@ -132,6 +132,7 @@ $precio_certificacion = null;
 if ($enlaceCheckoutId > 0) {
     $precio_certificacion = obtener_precio_vigente($con, $enlaceCheckoutId, 'certificacion');
 }
+$solicitud_certificacion_disponible = $precio_certificacion !== null && $enlaceCheckoutId > 0;
 
 if (!$cert && !$curso_fallback) {
     http_response_code(404);
@@ -286,9 +287,16 @@ if (!$cert && !$curso_fallback) {
                         </div>
 
                         <?php if ($cert || $curso_fallback): ?>
-                            <a class="enroll-button" href="checkout/checkout.php?id_certificacion=<?php echo $enlaceCheckoutId; ?>&tipo=certificacion">
-                                <i class="fa-solid fa-paper-plane me-2"></i> Solicitar certificación
-                            </a>
+                            <?php if ($solicitud_certificacion_disponible): ?>
+                                <a class="enroll-button" href="checkout/checkout.php?id_certificacion=<?php echo $enlaceCheckoutId; ?>&tipo=certificacion">
+                                    <i class="fa-solid fa-paper-plane me-2"></i> Solicitar certificación
+                                </a>
+                            <?php else: ?>
+                                <button class="enroll-button" type="button" disabled aria-disabled="true">
+                                    <i class="fa-solid fa-paper-plane me-2"></i> Solicitar certificación
+                                </button>
+                                <p class="enroll-button-note">Contactá al equipo comercial para obtener el precio y continuar con la solicitud.</p>
+                            <?php endif; ?>
                         <?php else: ?>
                             <div class="alert alert-warning mt-3" role="alert">
                                 <div class="d-flex align-items-start gap-2">
