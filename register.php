@@ -77,7 +77,7 @@ try {
     $pdo->beginTransaction();
 
     // Existe el email?
-    $check = $pdo->prepare('SELECT id_usuario, verificado FROM usuarios WHERE email = ? LIMIT 1');
+    $check = $pdo->prepare('SELECT id_usuario, verificado, google_sub FROM usuarios WHERE email = ? LIMIT 1');
     $check->execute([$email]);
     $existing = $check->fetch();
 
@@ -95,6 +95,10 @@ try {
     $verificationLink = $baseUrl . '/verificar.php?token=' . urlencode($token);
 
     if ($existing) {
+        if (!empty($existing['google_sub'])) {
+            $pdo->rollBack();
+            respondAndExit(false, 'Este correo ya tiene una cuenta creada con Google. Inicia sesión usando el botón de Google.', 'warning', 409);
+        }
         // Si ya esta verificado, corto
         if ((int)$existing['verificado'] === 1) {
             $pdo->rollBack();

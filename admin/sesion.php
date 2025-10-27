@@ -53,12 +53,20 @@ if ($email === '' || $password === '') {
 }
 
 try {
-    $sql_usuario = $con->prepare('SELECT id_usuario, email, clave, id_permiso, id_estado, verificado FROM usuarios WHERE email = :email LIMIT 1');
+    $sql_usuario = $con->prepare('SELECT id_usuario, email, clave, id_permiso, id_estado, verificado, google_sub FROM usuarios WHERE email = :email LIMIT 1');
     $sql_usuario->bindParam(':email', $email);
     $sql_usuario->execute();
     $usuario = $sql_usuario->fetch(PDO::FETCH_ASSOC);
 
-    if (!$usuario || !password_verify($password, $usuario['clave'])) {
+    if (!$usuario) {
+        loginRespond(false, 'Credenciales invalidas.', 'danger', 401);
+    }
+
+    if (!empty($usuario['google_sub'])) {
+        loginRespond(false, 'Tu cuenta fue creada con Google. Inicia sesión utilizando el botón de Google.', 'warning', 403);
+    }
+
+    if (!password_verify($password, $usuario['clave'])) {
         loginRespond(false, 'Credenciales invalidas.', 'danger', 401);
     }
 
