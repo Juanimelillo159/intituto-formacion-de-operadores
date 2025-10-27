@@ -193,10 +193,23 @@ try {
             $ciudadInsc      = trim((string)($_POST['ciu_insc'] ?? ''));
             $provinciaInsc   = trim((string)($_POST['prov_insc'] ?? ''));
             $paisInsc        = trim((string)($_POST['pais_insc'] ?? ''));
+            $teniaCertificacionPrevia = (int)($_POST['tenia_certificacion_previa'] ?? 0) === 1 ? 1 : 0;
+            $certificacionEmitidaPor = trim((string)($_POST['certificacion_emitida_por'] ?? ''));
             if ($paisInsc === '') {
                 $paisInsc = 'Argentina';
             }
             $aceptaTyC = isset($_POST['acepta_tyc']) ? 1 : 0;
+
+            if ($teniaCertificacionPrevia !== 1) {
+                $teniaCertificacionPrevia = 0;
+                $certificacionEmitidaPor = '';
+            }
+            if ($teniaCertificacionPrevia === 1 && $certificacionEmitidaPor === '') {
+                throw new InvalidArgumentException('Indicá el ente que emitió tu certificación previa.');
+            }
+            if ($certificacionEmitidaPor === '') {
+                $certificacionEmitidaPor = null;
+            }
 
             if (isset($_SESSION['usuario']) && is_array($_SESSION['usuario'])) {
                 $usuarioSesion = $_SESSION['usuario'];
@@ -366,6 +379,8 @@ try {
                            apellido = :apellido,
                            email = :email,
                            telefono = :telefono,
+                           tenia_certificacion_previa = :tenia_previa,
+                           certificacion_emitida_por = :cert_emisor,
                            acepta_tyc = :acepta,
                            precio_total = :precio,
                            moneda = :moneda,
@@ -381,6 +396,8 @@ try {
                     ':apellido' => $apellidoInscrito,
                     ':email' => $emailInscrito,
                     ':telefono' => $telefonoInscrito,
+                    ':tenia_previa' => $teniaCertificacionPrevia,
+                    ':cert_emisor' => $certificacionEmitidaPor,
                     ':acepta' => $aceptaTyC,
                     ':precio' => $precioFinal,
                     ':moneda' => strtoupper($monedaPrecio),
@@ -395,11 +412,13 @@ try {
                     INSERT INTO checkout_certificaciones (
                         creado_por, acepta_tyc, precio_total, moneda, id_curso,
                         pdf_path, pdf_nombre, pdf_mime, observaciones, id_estado,
-                        nombre, apellido, email, telefono
+                        nombre, apellido, email, telefono,
+                        tenia_certificacion_previa, certificacion_emitida_por
                     ) VALUES (
                         :usuario, :acepta, :precio, :moneda, :curso,
                         :pdf_path, :pdf_nombre, :pdf_mime, NULL, 1,
-                        :nombre, :apellido, :email, :telefono
+                        :nombre, :apellido, :email, :telefono,
+                        :tenia_previa, :cert_emisor
                     )
                 ');
                 $insert->execute([
@@ -415,6 +434,8 @@ try {
                     ':apellido' => $apellidoInscrito,
                     ':email' => $emailInscrito,
                     ':telefono' => $telefonoInscrito,
+                    ':tenia_previa' => $teniaCertificacionPrevia,
+                    ':cert_emisor' => $certificacionEmitidaPor,
                 ]);
                 $certificacionId = (int)$con->lastInsertId();
             }
@@ -451,6 +472,8 @@ try {
                 'telefono' => $telefonoInscrito,
                 'precio' => $precioFinal,
                 'moneda' => strtoupper($monedaPrecio),
+                'tenia_certificacion_previa' => $teniaCertificacionPrevia,
+                'certificacion_emitida_por' => $certificacionEmitidaPor,
             ];
 
             log_cursos('checkout_crear_certificacion', [

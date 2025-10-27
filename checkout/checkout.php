@@ -468,6 +468,13 @@ if ($certificacionFlashSuccess !== null) {
     }
 }
 
+$certificacionShowSuccessAlert = ($certificacionSuccessMessage !== null);
+if ($certificacionShowSuccessAlert && $certificacionEstado !== null) {
+    if (in_array($certificacionEstado, [2, 3], true)) {
+        $certificacionShowSuccessAlert = false;
+    }
+}
+
 $certificacionErrorMessage = null;
 if ($certificacionFlashError !== null) {
     $certificacionErrorMessage = is_array($certificacionFlashError)
@@ -619,7 +626,7 @@ include '../head.php';
                                         </div>
                                     </div>
                                 <?php endif; ?>
-                                <?php if ($certificacionSuccessMessage): ?>
+                                <?php if ($certificacionShowSuccessAlert): ?>
                                     <div class="alert alert-success checkout-alert" role="alert">
                                         <div class="d-flex align-items-start gap-2">
                                             <i class="fas fa-file-circle-check mt-1"></i>
@@ -744,6 +751,8 @@ include '../head.php';
                                             $certCiudadValue = $certificacionData['ciudad'] ?? $prefillCiudad;
                                             $certProvinciaValue = $certificacionData['provincia'] ?? $prefillProvincia;
                                             $certPaisValue = $certificacionData['pais'] ?? $prefillPais;
+                                            $certTieneCertificacionPrevia = (int)($certificacionData['tenia_certificacion_previa'] ?? 0) === 1;
+                                            $certEntidadEmisoraValue = $certificacionData['certificacion_emitida_por'] ?? '';
                                             $certInputsReadonly = $certificacionAllowSubmit ? '' : 'readonly';
                                             $certDatosHelper = $certificacionAllowSubmit
                                                 ? 'Actualizá tus datos si es necesario antes de enviar la solicitud.'
@@ -813,12 +822,12 @@ include '../head.php';
                                                                         <h6 class="mb-0">Completar y firmar</h6>
                                                                     </div>
                                                                     <p class="small text-muted mb-3">Completá todos los campos requeridos y firmá el documento</p>
-                                                                    <div class="d-flex align-items-center gap-2 p-2 rounded" style="background: rgba(37, 99, 235, 0.1);">
-                                                                        <i class="fas fa-info-circle" style="color: #2563eb;"></i>
-                                                                        <span class="small" style="color: #2563eb;">Guardá como PDF</span>
-                                                                    </div>
+                                                                <div class="d-flex align-items-center gap-2 p-2 rounded" style="background: rgba(37, 99, 235, 0.1);">
+                                                                    <i class="fas fa-info-circle" style="color: #2563eb;"></i>
+                                                                    <span class="small" style="color: #2563eb;">Guardá como PDF</span>
                                                                 </div>
                                                             </div>
+                                                        </div>
 
                                                             <!-- Paso 3: Subir -->
                                                             <div class="col-md-4">
@@ -912,6 +921,27 @@ include '../head.php';
                                                                             <label for="cert_pais" class="form-label small fw-semibold mb-1">País</label>
                                                                             <input type="text" class="form-control" id="cert_pais" name="pais_insc" value="<?php echo h($certPaisValue); ?>" <?php echo $certInputsReadonly; ?> style="border-radius: 8px;">
                                                                         </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <!-- Certificación previa -->
+                                                            <div class="col-12">
+                                                                <div class="p-3 rounded-3" style="background: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6;">
+                                                                    <h6 class="mb-3" style="color: #1d4ed8; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                                        <i class="fas fa-certificate me-2"></i>Certificación previa
+                                                                    </h6>
+                                                                    <input type="hidden" name="tenia_certificacion_previa" id="certificacion_previa_hidden" value="<?php echo $certTieneCertificacionPrevia ? '1' : '0'; ?>">
+                                                                    <div class="form-check">
+                                                                        <input class="form-check-input" type="checkbox" value="1" id="certificacion_previa" <?php echo $certTieneCertificacionPrevia ? 'checked' : ''; ?> <?php echo $certificacionAllowSubmit ? '' : 'disabled'; ?>>
+                                                                        <label class="form-check-label small fw-semibold" for="certificacion_previa">
+                                                                            Ya tengo una certificación emitida previamente
+                                                                        </label>
+                                                                    </div>
+                                                                    <div id="certificacion_previa_wrapper" class="mt-3 <?php echo $certTieneCertificacionPrevia ? '' : 'd-none'; ?>">
+                                                                        <label for="certificacion_previa_emisor" class="form-label small fw-semibold mb-1">¿Qué ente la emitió?</label>
+                                                                        <input type="text" class="form-control" id="certificacion_previa_emisor" name="certificacion_emitida_por" value="<?php echo h($certEntidadEmisoraValue); ?>" placeholder="Ej.: Ministerio de Trabajo" <?php echo $certificacionAllowSubmit ? '' : 'readonly'; ?> style="border-radius: 8px;">
+                                                                        <div class="form-text">Indicá el organismo u organización que emitió la certificación.</div>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -1195,6 +1225,10 @@ include '../head.php';
             const certificacionPagado = <?php echo $certificacionPagado ? 'true' : 'false'; ?>;
             const certificacionAllowSubmit = <?php echo $certificacionAllowSubmit ? 'true' : 'false'; ?>;
             const certificacionId = <?php echo (int)$certificacionId; ?>;
+            const certPrevCheckbox = document.getElementById('certificacion_previa');
+            const certPrevHidden = document.getElementById('certificacion_previa_hidden');
+            const certPrevWrapper = document.getElementById('certificacion_previa_wrapper');
+            const certPrevInput = document.getElementById('certificacion_previa_emisor');
             const mpEndpoint = '../checkout/mercadopago_init.php';
             let currentStep = 1;
             let mpProcessing = false;
@@ -1282,6 +1316,14 @@ include '../head.php';
                                 goToStep(2);
                                 showAlert('error', 'Email inválido', 'Ingresá un correo electrónico válido.');
                                 return false;
+                            }
+                            if (certPrevCheckbox && certPrevCheckbox.checked) {
+                                const prevValue = certPrevInput ? certPrevInput.value.trim() : '';
+                                if (!prevValue) {
+                                    goToStep(2);
+                                    showAlert('error', 'Faltan datos', 'Indicá el ente que emitió tu certificación anterior.');
+                                    return false;
+                                }
                             }
                         }
                         return true;
@@ -1446,6 +1488,47 @@ include '../head.php';
             const confirmButton = document.getElementById('btnConfirmar');
             if (!form || !confirmButton) {
                 return;
+            }
+
+            const syncCertificacionPrevia = () => {
+                if (!certPrevCheckbox) {
+                    return;
+                }
+                const isChecked = certPrevCheckbox.checked;
+                if (certPrevHidden) {
+                    certPrevHidden.value = isChecked ? '1' : '0';
+                }
+                if (certPrevWrapper) {
+                    if (isChecked) {
+                        certPrevWrapper.classList.remove('d-none');
+                    } else {
+                        certPrevWrapper.classList.add('d-none');
+                    }
+                }
+                if (certPrevInput) {
+                    if (certificacionAllowSubmit && isChecked) {
+                        certPrevInput.setAttribute('required', 'required');
+                    } else {
+                        certPrevInput.removeAttribute('required');
+                    }
+                }
+            };
+
+            if (certPrevCheckbox) {
+                certPrevCheckbox.addEventListener('change', syncCertificacionPrevia);
+                if (!certificacionAllowSubmit) {
+                    const blockToggle = (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    };
+                    certPrevCheckbox.addEventListener('click', blockToggle);
+                    certPrevCheckbox.addEventListener('keydown', (event) => {
+                        if (event.key === ' ' || event.key === 'Enter') {
+                            blockToggle(event);
+                        }
+                    });
+                }
+                syncCertificacionPrevia();
             }
             let confirmLabel = confirmButton.querySelector('.btn-label');
             let confirmIcon = confirmButton.querySelector('i');
