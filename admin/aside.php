@@ -74,30 +74,12 @@
                 </li>
               </ul>
             </li>
-            <!-- imagenes del carrusel -->
+            <!-- imágenes del carrusel -->
             <li class="nav-item">
-              <a href="#" class="nav-link">
-                <i class="fas fa-solid fa-table"></i>
-                <p>
-                  Carrusel
-                  <i class="right fas fa-angle-left"></i>
-                </p>
+              <a href="carrusel.php" class="nav-link">
+                <i class="fas fa-images"></i>
+                <p>Carrusel</p>
               </a>
-              <ul class="nav nav-treeview">
-                <li class="nav-item">
-                  <a href="carrusel.php" class="nav-link">
-                    <i class="fas fa-solid fa-list"></i>
-                    <p>Mostrar imagenes</p>
-                  </a>
-                </li>
-
-                <li class="nav-item">
-                  <a href="agregar_imagen.php" class="nav-link">
-                    <i class="fas fa-solid fa-plus"></i>
-                    <p>Añadir imagen</p>
-                  </a>
-                </li>
-              </ul>
             </li>
 
             <li class="nav-item">
