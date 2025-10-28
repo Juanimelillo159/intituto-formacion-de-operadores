@@ -15,3 +15,13 @@
 {"ts":"2025-10-20 05:02:47","user":"anon","ip":"::1","accion":"checkout_crear_certificacion","data":{"id_certificacion":11,"id_curso":1,"usuario":46}}
 {"ts":"2025-10-21 02:51:16","user":"anon","ip":"::1","accion":"error","data":{"post_keys":["id_curso","__accion","nombre","duracion","descripcion","complejidad","publico","objetivos","programa","cronograma","requisitos","observaciones","tipo_precio","precio","desde","comentario","editar_curso"]},"error":{"type":"InvalidArgumentException","message":"Campos obligatorios faltantes para edición.","code":"0"}}
 {"ts":"2025-10-21 02:51:21","user":"anon","ip":"::1","accion":"agregar_precio_ok","data":{"id_curso":1,"tipo":"certificacion","precio":"200000","desde":"2025-10-20 21:51:00","hasta":null}}
+{"ts":"2025-10-28 15:42:47","user":"anon","ip":"::1","accion":"agregar_banner_inicio","data":{"post":["nombre_banner","agregar_banner"],"files":["imagen_banner"]}}
+{"ts":"2025-10-28 15:42:47","user":"anon","ip":"::1","accion":"agregar_banner_ok","data":{"nombre_banner":"promos","imagen":"imagen_6900d667643c5.png"}}
+{"ts":"2025-10-28 15:44:39","user":"anon","ip":"::1","accion":"agregar_banner_inicio","data":{"post":["nombre_banner","agregar_banner"],"files":["imagen_banner"]}}
+{"ts":"2025-10-28 15:44:39","user":"anon","ip":"::1","accion":"agregar_banner_ok","data":{"nombre_banner":"asdasdasd","imagen":"imagen_6900d6d7a7bea.png"}}
+{"ts":"2025-10-28 15:53:25","user":"anon","ip":"::1","accion":"agregar_banner_inicio","data":{"post":["agregar_banner","redirect_to","nombre_banner"],"files":["imagen_banner"]}}
+{"ts":"2025-10-28 15:53:25","user":"anon","ip":"::1","accion":"agregar_banner_ok","data":{"nombre_banner":"asdasd","imagen":"imagen_6900d8e5a4823.png"}}
+{"ts":"2025-10-28 16:01:24","user":"anon","ip":"::1","accion":"agregar_banner_inicio","data":{"post":["agregar_banner","redirect_to","nombre_banner"],"files":["imagen_banner"]}}
+{"ts":"2025-10-28 16:01:24","user":"anon","ip":"::1","accion":"agregar_banner_ok","data":{"nombre_banner":"promo 7","imagen":"imagen_6900dac4d82fa.png"}}
+{"ts":"2025-10-28 16:02:22","user":"anon","ip":"::1","accion":"agregar_banner_inicio","data":{"post":["agregar_banner","redirect_to","nombre_banner"],"files":["imagen_banner"]}}
+{"ts":"2025-10-28 16:02:22","user":"anon","ip":"::1","accion":"agregar_banner_ok","data":{"nombre_banner":"asd","imagen":"imagen_6900dafe3199a.jpg"}}

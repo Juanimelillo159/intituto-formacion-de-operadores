@@ -1588,7 +1588,7 @@ try {
         $sql->execute([':n' => $nombre_banner, ':img' => $nombre_imagen]);
 
         log_cursos('agregar_banner_ok', ['nombre_banner' => $nombre_banner, 'imagen' => $nombre_imagen]);
-        header('Location: /p/admin/carrusel.php');
+        header('Location: ../admin/carrusel.php');
         exit;
     }
 
@@ -1631,7 +1631,7 @@ try {
             }
 
             log_cursos('editar_banner_ok', ['id_banner' => $id_banner, 'imagen' => $nombre_imagen]);
-            header('Location: /p/admin/carrusel.php');
+            header('Location: ../admin/carrusel.php');
             exit;
         } else {
             // solo nombre
@@ -1639,7 +1639,7 @@ try {
             $up->execute([':n' => $nombre_banner, ':id' => $id_banner]);
 
             log_cursos('editar_banner_ok', ['id_banner' => $id_banner, 'solo_nombre' => true]);
-            header('Location: /p/admin/carrusel.php');
+            header('Location: ../admin/carrusel.php');
             exit;
         }
     }
