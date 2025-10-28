@@ -20,13 +20,22 @@ $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Editar curso</title>
     <style>
-        #imageCarousel {
-            max-width: 800px;
+        #carruselbanner {
+            max-width: 900px;
             margin: 0 auto;
         }
 
-        .carousel-item img {
-            height: 400px;
+        #carruselbanner .carousel-item {
+            position: relative;
+            padding-top: 42.5%;
+        }
+
+        #carruselbanner .carousel-item img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             object-fit: cover;
         }
 
@@ -64,9 +73,9 @@ $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
                                     <div class="carousel-inner">
                                         <?php foreach ($banners as $index => $banner) { ?>
                                             <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                                                <img class="d-block w-100" src="../imagenes/banners/<?php echo $banner['imagen_banner']; ?>" alt="Slide <?php echo $index + 1; ?>">
+                                                <img class="d-block w-100" src="../assets/imagenes/banners/<?php echo htmlspecialchars($banner['imagen_banner'], ENT_QUOTES, 'UTF-8'); ?>" alt="Slide <?php echo $index + 1; ?>">
                                                 <div class="carousel-caption d-none d-md-block">
-                                                    <h5><?php echo $banner['nombre_banner']; ?></h5>
+                                                    <h5><?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?></h5>
                                                 </div>
                                             </div>
                                         <?php } ?>
@@ -103,15 +112,16 @@ $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php
-                                            foreach ($banners as $banner) { ?>
+                                            <?php foreach ($banners as $banner) { ?>
                                                 <tr>
-                                                    <td> <?php echo $banner['nombre_banner'] ?> </td>
-                                                    <td> <?php echo $banner['imagen_banner'] ?> </td>
+                                                    <td><?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?></td>
+                                                    <td class="text-center">
+                                                        <img src="../assets/imagenes/banners/<?php echo htmlspecialchars($banner['imagen_banner'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?>" class="img-fluid" style="max-height: 120px; object-fit: cover;">
+                                                    </td>
                                                     <td>
-                                                        <a href="editar_banner.php?id_banner=<?php echo $banner['id_banner']; ?>" type="button" class="btn bg-orange btn-flat margin"> <i class="fas fa-user-edit"></i></a>
+                                                        <a href="editar_banner.php?id_banner=<?php echo (int) $banner['id_banner']; ?>" type="button" class="btn bg-orange btn-flat margin"> <i class="fas fa-user-edit"></i></a>
 
-                                                        <a href="eliminar_banner.php?id_banner=<?php echo $banner['id_banner']; ?>" type="button" class="btn bg-maroon btn-flat margin"><i class="fa fa-trash" aria-hidden="true"></i></a>
+                                                        <a href="eliminar_banner.php?id_banner=<?php echo (int) $banner['id_banner']; ?>" type="button" class="btn bg-maroon btn-flat margin"><i class="fa fa-trash" aria-hidden="true"></i></a>
                                                     </td>
                                                 </tr>
                                             <?php } ?>

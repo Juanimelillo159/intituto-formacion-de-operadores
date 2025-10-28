@@ -1574,7 +1574,7 @@ try {
 
         $ext = pathinfo($imagen['name'], PATHINFO_EXTENSION);
         $nombre_imagen = uniqid('imagen_') . ".$ext";
-        $destDir = __DIR__ . '/../imagenes/banners';
+        $destDir = __DIR__ . '/../assets/imagenes/banners';
         if (!is_dir($destDir)) {
             mkdir($destDir, 0755, true);
         }
@@ -1609,7 +1609,7 @@ try {
             }
             $ext = pathinfo($imagen['name'], PATHINFO_EXTENSION);
             $nombre_imagen = uniqid('imagen_') . ".$ext";
-            $destDir = __DIR__ . '/../imagenes/banners';
+            $destDir = __DIR__ . '/../assets/imagenes/banners';
             if (!is_dir($destDir)) {
                 mkdir($destDir, 0755, true);
             }

@@ -26,13 +26,15 @@ elseif (isset($_GET["id_banner"])) {
     $sql_eliminar_banner->execute();
 
     // Eliminar la imagen de la carpeta
-    if (unlink("../imagenes/banners/$nombre_imagen")) {
+    $rutaImagen = __DIR__ . '/../assets/imagenes/banners/' . $nombre_imagen;
+    if (!is_file($rutaImagen) || unlink($rutaImagen)) {
         echo
         "<script>
-            alert('imagen eliminada correctamente');
+            alert('Imagen eliminada correctamente');
             window.location.href = '/p/admin/carrusel.php'; // Redirigir al login o a la página actual
         </script>";
     } else {
         echo "Error al eliminar la imagen.";
     }
-}?>
+}
+?>
