@@ -63,9 +63,24 @@ if ($contacto_mensaje !== null) {
       <div class="container">
         <div id="imageCarousel" class="carousel slide" data-bs-ride="carousel">
           <div class="carousel-inner">
-            <?php foreach ($banners as $index => $banner) { ?>
-              <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                <img class="d-block w-100" src="assets/imagenes/banners/<?php echo $banner['imagen_banner']; ?>" alt="Slide <?php echo $index + 1; ?>">
+            <?php if (!empty($banners)) { ?>
+              <?php foreach ($banners as $index => $banner) { ?>
+                <?php $hasImage = !empty($banner['imagen_banner']); ?>
+                <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                  <?php if ($hasImage) { ?>
+                    <img class="d-block w-100" src="assets/imagenes/banners/<?php echo htmlspecialchars($banner['imagen_banner'], ENT_QUOTES, 'UTF-8'); ?>" alt="Slide <?php echo $index + 1; ?>">
+                  <?php } else { ?>
+                    <div class="d-flex align-items-center justify-content-center" style="height: 400px; background-color: #f8f9fa; color: #6c757d; font-size: 2rem;">
+                      Noticias pronto
+                    </div>
+                  <?php } ?>
+                </div>
+              <?php } ?>
+            <?php } else { ?>
+              <div class="carousel-item active">
+                <div class="d-flex align-items-center justify-content-center" style="height: 400px; background-color: #f8f9fa; color: #6c757d; font-size: 2rem;">
+                  Noticias pronto
+                </div>
               </div>
             <?php } ?>
             <button class="carousel-control-prev" type="button" data-bs-target="#imageCarousel" data-bs-slide="prev">
