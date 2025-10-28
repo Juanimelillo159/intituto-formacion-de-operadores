@@ -9,6 +9,10 @@ $sql_banner = $con->prepare("SELECT * FROM banner");
 $sql_banner->execute();
 $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
 
+$bannerSuccess = $_SESSION['banner_success'] ?? null;
+$bannerError = $_SESSION['banner_error'] ?? null;
+unset($_SESSION['banner_success'], $_SESSION['banner_error']);
+
 
 ?>
 
@@ -22,15 +26,20 @@ $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
     <style>
         #carruselbanner {
             max-width: 900px;
-            margin: 0 auto;
+            margin: 0 auto 1.5rem;
         }
 
-        #carruselbanner .carousel-item {
+        #carruselbanner .carousel-item,
+        .banner-preview-box {
             position: relative;
             padding-top: 42.5%;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            background: #f1f1f1;
         }
 
-        #carruselbanner .carousel-item img {
+        #carruselbanner .carousel-item img,
+        .banner-preview-box img {
             position: absolute;
             top: 0;
             left: 0;
@@ -42,6 +51,51 @@ $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
         .carousel-control-prev,
         .carousel-control-next {
             width: 5%;
+        }
+
+        .banner-card {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+            border: 0;
+            border-radius: 0.75rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .banner-card .card-body {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .banner-card .card-title {
+            font-size: 1rem;
+            margin-bottom: 0;
+            word-break: break-word;
+        }
+
+        .badge-dimension {
+            font-size: 0.85rem;
+            background: #f0f0f0;
+            color: #555;
+        }
+
+        .banner-empty-state {
+            text-align: center;
+            padding: 2.5rem 1rem;
+            border: 2px dashed #d9d9d9;
+            border-radius: 0.75rem;
+            color: #777;
+        }
+
+        .banner-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .carousel-header {
+            gap: 0.75rem;
         }
     </style>
 </head>
@@ -55,13 +109,34 @@ $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
             <!-- Main content -->
             <section class="content">
                 <div class="container-fluid">
+                    <?php if ($bannerSuccess) { ?>
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <i class="fa fa-check-circle mr-2"></i><?php echo htmlspecialchars($bannerSuccess, ENT_QUOTES, 'UTF-8'); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    <?php } elseif ($bannerError) { ?>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <i class="fa fa-exclamation-triangle mr-2"></i><?php echo htmlspecialchars($bannerError, ENT_QUOTES, 'UTF-8'); ?>
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    <?php } ?>
                     <div class="row">
                         <!-- left column -->
                         <div class="col-md-12">
                             <!-- general form elements -->
-                            <div class="card card-primary">
-                                <div class="card-header">
-                                    <h3 class="card-title">Carrusel</h3>
+                                <div class="card card-primary">
+                                <div class="card-header d-flex align-items-center justify-content-between flex-wrap carousel-header">
+                                    <div>
+                                        <h3 class="card-title mb-0">Carrusel</h3>
+                                        <small class="d-block text-muted">Las imágenes se muestran en un formato panorámico. Tamaño sugerido: 1600×680&nbsp;px.</small>
+                                    </div>
+                                    <button type="button" class="btn btn-light" data-toggle="modal" data-target="#modalAgregarBanner">
+                                        <i class="fa fa-plus mr-1"></i> Agregar imagen
+                                    </button>
                                 </div>
                                 <!-- /.card-header -->
                                 <div id="carruselbanner" class="carousel slide" data-ride="carousel">
@@ -99,50 +174,47 @@ $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
                         <div class="col-12">
                             <div class="card">
                                 <div class="card-header">
-                                    <h3 class="card-title">Imagenes</h3>
+                                    <h3 class="card-title mb-0">Gestionar imágenes</h3>
                                 </div>
-                                <!-- /.card-header -->
                                 <div class="card-body">
-                                    <table id="registros" class="table table-bordered table-striped">
-                                        <thead>
-                                            <tr>
-                                                <th>nombre</th>
-                                                <th>imagen</th>
-                                                <th>Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
+                                    <?php if (count($banners) === 0) { ?>
+                                        <div class="banner-empty-state">
+                                            <p class="mb-2">Todavía no hay imágenes en el carrusel.</p>
+                                            <button type="button" class="btn btn-outline-primary" data-toggle="modal" data-target="#modalAgregarBanner">
+                                                <i class="fa fa-plus mr-1"></i> Agregar la primera imagen
+                                            </button>
+                                        </div>
+                                    <?php } else { ?>
+                                        <div class="row">
                                             <?php foreach ($banners as $banner) { ?>
-                                                <tr>
-                                                    <td><?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                                    <td class="text-center">
-                                                        <img src="../assets/imagenes/banners/<?php echo htmlspecialchars($banner['imagen_banner'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?>" class="img-fluid" style="max-height: 120px; object-fit: cover;">
-                                                    </td>
-                                                    <td>
-                                                        <a href="editar_banner.php?id_banner=<?php echo (int) $banner['id_banner']; ?>" type="button" class="btn bg-orange btn-flat margin"> <i class="fas fa-user-edit"></i></a>
-
-                                                        <a href="eliminar_banner.php?id_banner=<?php echo (int) $banner['id_banner']; ?>" type="button" class="btn bg-maroon btn-flat margin"><i class="fa fa-trash" aria-hidden="true"></i></a>
-                                                    </td>
-                                                </tr>
+                                                <div class="col-md-6 col-lg-4 mb-4 d-flex">
+                                                    <div class="card banner-card w-100" data-banner-id="<?php echo (int) $banner['id_banner']; ?>">
+                                                        <div class="banner-preview-box">
+                                                            <img src="../assets/imagenes/banners/<?php echo htmlspecialchars($banner['imagen_banner'], ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                        </div>
+                                                        <div class="card-body">
+                                                            <div>
+                                                                <span class="badge badge-dimension mb-2">Formato sugerido 1600×680 px</span>
+                                                                <h5 class="card-title"><?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?></h5>
+                                                            </div>
+                                                            <div class="banner-actions">
+                                                                <a href="editar_banner.php?id_banner=<?php echo (int) $banner['id_banner']; ?>" class="btn btn-outline-secondary flex-fill">
+                                                                    <i class="fas fa-user-edit mr-1"></i> Editar
+                                                                </a>
+                                                                <button type="button" class="btn btn-outline-danger flex-fill js-eliminar-banner" data-id="<?php echo (int) $banner['id_banner']; ?>" data-nombre="<?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?>">
+                                                                    <i class="fa fa-trash mr-1"></i> Eliminar
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             <?php } ?>
-                                        </tbody>
-                                        <tfoot>
-                                            <tr>
-                                                <th>Nombre</th>
-                                                <th>imagen</th>
-                                                <th>Acciones</th>
-
-                                            </tr>
-                                        </tfoot>
-                                    </table>
+                                        </div>
+                                    <?php } ?>
                                 </div>
-                                <!-- /.card-body -->
                             </div>
-                            <!-- /.card -->
                         </div>
-                        <!-- /.col -->
                     </div>
-                    <!-- /.row -->
                 </div><!-- /.container-fluid -->
             </section>
         </div>
@@ -150,6 +222,120 @@ $banners = $sql_banner->fetchAll(PDO::FETCH_ASSOC);
 
     </div>
     <!-- ./wrapper -->
+<div class="modal fade" id="modalAgregarBanner" tabindex="-1" role="dialog" aria-labelledby="modalAgregarBannerLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <form class="modal-content" action="procesarsbd.php" method="POST" enctype="multipart/form-data">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalAgregarBannerLabel">Agregar imagen al carrusel</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" name="agregar_banner" value="1">
+                <input type="hidden" name="redirect_to" value="carrusel.php">
+                <div class="form-group">
+                    <label for="nombre_banner">Nombre de la imagen</label>
+                    <input type="text" class="form-control" id="nombre_banner" name="nombre_banner" maxlength="120" required>
+                </div>
+                <div class="form-group">
+                    <label for="imagen_banner">Archivo (formato JPG o PNG, tamaño sugerido 1600×680 px)</label>
+                    <input type="file" class="form-control" id="imagen_banner" name="imagen_banner" accept="image/*" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fa fa-upload mr-1"></i> Guardar imagen
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    (function () {
+        'use strict';
+
+        const bannerCards = document.querySelectorAll('.js-eliminar-banner');
+
+        if (bannerCards.length === 0) {
+            return;
+        }
+
+        bannerCards.forEach((button) => {
+            button.addEventListener('click', function () {
+                const bannerId = this.getAttribute('data-id');
+                const bannerName = this.getAttribute('data-nombre') || 'la imagen';
+
+                if (!bannerId) {
+                    return;
+                }
+
+                const confirmado = window.confirm('¿Eliminar "' + bannerName + '" del carrusel? Esta acción no se puede deshacer.');
+                if (!confirmado) {
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('id_banner', bannerId);
+                formData.append('ajax', '1');
+
+                fetch('eliminar_banner.php', {
+                    method: 'POST',
+                    body: formData,
+                })
+                    .then(async (response) => {
+                        const contentType = response.headers.get('Content-Type') || '';
+                        let payload = null;
+
+                        if (contentType.includes('application/json')) {
+                            try {
+                                payload = await response.json();
+                            } catch (error) {
+                                payload = null;
+                            }
+                        }
+
+                        if (!response.ok) {
+                            const message = payload && payload.message ? payload.message : 'No se pudo eliminar la imagen.';
+                            throw new Error(message);
+                        }
+
+                        if (!payload) {
+                            payload = { ok: true };
+                        }
+
+                        if (!payload.ok) {
+                            const message = payload.message ? payload.message : 'No se pudo eliminar la imagen.';
+                            throw new Error(message);
+                        }
+
+                        return payload;
+                    })
+                    .then(() => {
+                        const card = this.closest('[data-banner-id]');
+                        if (card) {
+                            const col = card.parentElement;
+                            if (col) {
+                                col.remove();
+                            } else {
+                                card.remove();
+                            }
+                            if (document.querySelectorAll('.banner-card').length === 0) {
+                                window.location.reload();
+                            }
+                        }
+                    })
+                    .catch((error) => {
+                        const message = error && error.message ? error.message : 'Ocurrió un error inesperado. Intente nuevamente.';
+                        window.alert(message);
+                    });
+            });
+        });
+    })();
+</script>
+
 </body>
 
 </html>
