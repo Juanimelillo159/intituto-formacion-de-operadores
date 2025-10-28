@@ -117,6 +117,24 @@ function obtener_usuario_id_de_sesion(): int
     return 0;
 }
 
+function admin_action_redirect(string $default): void
+{
+    $target = '';
+    if (isset($_POST['redirect_to']) && is_string($_POST['redirect_to'])) {
+        $candidate = trim($_POST['redirect_to']);
+        if ($candidate !== '' && preg_match('#^[a-zA-Z0-9/_\-.?=&%]+$#', $candidate)) {
+            $target = $candidate;
+        }
+    }
+
+    if ($target !== '') {
+        header('Location: ' . $target);
+    } else {
+        header('Location: ' . $default);
+    }
+    exit;
+}
+
 /* =================== MAIN FLOW ================== */
 $checkoutUploadAbs = null;
 $checkoutUploadTmp = null;
@@ -985,8 +1003,7 @@ try {
             $_SESSION['pagos_admin_success'] = $isAprobarPagoTransferencia
                 ? 'El pago ya se encontraba aprobado.'
                 : 'El pago ya se encontraba marcado como rechazado.';
-            header('Location: pagos.php');
-            exit;
+            admin_action_redirect('pagos.php');
         }
 
         $ahoraLabel = (new DateTimeImmutable('now'))->format('d/m/Y H:i');
@@ -1125,8 +1142,7 @@ try {
             'tipo' => $tipoCheckout,
         ]);
 
-        header('Location: pagos.php');
-        exit;
+        admin_action_redirect('pagos.php');
     }
 
     if ($isAprobarCertificacion || $isRechazarCertificacion) {
@@ -1244,8 +1260,7 @@ try {
 
         $_SESSION['certificacion_admin_success'] = $adminSuccessMessage;
 
-        header('Location: certificaciones.php');
-        exit;
+        admin_action_redirect('certificaciones.php');
     }
 
     $isAgregarPrecio = isset($_POST['agregar_precio']) || ($accion === 'agregar_precio');
@@ -1641,14 +1656,12 @@ try {
 
     if ($isAprobarPagoTransferencia || $isRechazarPagoTransferencia) {
         $_SESSION['pagos_admin_error'] = $e->getMessage();
-        header('Location: pagos.php');
-        exit;
+        admin_action_redirect('pagos.php');
     }
 
     if ($isAprobarCertificacion || $isRechazarCertificacion) {
         $_SESSION['certificacion_admin_error'] = $e->getMessage();
-        header('Location: certificaciones.php');
-        exit;
+        admin_action_redirect('certificaciones.php');
     }
 
     log_cursos('error', ['post_keys' => array_keys($_POST ?? [])], $e);
