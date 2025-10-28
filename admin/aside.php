@@ -121,6 +121,13 @@
               </a>
             </li>
 
+            <li class="nav-item">
+              <a href="configuracion.php" class="nav-link">
+                <i class="fas fa-solid fa-sliders-h"></i>
+                <p>Configuración de la página</p>
+              </a>
+            </li>
+
           </ul>
         </nav>
         <!-- /.sidebar-menu -->

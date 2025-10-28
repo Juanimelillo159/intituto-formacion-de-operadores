@@ -2,6 +2,12 @@
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
+
+if (!function_exists('site_settings_defaults')) {
+  require_once __DIR__ . '/site_settings.php';
+}
+
+require_once __DIR__ . '/site_mode_guard.php';
 if (!isset($asset_base_path)) {
   $documentRoot = isset($_SERVER['DOCUMENT_ROOT'])
     ? rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']), '/')

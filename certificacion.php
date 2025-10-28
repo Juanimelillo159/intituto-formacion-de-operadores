@@ -133,6 +133,17 @@ if ($enlaceCheckoutId > 0) {
     $precio_certificacion = obtener_precio_vigente($con, $enlaceCheckoutId, 'certificacion');
 }
 $solicitud_certificacion_disponible = $precio_certificacion !== null && $enlaceCheckoutId > 0;
+$certificacion_inscripcion_motivo = 'Contactá al equipo comercial para obtener el precio y continuar con la solicitud.';
+
+if ($id_certificacion > 0) {
+    $ventasCert = site_settings_sales_enabled($site_settings, 'certificacion', $id_certificacion);
+    if (!$ventasCert) {
+        $solicitud_certificacion_disponible = false;
+        $certificacion_inscripcion_motivo = 'Las solicitudes online para esta certificación están temporalmente deshabilitadas por el administrador.';
+    } elseif ($precio_certificacion === null) {
+        $certificacion_inscripcion_motivo = 'Contactá al equipo comercial para obtener el precio y continuar con la solicitud.';
+    }
+}
 
 if (!$cert && !$curso_fallback) {
     http_response_code(404);
@@ -295,7 +306,7 @@ if (!$cert && !$curso_fallback) {
                                 <button class="enroll-button" type="button" disabled aria-disabled="true">
                                     <i class="fa-solid fa-paper-plane me-2"></i> Solicitar certificación
                                 </button>
-                                <p class="enroll-button-note">Contactá al equipo comercial para obtener el precio y continuar con la solicitud.</p>
+                                <p class="enroll-button-note"><?php echo htmlspecialchars($certificacion_inscripcion_motivo, ENT_QUOTES, 'UTF-8'); ?></p>
                             <?php endif; ?>
                         <?php else: ?>
                             <div class="alert alert-warning mt-3" role="alert">

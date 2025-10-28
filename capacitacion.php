@@ -49,6 +49,17 @@ if (!empty($curso['id_curso'])) {
     $enlaceCheckoutCapacitacion = $cursoId;
 }
 $inscripcion_capacitacion_disponible = $precio_capacitacion !== null && $enlaceCheckoutCapacitacion > 0;
+$capacitacion_inscripcion_motivo = 'Contactá al equipo comercial para conocer el valor y completar tu inscripción.';
+
+if (!empty($curso['id_curso'])) {
+    $ventaHabilitada = site_settings_sales_enabled($site_settings, 'capacitacion', (int)$curso['id_curso']);
+    if (!$ventaHabilitada) {
+        $inscripcion_capacitacion_disponible = false;
+        $capacitacion_inscripcion_motivo = 'La inscripción online está temporalmente deshabilitada por el administrador del sitio.';
+    } elseif ($precio_capacitacion === null) {
+        $capacitacion_inscripcion_motivo = 'Contactá al equipo comercial para conocer el valor y completar tu inscripción.';
+    }
+}
 
 // Helpers de salida segura
 function h(?string $v, string $fallback = ''): string
@@ -260,7 +271,7 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                 <button class="enroll-button" type="button" disabled aria-disabled="true">
                                     <i class="fas fa-user-plus me-2"></i>Inscribirse Ahora
                                 </button>
-                                <p class="enroll-button-note">Contactá al equipo comercial para conocer el valor y completar tu inscripción.</p>
+                                <p class="enroll-button-note"><?php echo htmlspecialchars($capacitacion_inscripcion_motivo, ENT_QUOTES, 'UTF-8'); ?></p>
                             <?php endif; ?>
                         </div>
                     </div>

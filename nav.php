@@ -23,9 +23,68 @@ if (!isset($base_path)) {
 }
 
 $normalized_base = rtrim($base_path, '/');
+
+if (!function_exists('site_settings_get_notice')) {
+    require_once __DIR__ . '/site_settings.php';
+}
+
+if (!isset($site_settings) || !is_array($site_settings)) {
+    if (isset($con) && $con instanceof PDO) {
+        try {
+            $site_settings = get_site_settings($con);
+        } catch (Throwable $ignored) {
+            $site_settings = site_settings_defaults();
+        }
+    } else {
+        $site_settings = site_settings_defaults();
+    }
+}
+
+$site_notice_banner = '';
+if (site_settings_get_mode($site_settings) === 'normal') {
+    $noticeText = site_settings_get_notice($site_settings);
+    if ($noticeText !== '') {
+        $site_notice_banner = '<div class="site-notice-banner"><div class="container">'
+            . '<span class="site-notice-label">Aviso</span>'
+            . '<span class="site-notice-text">' . htmlspecialchars($noticeText, ENT_QUOTES, 'UTF-8') . '</span>'
+            . '</div></div>';
+    }
+}
 ?>
 
 <style>
+    .site-notice-banner {
+        background: linear-gradient(90deg, #0f3c7a, #1f78ff);
+        color: #fff;
+        padding: 0.65rem 0;
+        font-size: 0.95rem;
+        box-shadow: 0 4px 14px rgba(15, 60, 122, 0.25);
+    }
+
+    .site-notice-banner .container {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .site-notice-label {
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.8rem;
+        background: rgba(255, 255, 255, 0.2);
+        padding: 0.2rem 0.75rem;
+        border-radius: 999px;
+    }
+
+    .site-notice-text {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
     .user-menu {
         position: relative;
     }
@@ -208,6 +267,7 @@ $normalized_base = rtrim($base_path, '/');
     }
 </style>
 
+<?php echo $site_notice_banner; ?>
 <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top">
     <div class="container">
         <a class="navbar-brand" href="<?php echo $normalized_base; ?>/index.php">

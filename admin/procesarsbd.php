@@ -165,6 +165,13 @@ try {
 
     $checkoutIsCrearOrden = isset($_POST['crear_orden']) || ($accion === 'crear_orden');
 
+    $siteSettingsData = isset($site_settings) && is_array($site_settings) ? $site_settings : site_settings_defaults();
+    $siteMode = site_settings_get_mode($siteSettingsData);
+    $esAccionPublica = $checkoutIsCrearOrden || $isCrearCertificacion;
+    if ($esAccionPublica && $siteMode !== 'normal') {
+        throw new RuntimeException('El sitio se encuentra en mantenimiento. Intentá nuevamente más tarde.');
+    }
+
     if ($isCrearCertificacion) {
         $certUploadTmp = null;
         $certUploadAbs = null;
@@ -181,6 +188,10 @@ try {
 
             if ($checkoutCursoId <= 0) {
                 throw new InvalidArgumentException('Curso inválido.');
+            }
+
+            if (!site_settings_sales_enabled($siteSettingsData, 'certificacion', $checkoutCursoId)) {
+                throw new RuntimeException('Las certificaciones online están temporalmente deshabilitadas.');
             }
 
             $certificacionId = (int)($_POST['id_certificacion'] ?? 0);
@@ -621,6 +632,18 @@ try {
             if ($estadoCert !== 2) {
                 throw new RuntimeException('Debés esperar la aprobación de la certificación antes de continuar con el pago.');
             }
+        }
+
+        $tipoValidacion = $checkoutTipo === 'certificacion' ? 'certificacion' : 'capacitacion';
+        if (!site_settings_sales_enabled($siteSettingsData, $tipoValidacion, $checkoutCursoId)) {
+            if ($tipoValidacion === 'certificacion') {
+                throw new RuntimeException('Las solicitudes de certificación están temporalmente deshabilitadas.');
+            }
+            throw new RuntimeException('Las inscripciones para esta capacitación están temporalmente deshabilitadas.');
+        }
+
+        if ($metodoPago === 'mercado_pago' && !site_settings_is_mp_enabled($siteSettingsData)) {
+            throw new RuntimeException('Mercado Pago está deshabilitado temporalmente. Elegí otro método de pago.');
         }
 
         if ($checkoutTipo !== 'certificacion' && $usuarioId > 0 && $retomarCapacitacionId <= 0) {
