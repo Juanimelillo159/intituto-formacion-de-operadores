@@ -1,5 +1,20 @@
 <?php
 require_once '../sbd.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($_SESSION['usuario'])) {
+    header('Location: ../index.php');
+    exit;
+}
+
+if (!isset($_SESSION['permiso']) || (int)$_SESSION['permiso'] !== 1) {
+    header('Location: ../index.php');
+    exit;
+}
+
 include '../admin/header.php';
 include '../admin/aside.php';
 include '../admin/footer.php';
