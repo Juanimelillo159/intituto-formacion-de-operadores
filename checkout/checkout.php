@@ -122,6 +122,32 @@ if ($curso) {
     $cursoDescripcion = (string)($curso['descripcion'] ?? $curso['descripcion_curso'] ?? '');
 }
 
+$mercadoPagoHabilitado = site_settings_is_mp_enabled($site_settings);
+$soloTransferenciaConfiguracion = !$mercadoPagoHabilitado;
+$capacitacionesGlobalHabilitadas = site_settings_sales_enabled($site_settings, 'capacitacion');
+$certificacionesGlobalHabilitadas = site_settings_sales_enabled($site_settings, 'certificacion');
+$checkoutBloqueadoPorConfiguracion = false;
+$checkoutBloqueadoTitulo = '';
+$checkoutBloqueadoMensaje = '';
+
+$ventaCapacitacionPermitida = $capacitacionesGlobalHabilitadas;
+$ventaCertificacionPermitida = $certificacionesGlobalHabilitadas;
+
+if ($id_curso > 0) {
+    $ventaCapacitacionPermitida = $ventaCapacitacionPermitida && site_settings_sales_enabled($site_settings, 'capacitacion', $id_curso);
+    $ventaCertificacionPermitida = $ventaCertificacionPermitida && site_settings_sales_enabled($site_settings, 'certificacion', $id_curso);
+}
+
+if (in_array($tipo_checkout, ['curso', 'capacitacion'], true) && !$ventaCapacitacionPermitida) {
+    $checkoutBloqueadoPorConfiguracion = true;
+    $checkoutBloqueadoTitulo = 'Inscripción no disponible';
+    $checkoutBloqueadoMensaje = 'Las inscripciones online para esta capacitación están temporalmente deshabilitadas.';
+} elseif ($tipo_checkout === 'certificacion' && !$ventaCertificacionPermitida) {
+    $checkoutBloqueadoPorConfiguracion = true;
+    $checkoutBloqueadoTitulo = 'Solicitud no disponible';
+    $checkoutBloqueadoMensaje = 'Las solicitudes online para esta certificación están temporalmente deshabilitadas.';
+}
+
 $capacitacionBloqueada = false;
 $capacitacionBloqueadaEstado = null;
 $capacitacionBloqueadaMensaje = null;
@@ -194,6 +220,9 @@ if ($curso && $currentUserId > 0 && $tipo_checkout !== 'certificacion') {
         }
     }
 }
+
+$soloTransferenciaForzado = $soloTransferenciaConfiguracion || $soloTransferencia;
+$transferenciaMensajeConfiguracion = 'Mercado Pago está temporalmente deshabilitado. Completá tu inscripción adjuntando el comprobante de transferencia.';
 
 function checkout_obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso): ?array
 {
@@ -543,32 +572,46 @@ include '../head.php';
                                 </div>
                             </div>
                         <?php else: ?>
-                            <?php if ($tipo_checkout === 'capacitacion' && $capacitacionBloqueada && $capacitacionBloqueadaMensaje !== null): ?>
+                            <?php if ($checkoutBloqueadoPorConfiguracion): ?>
                                 <div class="checkout-content">
                                     <div class="alert alert-warning checkout-alert" role="alert">
                                         <div class="d-flex align-items-start gap-2">
-                                            <i class="fas fa-info-circle mt-1"></i>
+                                            <i class="fas fa-circle-info mt-1"></i>
                                             <div>
-                                                <strong>Ya registraste esta capacitación</strong>
-                                                <div class="small mt-1"><?php echo h($capacitacionBloqueadaMensaje); ?></div>
-                                                <?php if ($capacitacionBloqueadaLabel !== null): ?>
-                                                    <div class="small text-muted mt-2">Estado: <?php echo h($capacitacionBloqueadaLabel); ?></div>
-                                                <?php endif; ?>
-                                                <a href="<?php echo htmlspecialchars($base_path . 'mis_cursos.php', ENT_QUOTES, 'UTF-8'); ?>" class="small fw-semibold d-inline-flex align-items-center gap-1 mt-2">
-                                                    <i class="fas fa-arrow-right"></i>
-                                                    Ir a Mis cursos
-                                                </a>
+                                                <strong><?php echo h($checkoutBloqueadoTitulo !== '' ? $checkoutBloqueadoTitulo : 'Operación no disponible'); ?></strong>
+                                                <div class="small mt-1"><?php echo h($checkoutBloqueadoMensaje); ?></div>
+                                                <div class="small text-muted mt-2">Si necesitás asistencia, comunicate con nuestro equipo de soporte.</div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            <?php endif; ?>
-                            <div class="checkout-stepper">
-                                <div class="checkout-step is-active" data-step="1">
-                                    <div class="step-index">1</div>
-                                    <div class="step-label">
-                                        Resumen
-                                        <span class="step-helper"><?php echo h($stepHelper); ?></span>
+                            <?php else: ?>
+                                <?php if ($tipo_checkout === 'capacitacion' && $capacitacionBloqueada && $capacitacionBloqueadaMensaje !== null): ?>
+                                    <div class="checkout-content">
+                                        <div class="alert alert-warning checkout-alert" role="alert">
+                                            <div class="d-flex align-items-start gap-2">
+                                                <i class="fas fa-info-circle mt-1"></i>
+                                                <div>
+                                                    <strong>Ya registraste esta capacitación</strong>
+                                                    <div class="small mt-1"><?php echo h($capacitacionBloqueadaMensaje); ?></div>
+                                                    <?php if ($capacitacionBloqueadaLabel !== null): ?>
+                                                        <div class="small text-muted mt-2">Estado: <?php echo h($capacitacionBloqueadaLabel); ?></div>
+                                                    <?php endif; ?>
+                                                    <a href="<?php echo htmlspecialchars($base_path . 'mis_cursos.php', ENT_QUOTES, 'UTF-8'); ?>" class="small fw-semibold d-inline-flex align-items-center gap-1 mt-2">
+                                                        <i class="fas fa-arrow-right"></i>
+                                                        Ir a Mis cursos
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="checkout-stepper">
+                                    <div class="checkout-step is-active" data-step="1">
+                                        <div class="step-index">1</div>
+                                        <div class="step-label">
+                                            Resumen
+                                            <span class="step-helper"><?php echo h($stepHelper); ?></span>
                                     </div>
                                 </div>
                                 <div class="checkout-step" data-step="2">
@@ -600,12 +643,12 @@ include '../head.php';
                                 </div>
                             </div>
 
-                            <div class="checkout-content">
-                                <?php if ($flash_success): ?>
-                                    <div class="alert alert-success checkout-alert" role="alert">
-                                        <div class="d-flex align-items-start gap-2">
-                                            <i class="fas fa-circle-check mt-1"></i>
-                                            <div>
+                                <div class="checkout-content">
+                                    <?php if ($flash_success): ?>
+                                        <div class="alert alert-success checkout-alert" role="alert">
+                                            <div class="d-flex align-items-start gap-2">
+                                                <i class="fas fa-circle-check mt-1"></i>
+                                                <div>
                                                 <strong>¡Inscripción enviada!</strong>
                                                 <?php if (!empty($flash_success['orden'])): ?>
                                                     <div>Número de orden: #<?php echo str_pad((string)(int)$flash_success['orden'], 6, '0', STR_PAD_LEFT); ?>.</div>
@@ -1109,13 +1152,19 @@ include '../head.php';
                                             <?php endif; ?>
                                             <?php if ($tipo_checkout !== 'certificacion' || $certificacionPuedePagar || $certificacionPagado): ?>
                                                 <h5>Método de pago</h5>
-                                                <?php if ($soloTransferencia): ?>
+                                                <?php if ($soloTransferenciaForzado): ?>
                                                     <div class="alert alert-warning checkout-alert" role="alert">
                                                         <div class="d-flex align-items-start gap-2">
                                                             <i class="fas fa-info-circle mt-1"></i>
                                                             <div>
                                                                 <strong>Solo disponible transferencia bancaria.</strong>
-                                                                <div class="small mt-1">Retomaste este pago para enviar el comprobante de tu transferencia. Mercado Pago no está habilitado en esta instancia.</div>
+                                                                <div class="small mt-1">
+                                                                    <?php if ($soloTransferenciaConfiguracion): ?>
+                                                                        <?php echo htmlspecialchars($transferenciaMensajeConfiguracion, ENT_QUOTES, 'UTF-8'); ?>
+                                                                    <?php else: ?>
+                                                                        Retomaste este pago para enviar el comprobante de tu transferencia. Mercado Pago no está habilitado en esta instancia.
+                                                                    <?php endif; ?>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1127,19 +1176,21 @@ include '../head.php';
                                                         <span>Subí el comprobante de tu transferencia.</span>
                                                     </div>
                                                 </label>
-                                                <label class="payment-option mt-3">
-                                                    <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago" <?php echo ($precio_vigente && !$soloTransferencia) ? '' : 'disabled'; ?>>
-                                                    <div class="payment-info">
-                                                        <strong>Mercado Pago</strong>
-                                                        <?php if ($soloTransferencia): ?>
-                                                            <span>Disponible únicamente cuando retomes el proceso con un nuevo pago.</span>
-                                                        <?php elseif ($precio_vigente): ?>
-                                                            <span>Pagá de forma segura con tarjetas, efectivo o saldo en Mercado Pago.</span>
-                                                        <?php else: ?>
-                                                            <span> Disponible cuando haya un precio vigente para esta capacitación.</span>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </label>
+                                                <?php if ($mercadoPagoHabilitado): ?>
+                                                    <label class="payment-option mt-3">
+                                                        <input type="radio" id="metodo_mp" name="metodo_pago" value="mercado_pago" <?php echo ($precio_vigente && !$soloTransferenciaForzado) ? '' : 'disabled'; ?>>
+                                                        <div class="payment-info">
+                                                            <strong>Mercado Pago</strong>
+                                                            <?php if ($soloTransferenciaForzado): ?>
+                                                                <span>Disponible nuevamente cuando se habilite el pago online.</span>
+                                                            <?php elseif ($precio_vigente): ?>
+                                                                <span>Pagá de forma segura con tarjetas, efectivo o saldo en Mercado Pago.</span>
+                                                            <?php else: ?>
+                                                                <span> Disponible cuando haya un precio vigente para esta capacitación.</span>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </label>
+                                                <?php endif; ?>
 
                                                 <div class="payment-details" id="transferDetails">
                                                     <div class="bank-data">
@@ -1163,20 +1214,22 @@ include '../head.php';
                                                     </div>
                                                 </div>
 
-                                                <div class="payment-details hidden" id="mpDetails">
-                                                    <div class="summary-card">
-                                                        <h6 class="mb-3">Pagar con Mercado Pago</h6>
-                                                        <p class="mb-2">Al confirmar, crearemos tu orden y te redirigiremos a Mercado Pago para completar el pago en un entorno seguro.</p>
-                                                        <?php if ($precio_vigente): ?>
-                                                            <?php $mpMontoTexto = sprintf('%s %s', strtoupper($precio_vigente['moneda'] ?? 'ARS'), number_format((float) $precio_vigente['precio'], 2, ',', '.')); ?>
-                                                            <p class="mb-2 fw-semibold">Monto a abonar: <?php echo $mpMontoTexto; ?></p>
-                                                        <?php endif; ?>
-                                                        <ul class="mb-0 small text-muted list-unstyled">
-                                                            <li class="mb-1"><i class="fas fa-lock me-2"></i>Usá tu cuenta de Mercado Pago o tus medios de pago habituales.</li>
-                                                            <li><i class="fas fa-envelope me-2"></i>Te enviaremos un correo con la confirmación apenas se acredite.</li>
-                                                        </ul>
+                                                <?php if ($mercadoPagoHabilitado): ?>
+                                                    <div class="payment-details hidden" id="mpDetails">
+                                                        <div class="summary-card">
+                                                            <h6 class="mb-3">Pagar con Mercado Pago</h6>
+                                                            <p class="mb-2">Al confirmar, crearemos tu orden y te redirigiremos a Mercado Pago para completar el pago en un entorno seguro.</p>
+                                                            <?php if ($precio_vigente): ?>
+                                                                <?php $mpMontoTexto = sprintf('%s %s', strtoupper($precio_vigente['moneda'] ?? 'ARS'), number_format((float) $precio_vigente['precio'], 2, ',', '.')); ?>
+                                                                <p class="mb-2 fw-semibold">Monto a abonar: <?php echo $mpMontoTexto; ?></p>
+                                                            <?php endif; ?>
+                                                            <ul class="mb-0 small text-muted list-unstyled">
+                                                                <li class="mb-1"><i class="fas fa-lock me-2"></i>Usá tu cuenta de Mercado Pago o tus medios de pago habituales.</li>
+                                                                <li><i class="fas fa-envelope me-2"></i>Te enviaremos un correo con la confirmación apenas se acredite.</li>
+                                                            </ul>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                <?php endif; ?>
                                             <?php endif; ?>
                                         </div>
 
@@ -1197,6 +1250,7 @@ include '../head.php';
                                 </form>
                             </div>
                         <?php endif; ?>
+                    <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -1216,8 +1270,9 @@ include '../head.php';
                 return;
             }
 
-            const mpAvailable = <?php echo ($precio_vigente && !$soloTransferencia) ? 'true' : 'false'; ?>;
-            const forceTransferOnly = <?php echo $soloTransferencia ? 'true' : 'false'; ?>;
+            const mpAvailable = <?php echo ($mercadoPagoHabilitado && $precio_vigente && !$soloTransferenciaForzado) ? 'true' : 'false'; ?>;
+            const forceTransferOnly = <?php echo $soloTransferenciaForzado ? 'true' : 'false'; ?>;
+            const mercadoPagoHabilitado = <?php echo $mercadoPagoHabilitado ? 'true' : 'false'; ?>;
             const checkoutType = '<?php echo htmlspecialchars($tipo_checkout, ENT_QUOTES, 'UTF-8'); ?>';
             const capacitacionBloqueada = <?php echo ($tipo_checkout === 'capacitacion' && $capacitacionBloqueada) ? 'true' : 'false'; ?>;
             const capacitacionBloqueadaMensaje = <?php echo json_encode($capacitacionBloqueada ? $capacitacionBloqueadaMensaje : ''); ?>;
@@ -1581,7 +1636,15 @@ include '../head.php';
             };
 
             const togglePaymentDetails = () => {
-                if (!transferRadio || !mpRadio || !transferDetails || !mpDetails) {
+                if (!transferRadio || !transferDetails) {
+                    return;
+                }
+                if (!mpRadio || !mpDetails) {
+                    transferDetails.classList.remove('hidden');
+                    if (mpDetails) {
+                        mpDetails.classList.add('hidden');
+                    }
+                    updateConfirmButton();
                     return;
                 }
                 if (transferRadio.checked || forceTransferOnly) {

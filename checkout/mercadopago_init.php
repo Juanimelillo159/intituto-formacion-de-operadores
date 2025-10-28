@@ -30,6 +30,11 @@ try {
     $con->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $con->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
+    if (!site_settings_is_mp_enabled($site_settings ?? [])) {
+        $responseCode = 403;
+        throw new RuntimeException('Mercado Pago está deshabilitado temporalmente.');
+    }
+
     $usuarioId = mp_current_user_id();
     if ($usuarioId <= 0) {
         $responseCode = 401;
@@ -70,6 +75,12 @@ try {
     }
     if (!$aceptaTyC) {
         throw new InvalidArgumentException('Debés aceptar los Términos y Condiciones para continuar.');
+    }
+
+    $tipoParaValidar = $tipo === 'certificacion' ? 'certificacion' : 'capacitacion';
+    if (!site_settings_sales_enabled($site_settings ?? [], $tipoParaValidar, $cursoId)) {
+        $responseCode = 403;
+        throw new RuntimeException('Las inscripciones online para este curso están temporalmente deshabilitadas.');
     }
 
     $cursoStmt = $con->prepare('SELECT id_curso, nombre_curso FROM cursos WHERE id_curso = :id LIMIT 1');
