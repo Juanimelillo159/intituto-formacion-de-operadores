@@ -41,3 +41,12 @@ class Database
 
 $db  = new Database();
 $con = $db->conectar();
+
+require_once __DIR__ . '/site_settings.php';
+
+try {
+    $site_settings = get_site_settings($con);
+} catch (Throwable $settingsException) {
+    error_log('[site_settings] ' . $settingsException->getMessage());
+    $site_settings = site_settings_defaults();
+}
