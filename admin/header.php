@@ -1,5 +1,9 @@
 <?php
 
+if (session_status() === PHP_SESSION_NONE) {
+  session_start();
+}
+
 // Verificar si hay una sesion iniciada
 if (!isset($_SESSION['usuario'])) {
   header("Location: ../index.php");
