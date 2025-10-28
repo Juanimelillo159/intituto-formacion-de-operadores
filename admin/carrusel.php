@@ -26,7 +26,7 @@ unset($_SESSION['banner_success'], $_SESSION['banner_error']);
     <style>
         #carruselbanner {
             max-width: 900px;
-            margin: 0 auto 1.5rem;
+            margin: 0 auto;
         }
 
         #carruselbanner .carousel-item,
@@ -139,30 +139,40 @@ unset($_SESSION['banner_success'], $_SESSION['banner_error']);
                                     </button>
                                 </div>
                                 <!-- /.card-header -->
-                                <div id="carruselbanner" class="carousel slide" data-ride="carousel">
-                                    <ol class="carousel-indicators">
-                                        <?php foreach ($banners as $index => $banner) { ?>
-                                            <li data-target="#carruselbanner" data-slide-to="<?php echo $index; ?>" <?php echo $index === 0 ? 'class="active"' : ''; ?>></li>
-                                        <?php } ?>
-                                    </ol>
-                                    <div class="carousel-inner">
-                                        <?php foreach ($banners as $index => $banner) { ?>
-                                            <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                                                <img class="d-block w-100" src="../assets/imagenes/banners/<?php echo htmlspecialchars($banner['imagen_banner'], ENT_QUOTES, 'UTF-8'); ?>" alt="Slide <?php echo $index + 1; ?>">
-                                                <div class="carousel-caption d-none d-md-block">
-                                                    <h5><?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?></h5>
-                                                </div>
+                                <div class="card-body">
+                                    <?php if (count($banners) > 0) { ?>
+                                        <div id="carruselbanner" class="carousel slide mb-3" data-ride="carousel">
+                                            <ol class="carousel-indicators">
+                                                <?php foreach ($banners as $index => $banner) { ?>
+                                                    <li data-target="#carruselbanner" data-slide-to="<?php echo $index; ?>" <?php echo $index === 0 ? 'class="active"' : ''; ?>></li>
+                                                <?php } ?>
+                                            </ol>
+                                            <div class="carousel-inner">
+                                                <?php foreach ($banners as $index => $banner) { ?>
+                                                    <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
+                                                        <img class="d-block w-100" src="../assets/imagenes/banners/<?php echo htmlspecialchars($banner['imagen_banner'], ENT_QUOTES, 'UTF-8'); ?>" alt="Slide <?php echo $index + 1; ?>">
+                                                        <div class="carousel-caption d-none d-md-block">
+                                                            <h5><?php echo htmlspecialchars($banner['nombre_banner'], ENT_QUOTES, 'UTF-8'); ?></h5>
+                                                        </div>
+                                                    </div>
+                                                <?php } ?>
                                             </div>
-                                        <?php } ?>
-                                    </div>
-                                    <a class="carousel-control-prev" href="#carruselbanner" role="button" data-slide="prev">
-                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                                        <span class="sr-only">Previous</span>
-                                    </a>
-                                    <a class="carousel-control-next" href="#carruselbanner" role="button" data-slide="next">
-                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                                        <span class="sr-only">Next</span>
-                                    </a>
+                                            <a class="carousel-control-prev" href="#carruselbanner" role="button" data-slide="prev">
+                                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                                <span class="sr-only">Anterior</span>
+                                            </a>
+                                            <a class="carousel-control-next" href="#carruselbanner" role="button" data-slide="next">
+                                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                                <span class="sr-only">Siguiente</span>
+                                            </a>
+                                        </div>
+                                        <p class="mb-0 text-muted">Así se mostrará el carrusel en la página principal.</p>
+                                    <?php } else { ?>
+                                        <div class="banner-empty-state mb-0">
+                                            <p class="mb-2">Todavía no hay imágenes para previsualizar.</p>
+                                            <p class="mb-0">Agrega una imagen para ver cómo lucirá el carrusel en la página principal.</p>
+                                        </div>
+                                    <?php } ?>
                                 </div>
                             </div>
                             <!-- /.card -->
@@ -241,6 +251,10 @@ unset($_SESSION['banner_success'], $_SESSION['banner_error']);
                 <div class="form-group">
                     <label for="imagen_banner">Archivo (formato JPG o PNG, tamaño sugerido 1600×680 px)</label>
                     <input type="file" class="form-control" id="imagen_banner" name="imagen_banner" accept="image/*" required>
+                    <div id="preview_banner" class="banner-preview-box mt-3 d-none">
+                        <img src="" alt="Previsualización de la imagen seleccionada" id="preview_banner_img">
+                    </div>
+                    <small class="form-text text-muted">La vista previa respeta el alto y ancho con los que se mostrará la imagen en el carrusel.</small>
                 </div>
             </div>
             <div class="modal-footer">
@@ -253,86 +267,182 @@ unset($_SESSION['banner_success'], $_SESSION['banner_error']);
     </div>
 </div>
 
+<div class="modal fade" id="modalConfirmarEliminacion" tabindex="-1" role="dialog" aria-labelledby="modalConfirmarEliminacionLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalConfirmarEliminacionLabel">Eliminar imagen</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>¿Quieres eliminar la imagen <strong class="js-banner-nombre">seleccionada</strong> del carrusel? Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger js-confirmar-eliminacion">
+                    <i class="fa fa-trash mr-1"></i> Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     (function () {
         'use strict';
 
-        const bannerCards = document.querySelectorAll('.js-eliminar-banner');
+        const previewBox = document.getElementById('preview_banner');
+        const previewImg = document.getElementById('preview_banner_img');
+        const inputBanner = document.getElementById('imagen_banner');
 
-        if (bannerCards.length === 0) {
-            return;
+        if (inputBanner && previewBox && previewImg) {
+            inputBanner.addEventListener('change', function () {
+                if (!this.files || this.files.length === 0) {
+                    previewBox.classList.add('d-none');
+                    previewImg.removeAttribute('src');
+                    previewImg.removeAttribute('alt');
+                    return;
+                }
+
+                const file = this.files[0];
+                if (!file || !file.type.startsWith('image/')) {
+                    previewBox.classList.add('d-none');
+                    previewImg.removeAttribute('src');
+                    previewImg.removeAttribute('alt');
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function (event) {
+                    const result = event && event.target ? event.target.result : null;
+                    if (result) {
+                        previewImg.src = result;
+                        previewImg.alt = file.name;
+                        previewBox.classList.remove('d-none');
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
         }
 
-        bannerCards.forEach((button) => {
-            button.addEventListener('click', function () {
-                const bannerId = this.getAttribute('data-id');
-                const bannerName = this.getAttribute('data-nombre') || 'la imagen';
+        const deleteButtons = document.querySelectorAll('.js-eliminar-banner');
+        const confirmModal = document.getElementById('modalConfirmarEliminacion');
+        const confirmButton = confirmModal ? confirmModal.querySelector('.js-confirmar-eliminacion') : null;
+        const confirmName = confirmModal ? confirmModal.querySelector('.js-banner-nombre') : null;
+        let bannerPendingDeletion = null;
 
-                if (!bannerId) {
-                    return;
-                }
+        function ejecutarEliminacion(button, bannerId) {
+            const formData = new FormData();
+            formData.append('id_banner', bannerId);
+            formData.append('ajax', '1');
 
-                const confirmado = window.confirm('¿Eliminar "' + bannerName + '" del carrusel? Esta acción no se puede deshacer.');
-                if (!confirmado) {
-                    return;
-                }
+            button.disabled = true;
 
-                const formData = new FormData();
-                formData.append('id_banner', bannerId);
-                formData.append('ajax', '1');
+            fetch('eliminar_banner.php', {
+                method: 'POST',
+                body: formData,
+            })
+                .then(async (response) => {
+                    const contentType = response.headers.get('Content-Type') || '';
+                    let payload = null;
 
-                fetch('eliminar_banner.php', {
-                    method: 'POST',
-                    body: formData,
+                    if (contentType.includes('application/json')) {
+                        try {
+                            payload = await response.json();
+                        } catch (error) {
+                            payload = null;
+                        }
+                    }
+
+                    if (!response.ok) {
+                        const message = payload && payload.message ? payload.message : 'No se pudo eliminar la imagen.';
+                        throw new Error(message);
+                    }
+
+                    if (!payload) {
+                        payload = { ok: true };
+                    }
+
+                    if (!payload.ok) {
+                        const message = payload.message ? payload.message : 'No se pudo eliminar la imagen.';
+                        throw new Error(message);
+                    }
+
+                    return payload;
                 })
-                    .then(async (response) => {
-                        const contentType = response.headers.get('Content-Type') || '';
-                        let payload = null;
+                .then(() => {
+                    if (confirmModal && typeof window.$ === 'function') {
+                        window.$(confirmModal).modal('hide');
+                    }
 
-                        if (contentType.includes('application/json')) {
-                            try {
-                                payload = await response.json();
-                            } catch (error) {
-                                payload = null;
-                            }
+                    const card = button.closest('[data-banner-id]');
+                    if (card) {
+                        const col = card.parentElement;
+                        if (col) {
+                            col.remove();
+                        } else {
+                            card.remove();
                         }
+                        if (document.querySelectorAll('.banner-card').length === 0) {
+                            window.location.reload();
+                        }
+                    } else {
+                        window.location.reload();
+                    }
+                })
+                .catch((error) => {
+                    const message = error && error.message ? error.message : 'Ocurrió un error inesperado. Intente nuevamente.';
+                    window.alert(message);
+                })
+                .finally(() => {
+                    button.disabled = false;
+                    bannerPendingDeletion = null;
+                });
+        }
 
-                        if (!response.ok) {
-                            const message = payload && payload.message ? payload.message : 'No se pudo eliminar la imagen.';
-                            throw new Error(message);
-                        }
+        if (deleteButtons.length > 0) {
+            deleteButtons.forEach((button) => {
+                button.addEventListener('click', function () {
+                    const bannerId = this.getAttribute('data-id');
+                    const bannerName = this.getAttribute('data-nombre') || 'la imagen seleccionada';
 
-                        if (!payload) {
-                            payload = { ok: true };
-                        }
+                    if (!bannerId) {
+                        return;
+                    }
 
-                        if (!payload.ok) {
-                            const message = payload.message ? payload.message : 'No se pudo eliminar la imagen.';
-                            throw new Error(message);
+                    if (confirmModal && typeof window.$ === 'function') {
+                        bannerPendingDeletion = { button: this, id: bannerId };
+                        if (confirmName) {
+                            confirmName.textContent = bannerName;
                         }
-
-                        return payload;
-                    })
-                    .then(() => {
-                        const card = this.closest('[data-banner-id]');
-                        if (card) {
-                            const col = card.parentElement;
-                            if (col) {
-                                col.remove();
-                            } else {
-                                card.remove();
-                            }
-                            if (document.querySelectorAll('.banner-card').length === 0) {
-                                window.location.reload();
-                            }
+                        window.$(confirmModal).modal('show');
+                    } else {
+                        const confirmado = window.confirm('¿Eliminar "' + bannerName + '" del carrusel? Esta acción no se puede deshacer.');
+                        if (!confirmado) {
+                            return;
                         }
-                    })
-                    .catch((error) => {
-                        const message = error && error.message ? error.message : 'Ocurrió un error inesperado. Intente nuevamente.';
-                        window.alert(message);
-                    });
+                        ejecutarEliminacion(this, bannerId);
+                    }
+                });
             });
-        });
+        }
+
+        if (confirmModal && confirmButton) {
+            confirmButton.addEventListener('click', function () {
+                if (!bannerPendingDeletion || !bannerPendingDeletion.id) {
+                    return;
+                }
+                ejecutarEliminacion(bannerPendingDeletion.button, bannerPendingDeletion.id);
+            });
+
+            if (typeof window.$ === 'function') {
+                window.$(confirmModal).on('hidden.bs.modal', function () {
+                    bannerPendingDeletion = null;
+                });
+            }
+        }
     })();
 </script>
 
