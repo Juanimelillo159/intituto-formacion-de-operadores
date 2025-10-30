@@ -177,16 +177,29 @@ $siteNotice = site_settings_get_notice($currentSettings);
                                             <small class="form-text text-muted">Deshabilitá esta opción para pausar todas las compras de capacitaciones.</small>
                                         </div>
                                         <div class="form-group">
-                                            <label for="disabled_courses">Capacitaciones con inscripción bloqueada</label>
-                                            <select name="disabled_courses[]" id="disabled_courses" class="form-control" multiple size="6">
-                                                <?php foreach ($cursosDisponibles as $curso): ?>
-                                                    <?php $idCurso = (int)($curso['id_curso'] ?? 0); ?>
-                                                    <option value="<?php echo $idCurso; ?>" <?php echo in_array($idCurso, $disabledCourses, true) ? 'selected' : ''; ?>>
-                                                        <?php echo htmlspecialchars($curso['nombre_curso'] ?? ('Curso #' . $idCurso), ENT_QUOTES, 'UTF-8'); ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            </select>
-                                            <small class="form-text text-muted">Seleccioná los cursos cuya inscripción online querés deshabilitar temporalmente.</small>
+                                            <label class="d-block">Capacitaciones con inscripción bloqueada</label>
+                                            <div class="row">
+                                                <?php if (!empty($cursosDisponibles)): ?>
+                                                    <?php foreach ($cursosDisponibles as $curso): ?>
+                                                        <?php
+                                                            $idCurso = (int)($curso['id_curso'] ?? 0);
+                                                            $nombreCurso = htmlspecialchars($curso['nombre_curso'] ?? ('Curso #' . $idCurso), ENT_QUOTES, 'UTF-8');
+                                                            $inputId = 'curso-disabled-' . $idCurso;
+                                                        ?>
+                                                        <div class="col-sm-6 col-lg-4">
+                                                            <div class="custom-control custom-checkbox mb-2">
+                                                                <input type="checkbox" class="custom-control-input" id="<?php echo $inputId; ?>" name="disabled_courses[]" value="<?php echo $idCurso; ?>" <?php echo in_array($idCurso, $disabledCourses, true) ? 'checked' : ''; ?>>
+                                                                <label class="custom-control-label" for="<?php echo $inputId; ?>"><?php echo $nombreCurso; ?></label>
+                                                            </div>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <div class="col-12">
+                                                        <p class="text-muted mb-0">No hay capacitaciones registradas.</p>
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <small class="form-text text-muted">Marcá o desmarcá cada curso para pausar o habilitar su inscripción individualmente.</small>
                                         </div>
                                         <hr>
                                         <div class="form-group">
@@ -197,25 +210,39 @@ $siteNotice = site_settings_get_notice($currentSettings);
                                             <small class="form-text text-muted">Si lo desactivás, ningún usuario podrá iniciar el proceso de certificación.</small>
                                         </div>
                                         <div class="form-group">
-                                            <label for="disabled_certifications">Certificaciones bloqueadas</label>
-                                            <select name="disabled_certifications[]" id="disabled_certifications" class="form-control" multiple size="6">
+                                            <label class="d-block">Certificaciones bloqueadas</label>
+                                            <div class="row">
                                                 <?php if (!empty($certificacionesDisponibles)): ?>
                                                     <?php foreach ($certificacionesDisponibles as $certificacion): ?>
-                                                        <?php $idCert = (int)($certificacion['id_certificacion'] ?? 0); ?>
-                                                        <option value="<?php echo $idCert; ?>" <?php echo in_array($idCert, $disabledCertificaciones, true) ? 'selected' : ''; ?>>
-                                                            <?php echo htmlspecialchars($certificacion['nombre_certificacion'] ?? ('Certificación #' . $idCert), ENT_QUOTES, 'UTF-8'); ?>
-                                                        </option>
+                                                        <?php
+                                                            $idCert = (int)($certificacion['id_certificacion'] ?? 0);
+                                                            $nombreCert = htmlspecialchars($certificacion['nombre_certificacion'] ?? ('Certificación #' . $idCert), ENT_QUOTES, 'UTF-8');
+                                                            $inputId = 'cert-disabled-' . $idCert;
+                                                        ?>
+                                                        <div class="col-sm-6 col-lg-4">
+                                                            <div class="custom-control custom-checkbox mb-2">
+                                                                <input type="checkbox" class="custom-control-input" id="<?php echo $inputId; ?>" name="disabled_certifications[]" value="<?php echo $idCert; ?>" <?php echo in_array($idCert, $disabledCertificaciones, true) ? 'checked' : ''; ?>>
+                                                                <label class="custom-control-label" for="<?php echo $inputId; ?>"><?php echo $nombreCert; ?></label>
+                                                            </div>
+                                                        </div>
                                                     <?php endforeach; ?>
                                                 <?php else: ?>
                                                     <?php foreach ($cursosDisponibles as $curso): ?>
-                                                        <?php $idCurso = (int)($curso['id_curso'] ?? 0); ?>
-                                                        <option value="<?php echo $idCurso; ?>" <?php echo in_array($idCurso, $disabledCertificaciones, true) ? 'selected' : ''; ?>>
-                                                            <?php echo htmlspecialchars($curso['nombre_curso'] ?? ('Curso #' . $idCurso), ENT_QUOTES, 'UTF-8'); ?>
-                                                        </option>
+                                                        <?php
+                                                            $idCurso = (int)($curso['id_curso'] ?? 0);
+                                                            $nombreCurso = htmlspecialchars($curso['nombre_curso'] ?? ('Curso #' . $idCurso), ENT_QUOTES, 'UTF-8');
+                                                            $inputId = 'cert-disabled-curso-' . $idCurso;
+                                                        ?>
+                                                        <div class="col-sm-6 col-lg-4">
+                                                            <div class="custom-control custom-checkbox mb-2">
+                                                                <input type="checkbox" class="custom-control-input" id="<?php echo $inputId; ?>" name="disabled_certifications[]" value="<?php echo $idCurso; ?>" <?php echo in_array($idCurso, $disabledCertificaciones, true) ? 'checked' : ''; ?>>
+                                                                <label class="custom-control-label" for="<?php echo $inputId; ?>"><?php echo $nombreCurso; ?></label>
+                                                            </div>
+                                                        </div>
                                                     <?php endforeach; ?>
                                                 <?php endif; ?>
-                                            </select>
-                                            <small class="form-text text-muted">Si la tabla de certificaciones no está disponible se listan los cursos como alternativa.</small>
+                                            </div>
+                                            <small class="form-text text-muted">Seleccioná manualmente cada certificación que querés mantener deshabilitada. Si la tabla de certificaciones no está disponible se listan los cursos como alternativa.</small>
                                         </div>
                                     </div>
                                     <div class="card-footer text-right">
