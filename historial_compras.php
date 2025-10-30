@@ -203,7 +203,7 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
 ?>
 <!DOCTYPE html>
 <html lang="es">
-<?php include 'head.php'; ?>
+<?php $page_styles = '<link rel="stylesheet" href="assets/styles/style_configuracion.css">'; include 'head.php'; ?>
 <body class="config-page d-flex flex-column min-vh-100">
 <?php include 'nav.php'; ?>
 
@@ -244,8 +244,16 @@ $scriptName = basename((string)($_SERVER['PHP_SELF'] ?? 'historial_compras.php')
                             <p class="mb-1"><strong>Fecha:</strong> <?php echo htmlspecialchars((string)($pedidoDetalle['fecha'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></p>
                             <p class="mb-3"><strong>Estado:</strong> <?php echo htmlspecialchars($estadoMap[$pedidoDetalle['estado']] ?? 'Pendiente', ENT_QUOTES, 'UTF-8'); ?></p>
                             <div class="table-responsive">
-                                <table class="table table-sm">
-                                    <thead class="table-light"><tr><th>Curso</th><th>Tipo</th><th>Turno</th><th>Asistentes</th><th>Ubicación</th></tr></thead>
+                                <table class="table table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Curso</th>
+                                            <th>Tipo</th>
+                                            <th>Turno</th>
+                                            <th>Asistentes</th>
+                                            <th>Ubicación</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                     <?php foreach (($pedidoDetalle['detalles'] ?? []) as $d): ?>
                                         <tr>
