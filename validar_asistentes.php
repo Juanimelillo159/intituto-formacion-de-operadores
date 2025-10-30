@@ -143,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             $stFindTrabDni = $pdo->prepare('SELECT id_trabajador, creado_por FROM trabajadores WHERE dni = ? LIMIT 1');
-            $stFindTrabEmail = $pdo->prepare('SELECT id_trabajador, creado_por FROM trabajadores WHERE email = ? LIMIT 1');
+            $stFindTrabEmail = null;
             $stInsTrab = $pdo->prepare('INSERT INTO trabajadores (nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, creado_por) VALUES (:nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, :creado_por)');
             $stClaimTrab = $pdo->prepare('UPDATE trabajadores SET creado_por = :uid WHERE id_trabajador = :id AND (creado_por IS NULL OR creado_por = 0)');
 
@@ -183,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                 }
                 if ($trabId <= 0 && $dni !== '') { $stFindTrabDni->execute([$dni]); $trabId = (int)($stFindTrabDni->fetchColumn() ?: 0); }
-                if ($trabId <= 0 && $email !== '') { $stFindTrabEmail->execute([$email]); $trabId = (int)($stFindTrabEmail->fetchColumn() ?: 0); }
+                if ($trabId <= 0 && $email !== '') { }
 
                 // Si existe trabajador pero sin propietario, reclamarlo para esta cuenta
                 if ($trabId <= 0 && $dni !== '') {
@@ -191,11 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $row = $stFindTrabDni->fetch(PDO::FETCH_ASSOC);
                     if ($row) { $trabId = (int)$row['id_trabajador']; $trabCreadoPor = (int)($row['creado_por'] ?? 0); }
                 }
-                if ($trabId <= 0 && $email !== '') {
-                    $stFindTrabEmail->execute([$email]);
-                    $row = $stFindTrabEmail->fetch(PDO::FETCH_ASSOC);
-                    if ($row) { $trabId = (int)$row['id_trabajador']; $trabCreadoPor = (int)($row['creado_por'] ?? 0); }
-                }
+                if ($trabId <= 0 && $email !== '') { }
 
                 if ($trabId <= 0) {
                     $stInsTrab->execute([
