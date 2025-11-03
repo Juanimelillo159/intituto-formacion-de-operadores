@@ -3,6 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 include 'sbd.php';
+require_once __DIR__ . '/categorias_helpers.php';
 
 $page_title = "Inicio | Instituto de Formación";
 $page_description = "Pagina principal del Instituto de Formación de Operadores";
@@ -10,6 +11,17 @@ $page_description = "Pagina principal del Instituto de Formación de Operadores"
 $sql_carrusel = $con->prepare("SELECT * FROM banner");
 $sql_carrusel->execute();
 $banners = $sql_carrusel->fetchAll(PDO::FETCH_ASSOC);
+
+$defaultBannerPath = 'assets/imagenes/banners/default-banner.svg';
+$defaultBannerAbsolute = __DIR__ . '/' . $defaultBannerPath;
+
+try {
+    categorias_ensure_schema($con);
+    $categoriasDestacadas = categorias_obtener_destacadas($con, 8);
+} catch (Throwable $categoriasException) {
+    error_log('[categorias_destacadas] ' . $categoriasException->getMessage());
+    $categoriasDestacadas = [];
+}
 
 $registro_mensaje = isset($_SESSION['registro_mensaje']) ? $_SESSION['registro_mensaje'] : null;
 $registro_tipo = isset($_SESSION['registro_tipo']) ? $_SESSION['registro_tipo'] : 'info';
@@ -65,22 +77,20 @@ if ($contacto_mensaje !== null) {
           <div class="carousel-inner">
             <?php if (!empty($banners)) { ?>
               <?php foreach ($banners as $index => $banner) { ?>
-                <?php $hasImage = !empty($banner['imagen_banner']); ?>
+                <?php
+                $bannerFile = isset($banner['imagen_banner']) ? trim((string)$banner['imagen_banner']) : '';
+                $bannerRelative = $bannerFile !== '' ? 'assets/imagenes/banners/' . $bannerFile : '';
+                $bannerAbsolute = $bannerRelative !== '' ? __DIR__ . '/' . $bannerRelative : '';
+                $hasImage = $bannerRelative !== '' && is_file($bannerAbsolute);
+                $bannerSrc = $hasImage ? $bannerRelative : $defaultBannerPath;
+                ?>
                 <div class="carousel-item <?php echo $index === 0 ? 'active' : ''; ?>">
-                  <?php if ($hasImage) { ?>
-                    <img class="d-block w-100" src="assets/imagenes/banners/<?php echo htmlspecialchars($banner['imagen_banner'], ENT_QUOTES, 'UTF-8'); ?>" alt="Slide <?php echo $index + 1; ?>">
-                  <?php } else { ?>
-                    <div class="d-flex align-items-center justify-content-center" style="height: 400px; background-color: #f8f9fa; color: #6c757d; font-size: 2rem;">
-                      Noticias pronto
-                    </div>
-                  <?php } ?>
+                  <img class="d-block w-100" src="<?php echo htmlspecialchars($bannerSrc, ENT_QUOTES, 'UTF-8'); ?>" alt="Slide <?php echo $index + 1; ?>">
                 </div>
               <?php } ?>
             <?php } else { ?>
               <div class="carousel-item active">
-                <div class="d-flex align-items-center justify-content-center" style="height: 400px; background-color: #f8f9fa; color: #6c757d; font-size: 2rem;">
-                  Noticias pronto
-                </div>
+                <img class="d-block w-100" src="<?php echo htmlspecialchars($defaultBannerPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Slide por defecto">
               </div>
             <?php } ?>
             <button class="carousel-control-prev" type="button" data-bs-target="#imageCarousel" data-bs-slide="prev">
@@ -94,6 +104,31 @@ if ($contacto_mensaje !== null) {
           </div>
         </div>
     </section>
+
+    <?php if (!empty($categoriasDestacadas)) : ?>
+      <section id="categorias-destacadas" class="py-5 bg-light section-transition">
+        <div class="container">
+          <h2 class="display-2 text-center mb-4">Categorías destacadas</h2>
+          <div class="row g-4">
+            <?php foreach ($categoriasDestacadas as $categoria) : ?>
+              <div class="col-sm-6 col-lg-3">
+                <div class="category-card h-100">
+                  <div class="category-card__image">
+                    <img src="<?php echo htmlspecialchars($categoria['imagen'], ENT_QUOTES, 'UTF-8'); ?>" alt="Categoría <?php echo htmlspecialchars($categoria['nombre'], ENT_QUOTES, 'UTF-8'); ?>">
+                  </div>
+                  <div class="category-card__body">
+                    <h3 class="category-card__title h5 mb-2"><?php echo htmlspecialchars($categoria['nombre'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                    <?php if (!empty($categoria['descripcion'])) : ?>
+                      <p class="category-card__description mb-0"><?php echo htmlspecialchars($categoria['descripcion'], ENT_QUOTES, 'UTF-8'); ?></p>
+                    <?php endif; ?>
+                  </div>
+                </div>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+      </section>
+    <?php endif; ?>
 
     <section id="quienes-somos" class="bg-nosotros section-padding">
       <div class="container">

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 680" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bannerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0014AE" />
+      <stop offset="100%" stop-color="#00BDA3" />
+    </linearGradient>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="rgba(255, 255, 255, 0.25)" />
+      <stop offset="100%" stop-color="rgba(255, 255, 255, 0)" />
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="680" fill="url(#bannerGradient)" />
+  <g opacity="0.35">
+    <circle cx="220" cy="180" r="220" fill="url(#accentGradient)" />
+    <circle cx="1400" cy="520" r="260" fill="url(#accentGradient)" />
+    <circle cx="900" cy="140" r="180" fill="url(#accentGradient)" />
+  </g>
+  <text x="50%" y="45%" text-anchor="middle" fill="#ffffff" font-family="'aller_b', 'Montserrat', 'Segoe UI', sans-serif" font-size="88" letter-spacing="3">
+    Ofertas pronto
+  </text>
+  <text x="50%" y="60%" text-anchor="middle" fill="#f5f5f5" font-family="'aller_lt', 'Montserrat', 'Segoe UI', sans-serif" font-size="38" letter-spacing="2">
+    Disponibles muy pronto
+  </text>
+</svg>

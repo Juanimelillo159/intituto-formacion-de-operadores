@@ -83,6 +83,13 @@
             </li>
 
             <li class="nav-item">
+              <a href="categorias.php" class="nav-link">
+                <i class="fas fa-tags"></i>
+                <p>Categorías</p>
+              </a>
+            </li>
+
+            <li class="nav-item">
               <a href="certificaciones.php" class="nav-link">
                 <i class="fas fa-solid fa-file-signature"></i>
                 <p>Certificaciones</p>
