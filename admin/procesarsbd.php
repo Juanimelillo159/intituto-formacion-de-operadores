@@ -1379,7 +1379,6 @@ try {
         $descripcion  = trim($_POST['descripcion'] ?? '');
         $duracion     = trim($_POST['duracion'] ?? '');
         $objetivos    = trim($_POST['objetivos'] ?? '');
-        $complejidad  = trim($_POST['complejidad'] ?? ''); // VARCHAR
         $programa     = trim($_POST['programa'] ?? '');
         $publico      = trim($_POST['publico'] ?? '');
         $cronograma   = trim($_POST['cronograma'] ?? '');
@@ -1387,7 +1386,7 @@ try {
         $observaciones = trim($_POST['observaciones'] ?? '');
         $modalidades  = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
 
-        if ($id_curso <= 0 || $nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '' || $complejidad === '') {
+        if ($id_curso <= 0 || $nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '') {
             throw new InvalidArgumentException('Campos obligatorios faltantes para edición.');
         }
 
@@ -1399,7 +1398,6 @@ try {
                    descripcion_curso = :descripcion,
                    duracion          = :duracion,
                    objetivos         = :objetivos,
-                   complejidad       = :complejidad,
                    programa          = :programa,
                    publico           = :publico,
                    cronograma        = :cronograma,
@@ -1412,7 +1410,6 @@ try {
             ':descripcion' => $descripcion,
             ':duracion' => $duracion,
             ':objetivos' => $objetivos,
-            ':complejidad' => $complejidad,
             ':programa' => $programa,
             ':publico' => $publico,
             ':cronograma' => $cronograma,
@@ -1443,7 +1440,6 @@ try {
         $nombre        = trim($_POST['nombre'] ?? '');
         $descripcion   = trim($_POST['descripcion'] ?? '');
         $duracion      = trim($_POST['duracion'] ?? '');
-        $complejidad   = trim($_POST['complejidad'] ?? ''); // VARCHAR
         $objetivos     = trim($_POST['objetivos'] ?? '');
         $programa      = trim($_POST['programa'] ?? '');
         $publico       = trim($_POST['publico'] ?? '');
@@ -1458,7 +1454,7 @@ try {
         $precioInicialCertRaw = $_POST['precio_certificacion'] ?? null;
         $precioInicialCert    = normalizar_precio($precioInicialCertRaw);
 
-        if ($nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '' || $complejidad === '') {
+        if ($nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '') {
             throw new InvalidArgumentException('Faltan campos obligatorios.');
         }
 
@@ -1467,12 +1463,10 @@ try {
         $insCurso = $con->prepare("
             INSERT INTO cursos (
                 nombre_curso, descripcion_curso, duracion, objetivos,
-                cronograma, publico, programa, requisitos, observaciones,
-                complejidad
+                cronograma, publico, programa, requisitos, observaciones
             ) VALUES (
                 :nombre, :descripcion, :duracion, :objetivos,
-                :cronograma, :publico, :programa, :requisitos, :observaciones,
-                :complejidad
+                :cronograma, :publico, :programa, :requisitos, :observaciones
             )
         ");
         $insCurso->execute([
@@ -1485,7 +1479,6 @@ try {
             ':programa'      => $programa,
             ':requisitos'    => $requisitos,
             ':observaciones' => $observaciones,
-            ':complejidad'   => $complejidad,
         ]);
 
         $id_curso = (int)$con->lastInsertId();
@@ -1545,7 +1538,6 @@ try {
         log_cursos('agregar_curso_ok', [
             'id_curso'    => $id_curso,
             'nombre'      => $nombre,
-            'complejidad' => $complejidad,
             'modalidades' => $modalidades,
             'precio_inicial_capacitacion' => $precioInicialCap,
             'precio_inicial_certificacion' => $precioInicialCert,
