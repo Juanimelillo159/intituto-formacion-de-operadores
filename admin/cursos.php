@@ -61,7 +61,6 @@ $totalCursos = is_array($cursos) ? count($cursos) : 0;
                                                     <th>Título</th>
                                                     <th>Descripción</th>
                                                     <th>Duración</th>
-                                                    <th>Complejidad</th>
                                                     <th style="width: 150px">Acciones</th>
                                                 </tr>
                                             </thead>
@@ -96,13 +95,6 @@ $totalCursos = is_array($cursos) ? count($cursos) : 0;
                                                                 <?php endif; ?>
                                                             </td>
                                                             <td>
-                                                                <?php if (!empty($curso['complejidad'])): ?>
-                                                                    <span class="badge badge-success"><?php echo htmlspecialchars($curso['complejidad'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                                                <?php else: ?>
-                                                                    <span class="badge badge-secondary">Sin definir</span>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td>
                                                                 <div class="btn-group" role="group">
                                                                     <a
                                                                         href="curso.php?id_curso=<?php echo urlencode((string)$curso['id_curso']); ?>"
@@ -127,7 +119,7 @@ $totalCursos = is_array($cursos) ? count($cursos) : 0;
                                                     <?php endforeach; ?>
                                                 <?php else: ?>
                                                     <tr>
-                                                        <td colspan="7" class="text-center">
+                                                        <td colspan="5" class="text-center">
                                                             <div class="py-4">
                                                                 <i class="fas fa-graduation-cap fa-3x text-muted mb-3"></i>
                                                                 <h5 class="text-muted">No se encontraron cursos</h5>

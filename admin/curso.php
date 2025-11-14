@@ -22,7 +22,6 @@ $nombre        = $curso["nombre_curso"] ?? '';
 $descripcion   = $curso["descripcion_curso"] ?? '';
 $duracion      = $curso["duracion"] ?? '';
 $objetivos     = $curso["objetivos"] ?? '';
-$complejidad   = $curso["complejidad"] ?? ''; // VARCHAR
 $programa      = $curso["programa"] ?? '';
 $publico       = $curso["publico"] ?? '';
 $cronograma    = $curso["cronograma"] ?? '';
@@ -220,7 +219,6 @@ function estado_precio($vd, $vh)
             <h1 class="mb-1"><?php echo h($nombre) ?></h1>
             <p class="mb-0">
               <i class="fas fa-clock"></i> <?php echo h($duracion) ?>
-              <span class="complexity-badge"><?php echo h($complejidad) ?></span>
             </p>
           </div>
 
@@ -282,20 +280,9 @@ function estado_precio($vd, $vh)
                           <textarea required disabled class="form-control" id="courseDescription" rows="4" name="descripcion"><?php echo h($descripcion) ?></textarea>
                         </div>
 
-                        <div class="row">
-                          <div class="col-md-6">
-                            <div class="form-group">
-                              <!-- AHORA INPUT -->
-                              <label for="complejidad" class="required-field"><i class="fas fa-layer-group"></i> Nivel de Complejidad</label>
-                              <input required disabled type="text" class="form-control" id="complejidad" name="complejidad" value="<?php echo h($complejidad) ?>" placeholder="Básico / Intermedio / Avanzado">
-                            </div>
-                          </div>
-                          <div class="col-md-6">
-                            <div class="form-group">
-                              <label for="publico"><i class="fas fa-users"></i> Público Objetivo</label>
-                              <textarea disabled class="form-control" id="publico" rows="3" name="publico"><?php echo h($publico) ?></textarea>
-                            </div>
-                          </div>
+                        <div class="form-group">
+                          <label for="publico"><i class="fas fa-users"></i> Público Objetivo</label>
+                          <textarea disabled class="form-control" id="publico" rows="3" name="publico"><?php echo h($publico) ?></textarea>
                         </div>
                       </div>
                     </div>
@@ -534,7 +521,7 @@ function estado_precio($vd, $vh)
       function setDisabledAll(disabled) {
         const ids = [
           'courseName', 'courseDescription', 'courseDuration', 'courseObjectives',
-          'complejidad', 'programa', 'publico', 'cronograma', 'requisitos', 'observaciones',
+          'programa', 'publico', 'cronograma', 'requisitos', 'observaciones',
           'tipo_precio_nuevo', 'precio_nuevo', 'desde_nuevo', 'comentario_nuevo'
         ];
         ids.forEach(id => {
