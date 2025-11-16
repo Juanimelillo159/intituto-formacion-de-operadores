@@ -436,7 +436,7 @@ function estado_precio($vd, $vh)
                           </div>
                           <div class="form-group col-md-3">
                             <label for="desde_nuevo" class="required-field">Vigente desde</label>
-                            <input disabled type="datetime-local" class="form-control" id="desde_nuevo" name="desde">
+                            <input disabled type="datetime-local" class="form-control" id="desde_nuevo" name="desde" required>
                           </div>
                           <div class="form-group col-md-3">
                             <label for="comentario_nuevo">Comentario (opcional)</label>
@@ -552,6 +552,70 @@ function estado_precio($vd, $vh)
         }
       }
 
+      function markFieldValidity(field, isValid) {
+        if (!field) return;
+        if (isValid) {
+          field.classList.remove('is-invalid');
+          field.removeAttribute('aria-invalid');
+        } else {
+          field.classList.add('is-invalid');
+          field.setAttribute('aria-invalid', 'true');
+        }
+      }
+
+      function clearPriceValidation() {
+        ['tipo_precio_nuevo', 'precio_nuevo', 'desde_nuevo'].forEach(id => {
+          markFieldValidity(document.getElementById(id), true);
+        });
+      }
+
+      function validarPrecio() {
+        const tipo = document.getElementById('tipo_precio_nuevo');
+        const precio = document.getElementById('precio_nuevo');
+        const desde = document.getElementById('desde_nuevo');
+
+        const errores = [];
+        const invalidFields = [];
+
+        if (!tipo || !tipo.value) {
+          errores.push('Debe seleccionar el tipo de precio.');
+          invalidFields.push(tipo);
+          markFieldValidity(tipo, false);
+        } else {
+          markFieldValidity(tipo, true);
+        }
+
+        if (!precio || !precio.value.trim()) {
+          errores.push('El precio es obligatorio.');
+          invalidFields.push(precio);
+          markFieldValidity(precio, false);
+        } else {
+          markFieldValidity(precio, true);
+        }
+
+        if (!desde || !desde.value.trim()) {
+          errores.push('Debe indicar la fecha y hora de vigencia.');
+          invalidFields.push(desde);
+          markFieldValidity(desde, false);
+        } else {
+          markFieldValidity(desde, true);
+        }
+
+        if (errores.length) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Completar datos del nuevo precio',
+            html: '<ul class="text-left mb-0"><li>' + errores.join('</li><li>') + '</li></ul>'
+          });
+          if (invalidFields[0]) {
+            invalidFields[0].focus();
+          }
+          return false;
+        }
+
+        return true;
+      }
+
       function swalConfirm({
         title,
         text,
@@ -602,6 +666,7 @@ function estado_precio($vd, $vh)
         form.reset();
         isEditing = false;
         isDirty = false;
+        clearPriceValidation();
         setDisabledAll(true);
         setButtons(false);
         setStatus(false);
@@ -639,7 +704,7 @@ function estado_precio($vd, $vh)
 
       // ---- GUARDAR NUEVO PRECIO ----
       btnGuardarPrecio?.addEventListener('click', async () => {
-        // if (!(await validarPrecio())) return; // si ya tenés una
+        if (!validarPrecio()) return;
         const r = await swalConfirm({
           title: 'Guardar nuevo precio',
           text: '¿Confirmás el alta del nuevo precio?',
