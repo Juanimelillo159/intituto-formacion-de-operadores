@@ -48,6 +48,7 @@ if ($id_curso <= 0 && isset($_GET['id_capacitacion'])) {
 if ($id_curso <= 0 && isset($_GET['id_certificacion'])) {
     $id_curso = (int)$_GET['id_certificacion'];
 }
+$selectedModalidadId = isset($_GET['modalidad']) ? max(0, (int)$_GET['modalidad']) : 0;
 $tipo_checkout = isset($_GET['tipo']) ? strtolower(trim((string)$_GET['tipo'])) : '';
 if ($tipo_checkout === '' && isset($_GET['id_capacitacion'])) {
     $tipo_checkout = 'capacitacion';
@@ -117,9 +118,48 @@ $curso = $st->fetch(PDO::FETCH_ASSOC);
 
 $cursoNombre = null;
 $cursoDescripcion = null;
+$modalidadesCurso = [];
+$modalidadNombreSeleccionada = null;
 if ($curso) {
     $cursoNombre = (string)($curso['nombre_certificacion'] ?? $curso['nombre_curso'] ?? '');
     $cursoDescripcion = (string)($curso['descripcion'] ?? $curso['descripcion_curso'] ?? '');
+
+    try {
+        $modsStmt = $con->prepare(
+            'SELECT m.id_modalidad, m.nombre_modalidad
+               FROM curso_modalidad cm
+               JOIN modalidades m ON m.id_modalidad = cm.id_modalidad
+              WHERE cm.id_curso = :curso
+           ORDER BY m.nombre_modalidad ASC'
+        );
+        $modsStmt->execute([':curso' => $id_curso]);
+        $modalidadesCurso = $modsStmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $modalidadException) {
+        $modalidadesCurso = [];
+    }
+
+    if (!empty($modalidadesCurso)) {
+        $modalidadIdsDisponibles = array_map(static fn($m) => (int)($m['id_modalidad'] ?? 0), $modalidadesCurso);
+        $modalidadIdsDisponibles = array_values(array_filter($modalidadIdsDisponibles, static fn($v) => $v > 0));
+        if (!empty($modalidadIdsDisponibles)) {
+            if ($selectedModalidadId <= 0 || !in_array($selectedModalidadId, $modalidadIdsDisponibles, true)) {
+                $selectedModalidadId = $modalidadIdsDisponibles[0];
+            }
+        } else {
+            $selectedModalidadId = 0;
+        }
+    } else {
+        $selectedModalidadId = 0;
+    }
+
+    if ($selectedModalidadId > 0) {
+        foreach ($modalidadesCurso as $modalidadRow) {
+            if ((int)($modalidadRow['id_modalidad'] ?? 0) === $selectedModalidadId) {
+                $modalidadNombreSeleccionada = (string)($modalidadRow['nombre_modalidad'] ?? '');
+                break;
+            }
+        }
+    }
 }
 
 $mercadoPagoHabilitado = site_settings_is_mp_enabled($site_settings);
@@ -224,15 +264,44 @@ if ($curso && $currentUserId > 0 && $tipo_checkout !== 'certificacion') {
 $soloTransferenciaForzado = $soloTransferenciaConfiguracion || $soloTransferencia;
 $transferenciaMensajeConfiguracion = 'Mercado Pago está temporalmente deshabilitado. Completá tu inscripción adjuntando el comprobante de transferencia.';
 
-function checkout_obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso): ?array
+function checkout_obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso, ?int $modalidadId = null): ?array
 {
-    static $stmt = null;
-    if ($stmt === null) {
-        $stmt = $con->prepare("
-            SELECT precio, moneda, vigente_desde
+    static $stmtPorModalidad = null;
+    static $stmtGeneral = null;
+
+    if ($modalidadId !== null) {
+        if ($stmtPorModalidad === null) {
+            $stmtPorModalidad = $con->prepare("
+                SELECT precio, moneda, vigente_desde, id_modalidad
+                  FROM curso_precio_hist
+                 WHERE id_curso = :curso
+                   AND tipo_curso = :tipo
+                   AND id_modalidad = :modalidad
+                   AND vigente_desde <= NOW()
+                   AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+             ORDER BY vigente_desde DESC
+                LIMIT 1
+            ");
+        }
+
+        $stmtPorModalidad->bindValue(':curso', $cursoId, PDO::PARAM_INT);
+        $stmtPorModalidad->bindValue(':tipo', $tipoCurso, PDO::PARAM_STR);
+        $stmtPorModalidad->bindValue(':modalidad', $modalidadId, PDO::PARAM_INT);
+        $stmtPorModalidad->execute();
+        $rowModalidad = $stmtPorModalidad->fetch(PDO::FETCH_ASSOC) ?: null;
+        $stmtPorModalidad->closeCursor();
+        if ($rowModalidad) {
+            return $rowModalidad;
+        }
+    }
+
+    if ($stmtGeneral === null) {
+        $stmtGeneral = $con->prepare("
+            SELECT precio, moneda, vigente_desde, id_modalidad
               FROM curso_precio_hist
              WHERE id_curso = :curso
                AND tipo_curso = :tipo
+               AND id_modalidad IS NULL
                AND vigente_desde <= NOW()
                AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
           ORDER BY vigente_desde DESC
@@ -240,12 +309,11 @@ function checkout_obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCur
         ");
     }
 
-    $stmt->execute([
-        ':curso' => $cursoId,
-        ':tipo' => $tipoCurso,
-    ]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-    $stmt->closeCursor();
+    $stmtGeneral->bindValue(':curso', $cursoId, PDO::PARAM_INT);
+    $stmtGeneral->bindValue(':tipo', $tipoCurso, PDO::PARAM_STR);
+    $stmtGeneral->execute();
+    $row = $stmtGeneral->fetch(PDO::FETCH_ASSOC) ?: null;
+    $stmtGeneral->closeCursor();
 
     return $row ?: null;
 }
@@ -255,7 +323,8 @@ $precio_capacitacion = null;
 $precio_certificacion = null;
 $tipoPrecioCheckout = $tipo_checkout === 'certificacion' ? 'certificacion' : 'capacitacion';
 if ($curso) {
-    $precio_capacitacion = checkout_obtener_precio_vigente($con, $id_curso, 'capacitacion');
+    $modalidadIdForPrice = $selectedModalidadId > 0 ? $selectedModalidadId : null;
+    $precio_capacitacion = checkout_obtener_precio_vigente($con, $id_curso, 'capacitacion', $modalidadIdForPrice);
     $precio_certificacion = checkout_obtener_precio_vigente($con, $id_curso, 'certificacion');
 
     $precio_vigente = $tipoPrecioCheckout === 'certificacion' ? $precio_certificacion : $precio_capacitacion;
@@ -265,6 +334,17 @@ if ($curso) {
 }
 
 if ($capacitacionRetryData && $tipo_checkout === 'capacitacion') {
+    $modalidadRetryId = (int)($capacitacionRetryData['id_modalidad'] ?? 0);
+    if ($modalidadRetryId > 0) {
+        $selectedModalidadId = $modalidadRetryId;
+        $modalidadNombreSeleccionada = null;
+        foreach ($modalidadesCurso as $modalidadRow) {
+            if ((int)($modalidadRow['id_modalidad'] ?? 0) === $selectedModalidadId) {
+                $modalidadNombreSeleccionada = (string)($modalidadRow['nombre_modalidad'] ?? '');
+                break;
+            }
+        }
+    }
     $retryPrecio = isset($capacitacionRetryData['precio_total']) ? (float)$capacitacionRetryData['precio_total'] : 0.0;
     if ($retryPrecio > 0) {
         $precio_vigente = [
@@ -698,6 +778,7 @@ include '../head.php';
                                     <input type="hidden" name="__accion" id="__accion" value="">
                                     <input type="hidden" name="crear_orden" value="1">
                                     <input type="hidden" name="id_curso" value="<?php echo (int)$id_curso; ?>">
+                                    <input type="hidden" name="id_modalidad" value="<?php echo (int)$selectedModalidadId; ?>">
                                     <input type="hidden" name="precio_checkout" value="<?php echo $precio_vigente ? (float)$precio_vigente['precio'] : 0; ?>">
                                     <input type="hidden" name="tipo_checkout" value="<?php echo htmlspecialchars($tipo_checkout, ENT_QUOTES, 'UTF-8'); ?>">
                                     <input type="hidden" name="id_certificacion" value="<?php echo (int)$certificacionId; ?>">
@@ -720,6 +801,12 @@ include '../head.php';
                                                         <strong>Duración</strong>
                                                         <span><?php echo h($curso['duracion'] ?? 'A definir'); ?></span>
                                                     </div>
+                                                    <?php if ($tipo_checkout !== 'certificacion' && $modalidadNombreSeleccionada): ?>
+                                                        <div class="summary-item">
+                                                            <strong>Modalidad</strong>
+                                                            <span><?php echo h($modalidadNombreSeleccionada); ?></span>
+                                                        </div>
+                                                    <?php endif; ?>
                                                     <div class="summary-item">
                                                         <strong>Nivel</strong>
                                                         <span><?php echo h($curso['complejidad'] ?? 'Intermedio'); ?></span>

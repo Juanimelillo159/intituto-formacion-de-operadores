@@ -66,6 +66,7 @@ CREATE TABLE checkout_capacitaciones (
   id_capacitacion INT(11) NOT NULL AUTO_INCREMENT,
   creado_por INT(11) DEFAULT NULL,
   id_curso INT(11) NOT NULL,
+  id_modalidad INT(11) DEFAULT NULL,
   nombre VARCHAR(100) DEFAULT NULL,
   apellido VARCHAR(100) DEFAULT NULL,
   email VARCHAR(150) DEFAULT NULL,
@@ -83,6 +84,7 @@ CREATE TABLE checkout_capacitaciones (
   PRIMARY KEY (id_capacitacion),
   CONSTRAINT fk_checkout_creado_por FOREIGN KEY (creado_por) REFERENCES usuarios (id_usuario),
   CONSTRAINT fk_checkout_id_curso FOREIGN KEY (id_curso) REFERENCES cursos (id_curso),
+  CONSTRAINT fk_checkout_modalidad FOREIGN KEY (id_modalidad) REFERENCES modalidades (id_modalidad),
   CONSTRAINT fk_checkout_id_estado FOREIGN KEY (id_estado) REFERENCES estados_inscripciones (id_estado)
 );
 
@@ -196,6 +198,7 @@ CREATE TABLE curso_precio_hist (
   id INT(11) NOT NULL AUTO_INCREMENT,
   id_curso INT(11) NOT NULL,
   tipo_curso ENUM('capacitacion','certificacion') NOT NULL DEFAULT 'capacitacion',
+  id_modalidad INT(11) DEFAULT NULL,
   precio DECIMAL(10,2) NOT NULL,
   moneda CHAR(3) NOT NULL DEFAULT 'ARS',
   vigente_desde DATETIME NOT NULL,
@@ -203,7 +206,9 @@ CREATE TABLE curso_precio_hist (
   comentario VARCHAR(255) DEFAULT NULL,
   creado_en DATETIME NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (id),
-  CONSTRAINT FK_id_curso FOREIGN KEY (id_curso) REFERENCES cursos (id_curso)
+  KEY idx_precio_modalidad (id_modalidad),
+  CONSTRAINT FK_id_curso FOREIGN KEY (id_curso) REFERENCES cursos (id_curso),
+  CONSTRAINT FK_precio_modalidad FOREIGN KEY (id_modalidad) REFERENCES modalidades (id_modalidad)
 );
 
 -- 6) Resto de tablas sin FK definidas en el dump

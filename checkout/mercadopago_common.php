@@ -132,7 +132,7 @@ function mp_log(string $event, array $context = [], ?Throwable $error = null): v
 /**
  * Recupera el precio vigente del curso solicitado.
  */
-function mp_fetch_course_price(PDO $con, int $courseId, string $tipoCurso = 'capacitacion'): array
+function mp_fetch_course_price(PDO $con, int $courseId, string $tipoCurso = 'capacitacion', ?int $modalidadId = null): array
 {
     $tipoCurso = strtolower(trim($tipoCurso));
     if (!in_array($tipoCurso, ['capacitacion', 'certificacion'], true)) {
@@ -144,22 +144,36 @@ function mp_fetch_course_price(PDO $con, int $courseId, string $tipoCurso = 'cap
         $tiposConsulta[] = 'capacitacion';
     }
 
+    $consultas = [];
+    if ($modalidadId !== null && in_array('capacitacion', $tiposConsulta, true)) {
+        $consultas[] = ['tipo' => 'capacitacion', 'modalidad' => $modalidadId];
+    }
     foreach ($tiposConsulta as $tipo) {
-        $sql = <<<SQL
+        $consultas[] = ['tipo' => $tipo, 'modalidad' => null];
+    }
+
+    foreach ($consultas as $consulta) {
+        $sql = "
             SELECT precio, moneda
               FROM curso_precio_hist
              WHERE id_curso = :curso
                AND tipo_curso = :tipo
                AND vigente_desde <= NOW()
-               AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
-          ORDER BY vigente_desde DESC
-             LIMIT 1
-        SQL;
+               AND (vigente_hasta IS NULL OR vigente_hasta > NOW())";
+        if ($consulta['modalidad'] !== null) {
+            $sql .= ' AND id_modalidad = :modalidad';
+        } else {
+            $sql .= ' AND id_modalidad IS NULL';
+        }
+        $sql .= ' ORDER BY vigente_desde DESC LIMIT 1';
+
         $st = $con->prepare($sql);
-        $st->execute([
-            ':curso' => $courseId,
-            ':tipo' => $tipo,
-        ]);
+        $st->bindValue(':curso', $courseId, PDO::PARAM_INT);
+        $st->bindValue(':tipo', $consulta['tipo'], PDO::PARAM_STR);
+        if ($consulta['modalidad'] !== null) {
+            $st->bindValue(':modalidad', (int) $consulta['modalidad'], PDO::PARAM_INT);
+        }
+        $st->execute();
         $row = $st->fetch(PDO::FETCH_ASSOC);
 
         if ($row && isset($row['precio'])) {

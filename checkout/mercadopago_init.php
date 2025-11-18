@@ -52,6 +52,8 @@ try {
     }
 
     $cursoId = (int)($_POST['id_curso'] ?? 0);
+    $modalidadId = isset($_POST['id_modalidad']) ? max(0, (int)$_POST['id_modalidad']) : 0;
+    $modalidadNombre = null;
     $certificacionId = (int)($_POST['id_certificacion'] ?? 0);
     $nombre = trim((string)($_POST['nombre_insc'] ?? ''));
     $apellido = trim((string)($_POST['apellido_insc'] ?? ''));
@@ -90,8 +92,18 @@ try {
         throw new RuntimeException('No encontramos el curso seleccionado.');
     }
 
+    if ($modalidadId > 0) {
+        $modStmt = $con->prepare('SELECT m.nombre_modalidad FROM curso_modalidad cm JOIN modalidades m ON m.id_modalidad = cm.id_modalidad WHERE cm.id_curso = :curso AND cm.id_modalidad = :modalidad LIMIT 1');
+        $modStmt->execute([':curso' => $cursoId, ':modalidad' => $modalidadId]);
+        $modalidadNombre = $modStmt->fetchColumn() ?: null;
+        if ($modalidadNombre === null || $modalidadNombre === '') {
+            $modalidadId = 0;
+        }
+    }
+
     $tipoPrecio = $tipo === 'certificacion' ? 'certificacion' : 'capacitacion';
-    $precio = mp_fetch_course_price($con, $cursoId, $tipoPrecio);
+    $modalidadParaPrecio = ($tipoPrecio === 'capacitacion' && $modalidadId > 0) ? $modalidadId : null;
+    $precio = mp_fetch_course_price($con, $cursoId, $tipoPrecio, $modalidadParaPrecio);
     if ($precio['amount'] <= 0) {
         $precio['amount'] = (float)($_POST['precio_checkout'] ?? 0);
         $precio['currency'] = strtoupper((string)($_POST['moneda_checkout'] ?? 'ARS'));
@@ -155,10 +167,11 @@ try {
         $capacitacionId = null;
         $registroId = $certificacionId;
     } else {
-        $insertCap = $con->prepare('INSERT INTO checkout_capacitaciones (creado_por, id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda) VALUES (:usuario, :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, 1, :precio, :moneda)');
+        $insertCap = $con->prepare('INSERT INTO checkout_capacitaciones (creado_por, id_curso, id_modalidad, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda) VALUES (:usuario, :curso, :modalidad, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, 1, :precio, :moneda)');
         $insertCap->execute([
             ':usuario' => $usuarioId,
             ':curso' => $cursoId,
+            ':modalidad' => $modalidadId > 0 ? $modalidadId : null,
             ':nombre' => $nombre,
             ':apellido' => $apellido,
             ':email' => $email,
@@ -223,6 +236,8 @@ try {
             'id_capacitacion' => $capacitacionId,
             'id_certificacion' => $tipo === 'certificacion' ? $certificacionId : null,
             'id_curso' => $cursoId,
+            'id_modalidad' => $modalidadId > 0 ? $modalidadId : null,
+            'modalidad_nombre' => $modalidadNombre,
             'tipo_checkout' => $tipo,
             'email' => $email,
         ],
@@ -259,6 +274,7 @@ try {
         'preference' => $preferenceId,
         'monto' => $precio['amount'],
         'moneda' => $precio['currency'],
+        'modalidad' => $modalidadId,
     ]);
 
     $response['success'] = true;

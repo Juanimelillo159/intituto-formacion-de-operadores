@@ -87,8 +87,15 @@ try {
 
         $precio = (float)($capacitacion['precio_total'] ?? 0);
         $moneda = (string)($capacitacion['moneda'] ?? 'ARS');
+        $capModalidadId = (int)($capacitacion['id_modalidad'] ?? 0);
+        $capModalidadNombre = null;
+        if ($capModalidadId > 0) {
+            $modalidadStmt = $con->prepare('SELECT nombre_modalidad FROM modalidades WHERE id_modalidad = :id LIMIT 1');
+            $modalidadStmt->execute([':id' => $capModalidadId]);
+            $capModalidadNombre = $modalidadStmt->fetchColumn() ?: null;
+        }
         if ($precio <= 0) {
-            $precioInfo = mp_fetch_course_price($con, (int)$capacitacion['id_curso'], 'capacitacion');
+            $precioInfo = mp_fetch_course_price($con, (int)$capacitacion['id_curso'], 'capacitacion', $capModalidadId > 0 ? $capModalidadId : null);
             $precio = $precioInfo['amount'];
             $moneda = $precioInfo['currency'];
         }
@@ -169,6 +176,8 @@ try {
                 'id_pago' => $pagoId,
                 'id_capacitacion' => $registroId,
                 'id_curso' => (int)$capacitacion['id_curso'],
+                'id_modalidad' => $capModalidadId > 0 ? $capModalidadId : null,
+                'modalidad_nombre' => $capModalidadNombre,
                 'tipo_checkout' => 'capacitacion',
                 'email' => (string)($capacitacion['email'] ?? ''),
             ],
@@ -205,6 +214,7 @@ try {
             'preference' => $preferenceId,
             'monto' => $precio,
             'moneda' => $moneda,
+            'modalidad' => $capModalidadId,
         ]);
 
         header('Location: ' . $initPoint);

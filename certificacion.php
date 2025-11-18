@@ -16,24 +16,56 @@ function p(?string $v, string $fallback = ''): string
     return $v !== '' ? nl2br(htmlspecialchars($v)) : $fallback;
 }
 
-function obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso): ?array
+function obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso, ?int $modalidadId = null): ?array
 {
-    $sql = $con->prepare(
-        "SELECT precio, moneda, vigente_desde
-           FROM curso_precio_hist
-          WHERE id_curso = :curso
-            AND tipo_curso = :tipo
-            AND vigente_desde <= NOW()
-            AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
-       ORDER BY vigente_desde DESC
-          LIMIT 1"
-    );
-    $sql->execute([
-        ':curso' => $cursoId,
-        ':tipo' => $tipoCurso,
-    ]);
-    $row = $sql->fetch(PDO::FETCH_ASSOC) ?: null;
-    $sql->closeCursor();
+    static $stmtPorModalidad = null;
+    static $stmtGeneral = null;
+
+    if ($modalidadId !== null) {
+        if ($stmtPorModalidad === null) {
+            $stmtPorModalidad = $con->prepare(
+                "SELECT precio, moneda, vigente_desde, id_modalidad
+                   FROM curso_precio_hist
+                  WHERE id_curso = :curso
+                    AND tipo_curso = :tipo
+                    AND id_modalidad = :modalidad
+                    AND vigente_desde <= NOW()
+                    AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+              ORDER BY vigente_desde DESC
+                 LIMIT 1"
+            );
+        }
+
+        $stmtPorModalidad->bindValue(':curso', $cursoId, PDO::PARAM_INT);
+        $stmtPorModalidad->bindValue(':tipo', $tipoCurso, PDO::PARAM_STR);
+        $stmtPorModalidad->bindValue(':modalidad', $modalidadId, PDO::PARAM_INT);
+        $stmtPorModalidad->execute();
+        $modalidadRow = $stmtPorModalidad->fetch(PDO::FETCH_ASSOC) ?: null;
+        $stmtPorModalidad->closeCursor();
+        if ($modalidadRow) {
+            return $modalidadRow;
+        }
+    }
+
+    if ($stmtGeneral === null) {
+        $stmtGeneral = $con->prepare(
+            "SELECT precio, moneda, vigente_desde, id_modalidad
+               FROM curso_precio_hist
+              WHERE id_curso = :curso
+                AND tipo_curso = :tipo
+                AND id_modalidad IS NULL
+                AND vigente_desde <= NOW()
+                AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+          ORDER BY vigente_desde DESC
+             LIMIT 1"
+        );
+    }
+
+    $stmtGeneral->bindValue(':curso', $cursoId, PDO::PARAM_INT);
+    $stmtGeneral->bindValue(':tipo', $tipoCurso, PDO::PARAM_STR);
+    $stmtGeneral->execute();
+    $row = $stmtGeneral->fetch(PDO::FETCH_ASSOC) ?: null;
+    $stmtGeneral->closeCursor();
 
     return $row ?: null;
 }

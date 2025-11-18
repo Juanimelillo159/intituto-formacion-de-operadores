@@ -37,6 +37,13 @@ $curso_modalidades = $sql_curso_modalidades->fetchAll(PDO::FETCH_COLUMN);
 $sql_modalidades = $con->prepare("SELECT * FROM modalidades ORDER BY id_modalidad");
 $sql_modalidades->execute();
 $modalidades = $sql_modalidades->fetchAll(PDO::FETCH_ASSOC);
+$modalidadLabels = [0 => 'General'];
+foreach ($modalidades as $modalidad) {
+  $mid = (int)($modalidad['id_modalidad'] ?? 0);
+  if ($mid > 0) {
+    $modalidadLabels[$mid] = $modalidad['nombre_modalidad'] ?? ('Modalidad ' . $mid);
+  }
+}
 
 // ====== PRECIOS ======
 $tiposPrecio = [
@@ -45,14 +52,14 @@ $tiposPrecio = [
 ];
 
 $sql_hist = $con->prepare("
-  SELECT id, precio, moneda, vigente_desde, vigente_hasta, comentario
+  SELECT id, precio, moneda, vigente_desde, vigente_hasta, comentario, id_modalidad
     FROM curso_precio_hist
    WHERE id_curso = :id
      AND tipo_curso = :tipo
 ORDER BY vigente_desde DESC
 ");
 $sql_vig = $con->prepare("
-  SELECT precio, moneda, vigente_desde, vigente_hasta
+  SELECT precio, moneda, vigente_desde, vigente_hasta, id_modalidad
     FROM curso_precio_hist
    WHERE id_curso = :id
      AND tipo_curso = :tipo
@@ -62,7 +69,7 @@ ORDER BY vigente_desde DESC
    LIMIT 1
 ");
 $sql_next = $con->prepare("
-  SELECT precio, moneda, vigente_desde
+  SELECT precio, moneda, vigente_desde, id_modalidad
     FROM curso_precio_hist
    WHERE id_curso = :id
      AND tipo_curso = :tipo
@@ -363,6 +370,8 @@ function estado_precio($vd, $vh)
                                   <?php $pv = $infoPrecio['vigente']; ?>
                                   <?php if ($pv): ?>
                                     <?php echo 'ARS ' . number_format((float)$pv['precio'], 2, ',', '.'); ?>
+                                    <?php $pvModalidad = (int)($pv['id_modalidad'] ?? 0); ?>
+                                    <span class="d-block small text-muted">Modalidad: <?php echo h($modalidadLabels[$pvModalidad] ?? 'General'); ?></span>
                                     <span class="d-block small text-muted">Desde <?php echo h(fmt_fecha($pv['vigente_desde'])); ?></span>
                                   <?php else: ?>
                                     —
@@ -375,6 +384,8 @@ function estado_precio($vd, $vh)
                                   <?php $pp = $infoPrecio['proximo']; ?>
                                   <?php if ($pp): ?>
                                     <?php echo 'ARS ' . number_format((float)$pp['precio'], 2, ',', '.'); ?>
+                                    <?php $ppModalidad = (int)($pp['id_modalidad'] ?? 0); ?>
+                                    <span class="d-block small text-muted">Modalidad: <?php echo h($modalidadLabels[$ppModalidad] ?? 'General'); ?></span>
                                     <span class="d-block small text-muted">Desde <?php echo h(fmt_fecha($pp['vigente_desde'])); ?></span>
                                   <?php else: ?>
                                     —
@@ -388,6 +399,7 @@ function estado_precio($vd, $vh)
                                 <thead>
                                   <tr>
                                     <th>Estado</th>
+                                    <th>Modalidad</th>
                                     <th>Precio</th>
                                     <th>Moneda</th>
                                     <th>Vigente desde</th>
@@ -398,12 +410,13 @@ function estado_precio($vd, $vh)
                                 <tbody>
                                   <?php if (empty($infoPrecio['historial'])): ?>
                                     <tr>
-                                      <td colspan="6" class="text-center text-muted">Sin registros de precio</td>
+                                      <td colspan="7" class="text-center text-muted">Sin registros de precio</td>
                                     </tr>
                                   <?php else: ?>
                                     <?php foreach ($infoPrecio['historial'] as $p): [$est, $badge] = estado_precio($p['vigente_desde'], $p['vigente_hasta']); ?>
                                       <tr>
                                         <td><span class="badge <?php echo $badge; ?>"><?php echo $est; ?></span></td>
+                                        <td><?php echo h($modalidadLabels[(int)($p['id_modalidad'] ?? 0)] ?? 'General'); ?></td>
                                         <td><?php echo 'ARS ' . number_format((float)$p['precio'], 2, ',', '.'); ?></td>
                                         <td><?php echo h($p['moneda'] ?: 'ARS'); ?></td>
                                         <td><?php echo h(fmt_fecha($p['vigente_desde'])); ?></td>
@@ -431,14 +444,24 @@ function estado_precio($vd, $vh)
                             </select>
                           </div>
                           <div class="form-group col-md-3">
+                            <label for="modalidad_precio_nuevo">Modalidad</label>
+                            <select disabled class="form-control" id="modalidad_precio_nuevo" name="modalidad_precio">
+                              <option value="0">General (todas las modalidades)</option>
+                              <?php foreach ($modalidadLabels as $idModalidad => $labelModalidad): ?>
+                                <?php if ($idModalidad === 0) { continue; } ?>
+                                <option value="<?php echo (int)$idModalidad; ?>"><?php echo h($labelModalidad); ?></option>
+                              <?php endforeach; ?>
+                            </select>
+                          </div>
+                          <div class="form-group col-md-2">
                             <label for="precio_nuevo" class="required-field">Precio (ARS)</label>
                             <input disabled type="text" inputmode="decimal" class="form-control" id="precio_nuevo" name="precio" placeholder="Ej: 120000,00">
                           </div>
-                          <div class="form-group col-md-3">
+                          <div class="form-group col-md-2">
                             <label for="desde_nuevo" class="required-field">Vigente desde</label>
                             <input disabled type="datetime-local" class="form-control" id="desde_nuevo" name="desde" required>
                           </div>
-                          <div class="form-group col-md-3">
+                          <div class="form-group col-md-2">
                             <label for="comentario_nuevo">Comentario (opcional)</label>
                             <input disabled type="text" class="form-control" id="comentario_nuevo" name="comentario" maxlength="255" placeholder="Motivo / nota interna">
                           </div>
@@ -522,7 +545,7 @@ function estado_precio($vd, $vh)
         const ids = [
           'courseName', 'courseDescription', 'courseDuration', 'courseObjectives',
           'programa', 'publico', 'cronograma', 'requisitos', 'observaciones',
-          'tipo_precio_nuevo', 'precio_nuevo', 'desde_nuevo', 'comentario_nuevo'
+          'tipo_precio_nuevo', 'modalidad_precio_nuevo', 'precio_nuevo', 'desde_nuevo', 'comentario_nuevo'
         ];
         ids.forEach(id => {
           const el = document.getElementById(id);
