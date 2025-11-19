@@ -53,7 +53,7 @@ $sql_hist = $con->prepare("
     FROM curso_precio_hist
    WHERE id_curso = :id
      AND tipo_curso = :tipo
-     AND ((:mod IS NULL AND id_modalidad IS NULL) OR id_modalidad = :mod)
+     AND ((:mod_null = 1 AND id_modalidad IS NULL) OR id_modalidad = :mod)
 ORDER BY vigente_desde DESC
 ");
 $sql_vig = $con->prepare("
@@ -61,7 +61,7 @@ $sql_vig = $con->prepare("
     FROM curso_precio_hist
    WHERE id_curso = :id
      AND tipo_curso = :tipo
-     AND ((:mod IS NULL AND id_modalidad IS NULL) OR id_modalidad = :mod)
+     AND ((:mod_null = 1 AND id_modalidad IS NULL) OR id_modalidad = :mod)
      AND vigente_desde <= NOW()
      AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
 ORDER BY vigente_desde DESC
@@ -72,7 +72,7 @@ $sql_next = $con->prepare("
     FROM curso_precio_hist
    WHERE id_curso = :id
      AND tipo_curso = :tipo
-     AND ((:mod IS NULL AND id_modalidad IS NULL) OR id_modalidad = :mod)
+     AND ((:mod_null = 1 AND id_modalidad IS NULL) OR id_modalidad = :mod)
      AND vigente_desde > NOW()
 ORDER BY vigente_desde ASC
    LIMIT 1
@@ -112,7 +112,12 @@ foreach ($tiposPrecio as $tipoClave => $tipoLabel) {
 
   $modalidadesInfo = [];
   foreach ($modalidadesTipo as $modId) {
-    $params = [':id' => $id_curso, ':tipo' => $tipoClave, ':mod' => $modId];
+    $params = [
+      ':id' => $id_curso,
+      ':tipo' => $tipoClave,
+      ':mod' => $modId,
+      ':mod_null' => ($modId === null ? 1 : 0),
+    ];
 
     $sql_hist->execute($params);
     $historialTipo = $sql_hist->fetchAll(PDO::FETCH_ASSOC);
