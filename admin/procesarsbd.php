@@ -1328,6 +1328,8 @@ try {
     /* =============== AGREGAR PRECIO (HISTÓRICO) =============== */
     if ($isAgregarPrecio) {
         $id_curso   = (int)($_POST['id_curso'] ?? 0);
+        $modalidadRaw = $_POST['id_modalidad'] ?? '';
+        $modalidadId = ($modalidadRaw === '' || $modalidadRaw === null) ? null : (int)$modalidadRaw;
         $precioRaw  = $_POST['precio'] ?? null;
         $desdeRaw   = $_POST['desde'] ?? null;
         $tipoPrecio = strtolower(trim((string)($_POST['tipo_precio'] ?? 'capacitacion')));
@@ -1342,6 +1344,13 @@ try {
         $comentario = trim($_POST['comentario'] ?? '') ?: 'Alta manual en curso';
 
         if ($id_curso <= 0) throw new InvalidArgumentException('Curso inválido.');
+        if ($modalidadId !== null) {
+            $modCheck = $con->prepare('SELECT 1 FROM curso_modalidad WHERE id_curso = :c AND id_modalidad = :m LIMIT 1');
+            $modCheck->execute([':c' => $id_curso, ':m' => $modalidadId]);
+            if (!$modCheck->fetchColumn()) {
+                throw new InvalidArgumentException('La modalidad seleccionada no pertenece al curso.');
+            }
+        }
         $precio = normalizar_precio($precioRaw);
         if ($precio === null) throw new InvalidArgumentException('Precio inválido.');
         $desde  = parse_dt_local((string)$desdeRaw);
@@ -1349,8 +1358,8 @@ try {
         $con->beginTransaction();
 
         // (0) no duplicar exacto mismo vigente_desde
-        $st = $con->prepare("SELECT 1 FROM curso_precio_hist WHERE id_curso = :c AND tipo_curso = :t AND vigente_desde = :d LIMIT 1");
-        $st->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':d' => $desde]);
+        $st = $con->prepare("SELECT 1 FROM curso_precio_hist WHERE id_curso = :c AND tipo_curso = :t AND ((:m IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m) AND vigente_desde = :d LIMIT 1");
+        $st->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':m' => $modalidadId, ':d' => $desde]);
         if ($st->fetchColumn()) {
             throw new RuntimeException('Ya existe un precio con esa fecha de vigencia.');
         }
@@ -1361,11 +1370,12 @@ try {
             FROM curso_precio_hist
            WHERE id_curso = :c
              AND tipo_curso = :t
+             AND ((:m IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m)
              AND vigente_desde > :d
         ORDER BY vigente_desde ASC
            LIMIT 1
         ");
-        $stNext->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':d' => $desde]);
+        $stNext->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':m' => $modalidadId, ':d' => $desde]);
         $next = $stNext->fetch();
         $nuevoHasta = null;
         if ($next) {
@@ -1381,19 +1391,21 @@ try {
              SET vigente_hasta = DATE_SUB(:d0, INTERVAL 1 SECOND)
            WHERE id_curso = :c
              AND tipo_curso = :t
+             AND ((:m IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m)
              AND vigente_desde < :d1
              AND (vigente_hasta IS NULL OR vigente_hasta >= :d2)
         ");
-        $up->execute([':d0' => $desde, ':c' => $id_curso, ':t' => $tipoPrecio, ':d1' => $desde, ':d2' => $desde]);
+        $up->execute([':d0' => $desde, ':c' => $id_curso, ':t' => $tipoPrecio, ':m' => $modalidadId, ':d1' => $desde, ':d2' => $desde]);
 
         // (3) insertar nuevo
         $ins = $con->prepare("
-          INSERT INTO curso_precio_hist (id_curso, tipo_curso, precio, moneda, vigente_desde, vigente_hasta, comentario)
-          VALUES (:c, :t, :p, 'ARS', :d, :h, :com)
+          INSERT INTO curso_precio_hist (id_curso, tipo_curso, id_modalidad, precio, moneda, vigente_desde, vigente_hasta, comentario)
+          VALUES (:c, :t, :m, :p, 'ARS', :d, :h, :com)
         ");
         $ins->execute([
             ':c' => $id_curso,
             ':t' => $tipoPrecio,
+            ':m' => $modalidadId,
             ':p' => $precio,
             ':d' => $desde,
             ':h' => $nuevoHasta,
@@ -1401,7 +1413,7 @@ try {
         ]);
 
         $con->commit();
-        log_cursos('agregar_precio_ok', ['id_curso' => $id_curso, 'tipo' => $tipoPrecio, 'precio' => $precio, 'desde' => $desde, 'hasta' => $nuevoHasta]);
+        log_cursos('agregar_precio_ok', ['id_curso' => $id_curso, 'tipo' => $tipoPrecio, 'modalidad' => $modalidadId, 'precio' => $precio, 'desde' => $desde, 'hasta' => $nuevoHasta]);
 
         header('Location: curso.php?id_curso=' . $id_curso . '&tab=precios&saved=1');
         exit;
