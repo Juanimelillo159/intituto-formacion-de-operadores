@@ -1358,8 +1358,8 @@ try {
         $con->beginTransaction();
 
         // (0) no duplicar exacto mismo vigente_desde
-        $st = $con->prepare("SELECT 1 FROM curso_precio_hist WHERE id_curso = :c AND tipo_curso = :t AND ((:m IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m) AND vigente_desde = :d LIMIT 1");
-        $st->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':m' => $modalidadId, ':d' => $desde]);
+        $st = $con->prepare("SELECT 1 FROM curso_precio_hist WHERE id_curso = :c AND tipo_curso = :t AND ((:m_null IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m_val) AND vigente_desde = :d LIMIT 1");
+        $st->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':m_null' => $modalidadId, ':m_val' => $modalidadId, ':d' => $desde]);
         if ($st->fetchColumn()) {
             throw new RuntimeException('Ya existe un precio con esa fecha de vigencia.');
         }
@@ -1370,12 +1370,12 @@ try {
             FROM curso_precio_hist
            WHERE id_curso = :c
              AND tipo_curso = :t
-             AND ((:m IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m)
+             AND ((:m_null IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m_val)
              AND vigente_desde > :d
         ORDER BY vigente_desde ASC
            LIMIT 1
         ");
-        $stNext->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':m' => $modalidadId, ':d' => $desde]);
+        $stNext->execute([':c' => $id_curso, ':t' => $tipoPrecio, ':m_null' => $modalidadId, ':m_val' => $modalidadId, ':d' => $desde]);
         $next = $stNext->fetch();
         $nuevoHasta = null;
         if ($next) {
@@ -1391,11 +1391,19 @@ try {
              SET vigente_hasta = DATE_SUB(:d0, INTERVAL 1 SECOND)
            WHERE id_curso = :c
              AND tipo_curso = :t
-             AND ((:m IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m)
+             AND ((:m_null IS NULL AND id_modalidad IS NULL) OR id_modalidad = :m_val)
              AND vigente_desde < :d1
              AND (vigente_hasta IS NULL OR vigente_hasta >= :d2)
         ");
-        $up->execute([':d0' => $desde, ':c' => $id_curso, ':t' => $tipoPrecio, ':m' => $modalidadId, ':d1' => $desde, ':d2' => $desde]);
+        $up->execute([
+            ':d0' => $desde,
+            ':c'  => $id_curso,
+            ':t'  => $tipoPrecio,
+            ':m_null' => $modalidadId,
+            ':m_val'  => $modalidadId,
+            ':d1' => $desde,
+            ':d2' => $desde
+        ]);
 
         // (3) insertar nuevo
         $ins = $con->prepare("
