@@ -132,7 +132,7 @@ function mp_log(string $event, array $context = [], ?Throwable $error = null): v
 /**
  * Recupera el precio vigente del curso solicitado.
  */
-function mp_fetch_course_price(PDO $con, int $courseId, string $tipoCurso = 'capacitacion'): array
+function mp_fetch_course_price(PDO $con, int $courseId, string $tipoCurso = 'capacitacion', ?int $modalidadId = null): array
 {
     $tipoCurso = strtolower(trim($tipoCurso));
     if (!in_array($tipoCurso, ['capacitacion', 'certificacion'], true)) {
@@ -145,31 +145,60 @@ function mp_fetch_course_price(PDO $con, int $courseId, string $tipoCurso = 'cap
     }
 
     foreach ($tiposConsulta as $tipo) {
-        $sql = <<<SQL
-            SELECT precio, moneda
-              FROM curso_precio_hist
-             WHERE id_curso = :curso
-               AND tipo_curso = :tipo
-               AND vigente_desde <= NOW()
-               AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
-          ORDER BY vigente_desde DESC
-             LIMIT 1
-        SQL;
-        $st = $con->prepare($sql);
-        $st->execute([
-            ':curso' => $courseId,
-            ':tipo' => $tipo,
-        ]);
-        $row = $st->fetch(PDO::FETCH_ASSOC);
+        $queries = [];
+        if ($modalidadId !== null) {
+            $queries[] = [
+                'sql' => <<<SQL
+                    SELECT precio, moneda
+                      FROM curso_precio_hist
+                     WHERE id_curso = :curso
+                       AND tipo_curso = :tipo
+                       AND id_modalidad = :modalidad
+                       AND vigente_desde <= NOW()
+                       AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+                  ORDER BY vigente_desde DESC
+                     LIMIT 1
+                SQL,
+                'params' => [
+                    ':curso' => $courseId,
+                    ':tipo' => $tipo,
+                    ':modalidad' => $modalidadId,
+                ],
+            ];
+        }
 
-        if ($row && isset($row['precio'])) {
-            $price = (float) $row['precio'];
-            if ($price > 0) {
-                return [
-                    'amount' => $price,
-                    'currency' => strtoupper((string) ($row['moneda'] ?? 'ARS')),
-                    'source' => 'hist',
-                ];
+        $queries[] = [
+            'sql' => <<<SQL
+                SELECT precio, moneda
+                  FROM curso_precio_hist
+                 WHERE id_curso = :curso
+                   AND tipo_curso = :tipo
+                   AND id_modalidad IS NULL
+                   AND vigente_desde <= NOW()
+                   AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+              ORDER BY vigente_desde DESC
+                 LIMIT 1
+            SQL,
+            'params' => [
+                ':curso' => $courseId,
+                ':tipo' => $tipo,
+            ],
+        ];
+
+        foreach ($queries as $query) {
+            $st = $con->prepare($query['sql']);
+            $st->execute($query['params']);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+
+            if ($row && isset($row['precio'])) {
+                $price = (float) $row['precio'];
+                if ($price > 0) {
+                    return [
+                        'amount' => $price,
+                        'currency' => strtoupper((string) ($row['moneda'] ?? 'ARS')),
+                        'source' => 'hist',
+                    ];
+                }
             }
         }
     }

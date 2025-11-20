@@ -52,6 +52,7 @@ try {
     }
 
     $cursoId = (int)($_POST['id_curso'] ?? 0);
+    $modalidadId = isset($_POST['id_modalidad']) ? (int)$_POST['id_modalidad'] : 0;
     $certificacionId = (int)($_POST['id_certificacion'] ?? 0);
     $nombre = trim((string)($_POST['nombre_insc'] ?? ''));
     $apellido = trim((string)($_POST['apellido_insc'] ?? ''));
@@ -91,7 +92,16 @@ try {
     }
 
     $tipoPrecio = $tipo === 'certificacion' ? 'certificacion' : 'capacitacion';
-    $precio = mp_fetch_course_price($con, $cursoId, $tipoPrecio);
+
+    if ($modalidadId > 0) {
+        $modStmt = $con->prepare('SELECT 1 FROM curso_modalidad WHERE id_curso = :curso AND id_modalidad = :modalidad LIMIT 1');
+        $modStmt->execute([':curso' => $cursoId, ':modalidad' => $modalidadId]);
+        if (!$modStmt->fetchColumn()) {
+            $modalidadId = 0;
+        }
+    }
+
+    $precio = mp_fetch_course_price($con, $cursoId, $tipoPrecio, $modalidadId > 0 ? $modalidadId : null);
     if ($precio['amount'] <= 0) {
         $precio['amount'] = (float)($_POST['precio_checkout'] ?? 0);
         $precio['currency'] = strtoupper((string)($_POST['moneda_checkout'] ?? 'ARS'));
@@ -155,10 +165,11 @@ try {
         $capacitacionId = null;
         $registroId = $certificacionId;
     } else {
-        $insertCap = $con->prepare('INSERT INTO checkout_capacitaciones (creado_por, id_curso, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda) VALUES (:usuario, :curso, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, 1, :precio, :moneda)');
+        $insertCap = $con->prepare('INSERT INTO checkout_capacitaciones (creado_por, id_curso, id_modalidad, nombre, apellido, email, telefono, dni, direccion, ciudad, provincia, pais, acepta_tyc, precio_total, moneda) VALUES (:usuario, :curso, :modalidad, :nombre, :apellido, :email, :telefono, :dni, :direccion, :ciudad, :provincia, :pais, 1, :precio, :moneda)');
         $insertCap->execute([
             ':usuario' => $usuarioId,
             ':curso' => $cursoId,
+            ':modalidad' => $modalidadId > 0 ? $modalidadId : null,
             ':nombre' => $nombre,
             ':apellido' => $apellido,
             ':email' => $email,
@@ -223,6 +234,7 @@ try {
             'id_capacitacion' => $capacitacionId,
             'id_certificacion' => $tipo === 'certificacion' ? $certificacionId : null,
             'id_curso' => $cursoId,
+            'id_modalidad' => $modalidadId > 0 ? $modalidadId : null,
             'tipo_checkout' => $tipo,
             'email' => $email,
         ],
