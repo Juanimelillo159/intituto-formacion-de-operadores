@@ -1196,9 +1196,11 @@ include '../head.php';
                                                     <div class="bank-data">
                                                         <strong>Datos bancarios</strong>
                                                         <ul class="mb-0 mt-2 ps-3">
-                                                            <li>Banco: Tu Banco</li>
-                                                            <li>CBU: 0000000000000000000000</li>
-                                                            <li>Alias: tuempresa.cursos</li>
+                                                            <li>Banco: BBVA</li>
+                                                            <li>Cuit: 30718334108</li>
+                                                            <li>Razon social: BBS SRL</li>
+                                                            <li>CBU: 0170387820000001094196</li>
+                                                            <li>Cuenta: CC $ 387-010941/9</li>
                                                         </ul>
                                                     </div>
                                                     <div class="row g-3">
