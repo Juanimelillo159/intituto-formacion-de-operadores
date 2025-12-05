@@ -40,12 +40,24 @@ $sql_modalidades->execute();
 $modalidades = $sql_modalidades->fetchAll(PDO::FETCH_ASSOC);
 $modalidad_nombres = array_map(fn($v) => htmlspecialchars($v['modalidad_nombre']), $modalidades);
 $modalidad_nombres_str = implode(' - ', $modalidad_nombres);
+$modalidadesIds = array_map(fn($m) => (int)($m['modalidad_id'] ?? 0), $modalidades);
+$modalidadSeleccionada = filter_input(INPUT_GET, 'modalidad', FILTER_VALIDATE_INT);
+if ($modalidadSeleccionada === false || $modalidadSeleccionada === null || !in_array($modalidadSeleccionada, $modalidadesIds, true)) {
+    $modalidadSeleccionada = $modalidadesIds[0] ?? null;
+}
+
+$modalidadPrecios = [];
+if (!empty($curso['id_curso'])) {
+    foreach ($modalidadesIds as $modalidadId) {
+        $modalidadPrecios[$modalidadId] = obtener_precio_vigente($con, (int)$curso['id_curso'], 'capacitacion', $modalidadId);
+    }
+}
 
 $precio_capacitacion = null;
 $enlaceCheckoutCapacitacion = 0;
 if (!empty($curso['id_curso'])) {
     $cursoId = (int)$curso['id_curso'];
-    $precio_capacitacion = obtener_precio_vigente($con, $cursoId, 'capacitacion');
+    $precio_capacitacion = obtener_precio_vigente($con, $cursoId, 'capacitacion', $modalidadSeleccionada);
     $enlaceCheckoutCapacitacion = $cursoId;
 }
 $inscripcion_capacitacion_disponible = $precio_capacitacion !== null && $enlaceCheckoutCapacitacion > 0;
@@ -76,26 +88,58 @@ function p(?string $v, string $fallback = ''): string
     return $v !== '' ? nl2br(htmlspecialchars($v)) : $fallback;
 }
 
-function obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso): ?array
+function obtener_precio_vigente(PDO $con, int $cursoId, string $tipoCurso, ?int $modalidadId = null): ?array
 {
-    $sql = $con->prepare(
-        "SELECT precio, moneda, vigente_desde
-           FROM curso_precio_hist
-          WHERE id_curso = :curso
-            AND tipo_curso = :tipo
-            AND vigente_desde <= NOW()
-            AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
-       ORDER BY vigente_desde DESC
-          LIMIT 1"
-    );
-    $sql->execute([
-        ':curso' => $cursoId,
-        ':tipo' => $tipoCurso,
-    ]);
-    $row = $sql->fetch(PDO::FETCH_ASSOC) ?: null;
-    $sql->closeCursor();
+    $queries = [];
 
-    return $row ?: null;
+    if ($modalidadId !== null) {
+        $queries[] = [
+            'sql' => "SELECT precio, moneda, vigente_desde
+                         FROM curso_precio_hist
+                        WHERE id_curso = :curso
+                          AND tipo_curso = :tipo
+                          AND id_modalidad = :modalidad
+                          AND vigente_desde <= NOW()
+                          AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+                    ORDER BY vigente_desde DESC
+                       LIMIT 1",
+            'params' => [
+                ':curso' => $cursoId,
+                ':tipo' => $tipoCurso,
+                ':modalidad' => $modalidadId,
+            ],
+        ];
+    }
+
+    // Fallback a precio general (sin modalidad específica)
+    $queries[] = [
+        'sql' => "SELECT precio, moneda, vigente_desde
+                     FROM curso_precio_hist
+                    WHERE id_curso = :curso
+                      AND tipo_curso = :tipo
+                      AND id_modalidad IS NULL
+                      AND vigente_desde <= NOW()
+                      AND (vigente_hasta IS NULL OR vigente_hasta > NOW())
+                ORDER BY vigente_desde DESC
+                   LIMIT 1",
+        'params' => [
+            ':curso' => $cursoId,
+            ':tipo' => $tipoCurso,
+        ],
+    ];
+
+    foreach ($queries as $query) {
+        $sql = $con->prepare($query['sql']);
+        $sql->execute($query['params']);
+        $row = $sql->fetch(PDO::FETCH_ASSOC) ?: null;
+        $sql->closeCursor();
+
+        if ($row) {
+            return $row;
+        }
+    }
+
+    return null;
 }
 
 // Meta dinámicos
@@ -213,7 +257,7 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                     <div class="price-summary-item">
                                         <div>
                                             <div class="price-summary-label">Capacitación</div>
-                                            <div class="price-summary-note">
+                                            <div class="price-summary-note" id="priceNote">
                                                 <?php if ($precio_capacitacion): ?>
                                                     <?php if (!empty($precio_capacitacion['vigente_desde'])): ?>
                                                         Vigente desde <?php echo date('d/m/Y H:i', strtotime($precio_capacitacion['vigente_desde'])); ?>
@@ -225,7 +269,7 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                                 <?php endif; ?>
                                             </div>
                                         </div>
-                                        <div class="price-summary-value">
+                                        <div class="price-summary-value" id="priceValue">
                                             <?php if ($precio_capacitacion): ?>
                                                 <?php echo strtoupper($precio_capacitacion['moneda'] ?? 'ARS'); ?> <?php echo number_format((float)$precio_capacitacion['precio'], 2, ',', '.'); ?>
                                             <?php else: ?>
@@ -244,12 +288,40 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                 </div>
                             </div>
 
-                            <div class="detail-item">
-                                <div class="detail-icon"><i class="fas fa-laptop"></i></div>
-                                <div class="detail-content">
-                                    <div class="detail-label">Modalidad</div>
-                                    <div class="detail-value"><?php echo $modalidad_nombres_str ?: 'Presencial'; ?></div>
+                            <div class="detail-item flex-column align-items-start">
+                                <div class="d-flex align-items-center w-100">
+                                    <div class="detail-icon"><i class="fas fa-laptop"></i></div>
+                                    <div class="detail-content flex-grow-1">
+                                        <div class="detail-label">Modalidad</div>
+                                        <div class="detail-value" id="modalidadLabel"><?php echo $modalidad_nombres_str ?: 'Presencial'; ?></div>
+                                    </div>
                                 </div>
+                                <?php if (!empty($modalidadesIds)): ?>
+                                    <label class="mt-2 w-100" for="modalidadSelect">Elegí la modalidad</label>
+                                    <select class="form-select" id="modalidadSelect" name="modalidad">
+                                        <?php foreach ($modalidades as $modalidad):
+                                            $idModalidad = (int)($modalidad['modalidad_id'] ?? 0);
+                                            $precioModalidad = $modalidadPrecios[$idModalidad] ?? null;
+                                            $precioTexto = $precioModalidad
+                                                ? number_format((float)$precioModalidad['precio'], 2, ',', '.')
+                                                : '';
+                                            $monedaModalidad = strtoupper($precioModalidad['moneda'] ?? 'ARS');
+                                            $vigenciaTexto = '';
+                                            if ($precioModalidad && !empty($precioModalidad['vigente_desde'])) {
+                                                $vigenciaTexto = 'Vigente desde ' . date('d/m/Y H:i', strtotime($precioModalidad['vigente_desde']));
+                                            }
+                                            ?>
+                                            <option value="<?php echo $idModalidad; ?>" data-precio="<?php echo $precioTexto; ?>" data-moneda="<?php echo $monedaModalidad; ?>" data-vigencia="<?php echo htmlspecialchars($vigenciaTexto, ENT_QUOTES, 'UTF-8'); ?>" <?php echo ($modalidadSeleccionada === $idModalidad) ? 'selected' : ''; ?>>
+                                                <?php echo htmlspecialchars($modalidad['modalidad_nombre'], ENT_QUOTES, 'UTF-8'); ?>
+                                                <?php if ($precioTexto): ?>
+                                                    — <?php echo $monedaModalidad . ' ' . $precioTexto; ?>
+                                                <?php else: ?>
+                                                    — Precio a confirmar
+                                                <?php endif; ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php endif; ?>
                             </div>
 
                             <!-- Si deseas mostrar complejidad -->
@@ -264,7 +336,7 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                             <?php endif; ?>
 
                             <?php if ($inscripcion_capacitacion_disponible): ?>
-                                <a class="enroll-button" href="checkout/checkout.php?id_curso=<?php echo $enlaceCheckoutCapacitacion; ?>&amp;tipo=capacitacion">
+                                <a class="enroll-button" id="inscripcionBtn" data-base-url="checkout/checkout.php?id_curso=<?php echo $enlaceCheckoutCapacitacion; ?>&amp;tipo=capacitacion" href="checkout/checkout.php?id_curso=<?php echo $enlaceCheckoutCapacitacion; ?>&amp;tipo=capacitacion<?php echo $modalidadSeleccionada ? '&amp;modalidad=' . $modalidadSeleccionada : ''; ?>">
                                     <i class="fas fa-user-plus me-2"></i>Inscribirse Ahora
                                 </a>
                             <?php else: ?>
@@ -294,6 +366,45 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                     el.style.transform = 'translateY(0)';
                 }, i * 200);
             });
+
+            const modalidadSelect = document.getElementById('modalidadSelect');
+            const priceValue = document.getElementById('priceValue');
+            const priceNote = document.getElementById('priceNote');
+            const inscripcionBtn = document.getElementById('inscripcionBtn');
+
+            const updateModalidadInfo = () => {
+                if (!modalidadSelect) {
+                    return;
+                }
+                const selected = modalidadSelect.options[modalidadSelect.selectedIndex];
+                const price = selected ? selected.dataset.precio : '';
+                const moneda = selected ? selected.dataset.moneda : '';
+                const vigencia = selected ? selected.dataset.vigencia : '';
+                const modalidadId = selected ? selected.value : '';
+
+                if (priceValue) {
+                    priceValue.textContent = price ? `${moneda} ${price}` : '—';
+                }
+                if (priceNote) {
+                    if (price) {
+                        priceNote.textContent = vigencia || 'Precio vigente disponible en el sistema.';
+                    } else {
+                        priceNote.textContent = 'Precio a confirmar con el equipo comercial.';
+                    }
+                }
+                if (inscripcionBtn && inscripcionBtn.dataset.baseUrl) {
+                    const url = new URL(inscripcionBtn.dataset.baseUrl, window.location.origin);
+                    if (modalidadId) {
+                        url.searchParams.set('modalidad', modalidadId);
+                    }
+                    inscripcionBtn.href = url.pathname + url.search;
+                }
+            };
+
+            if (modalidadSelect) {
+                modalidadSelect.addEventListener('change', updateModalidadInfo);
+                updateModalidadInfo();
+            }
         });
     </script>
 </body>

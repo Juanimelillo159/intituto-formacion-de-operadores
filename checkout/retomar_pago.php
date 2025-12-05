@@ -85,10 +85,11 @@ try {
             $cursoNombre = 'Curso #' . (int)$capacitacion['id_curso'];
         }
 
+        $modalidadId = (int)($capacitacion['id_modalidad'] ?? 0);
         $precio = (float)($capacitacion['precio_total'] ?? 0);
         $moneda = (string)($capacitacion['moneda'] ?? 'ARS');
         if ($precio <= 0) {
-            $precioInfo = mp_fetch_course_price($con, (int)$capacitacion['id_curso'], 'capacitacion');
+            $precioInfo = mp_fetch_course_price($con, (int)$capacitacion['id_curso'], 'capacitacion', $modalidadId > 0 ? $modalidadId : null);
             $precio = $precioInfo['amount'];
             $moneda = $precioInfo['currency'];
         }
