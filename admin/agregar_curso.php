@@ -70,18 +70,18 @@ include '../admin/footer.php';
                                 <div class="card-header p-0 pt-1 border-bottom-0">
                                     <ul class="nav nav-tabs" id="tabs-curso" role="tablist">
                                         <li class="nav-item">
-                                            <a class="nav-link active" id="capacitacion-tab" data-toggle="tab" href="#info-cap" role="tab" aria-controls="info-cap" aria-selected="true">
-                                                <i class="fas fa-chalkboard-teacher"></i> Información de Capacitación
+                                            <a class="nav-link active" id="capacitacion-tab" data-toggle="tab" href="#info-cap" role="tab" aria-controls="info-cap" aria-selected="true" aria-label="Información de Capacitación">
+                                                <i class="fas fa-chalkboard-teacher"></i>
                                             </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" id="certificacion-tab" data-toggle="tab" href="#info-cert" role="tab" aria-controls="info-cert" aria-selected="false">
-                                                <i class="fas fa-certificate"></i> Información de Certificación
+                                            <a class="nav-link" id="certificacion-tab" data-toggle="tab" href="#info-cert" role="tab" aria-controls="info-cert" aria-selected="false" aria-label="Información de Certificación">
+                                                <i class="fas fa-certificate"></i>
                                             </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" id="configuracion-tab" data-toggle="tab" href="#configuracion" role="tab" aria-controls="configuracion" aria-selected="false">
-                                                <i class="fas fa-cogs"></i> Configuración
+                                            <a class="nav-link" id="configuracion-tab" data-toggle="tab" href="#configuracion" role="tab" aria-controls="configuracion" aria-selected="false" aria-label="Configuración">
+                                                <i class="fas fa-cogs"></i>
                                             </a>
                                         </li>
                                     </ul>

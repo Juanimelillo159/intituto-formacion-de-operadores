@@ -194,6 +194,31 @@ function estado_precio($vd, $vh)
       content: " *";
       color: #dc3545;
     }
+
+    .course-header h1 {
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .edit-name-btn {
+      border: none;
+      background: transparent;
+      color: #fff;
+      padding: 6px;
+      border-radius: 6px;
+      transition: background-color 0.2s ease;
+    }
+
+    .edit-name-btn:hover,
+    .edit-name-btn:focus {
+      background-color: rgba(255, 255, 255, 0.15);
+      outline: none;
+      color: #fff;
+    }
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -226,7 +251,12 @@ function estado_precio($vd, $vh)
               <i class="fas fa-eye"></i> Modo Vista
             </div>
             <div class="course-id">Curso ID: #<?php echo $id_curso ?></div>
-            <h1 class="mb-1"><?php echo h($nombre) ?></h1>
+            <h1 class="mb-1">
+              <?php echo h($nombre) ?>
+              <button type="button" class="edit-name-btn" id="btnEditarNombre" aria-label="Editar curso">
+                <i class="fas fa-pencil-alt"></i>
+              </button>
+            </h1>
             <p class="mb-0">
               <i class="fas fa-clock"></i> <?php echo h($duracion) ?>
             </p>
@@ -238,23 +268,23 @@ function estado_precio($vd, $vh)
                 <div class="card-header p-0 border-bottom-0">
                   <ul class="nav nav-tabs" id="custom-tabs" role="tablist">
                     <li class="nav-item">
-                      <a class="nav-link active" id="cap-tab" data-toggle="pill" href="#cap-info" role="tab">
-                        <i class="fas fa-chalkboard-teacher"></i> Información de Capacitación
+                      <a class="nav-link active" id="cap-tab" data-toggle="pill" href="#cap-info" role="tab" aria-label="Información de Capacitación">
+                        <i class="fas fa-chalkboard-teacher"></i>
                       </a>
                     </li>
                     <li class="nav-item">
-                      <a class="nav-link" id="cert-tab" data-toggle="pill" href="#cert-info" role="tab">
-                        <i class="fas fa-certificate"></i> Información de Certificación
+                      <a class="nav-link" id="cert-tab" data-toggle="pill" href="#cert-info" role="tab" aria-label="Información de Certificación">
+                        <i class="fas fa-certificate"></i>
                       </a>
                     </li>
                     <li class="nav-item">
-                      <a class="nav-link" id="config-tab" data-toggle="pill" href="#course-config" role="tab">
-                        <i class="fas fa-cogs"></i> Configuración
+                      <a class="nav-link" id="config-tab" data-toggle="pill" href="#course-config" role="tab" aria-label="Configuración">
+                        <i class="fas fa-cogs"></i>
                       </a>
                     </li>
                     <li class="nav-item">
-                      <a class="nav-link" id="prices-tab" data-toggle="pill" href="#course-prices" role="tab">
-                        <i class="fas fa-dollar-sign"></i> Precios
+                      <a class="nav-link" id="prices-tab" data-toggle="pill" href="#course-prices" role="tab" aria-label="Precios">
+                        <i class="fas fa-dollar-sign"></i>
                       </a>
                     </li>
                   </ul>
@@ -552,6 +582,7 @@ function estado_precio($vd, $vh)
       const btnCancelar = document.getElementById('btnCancelar');
       const btnVolver = document.getElementById('btnVolver');
       const btnGuardarPrecio = document.getElementById('btnGuardarPrecio');
+      const btnEditarNombre = document.getElementById('btnEditarNombre');
       const accion = document.getElementById('__accion');
 
       // ---- NUEVOS FLAGS ----
@@ -740,6 +771,10 @@ function estado_precio($vd, $vh)
           icon: 'success',
           title: 'Cambios descartados'
         });
+      });
+
+      btnEditarNombre?.addEventListener('click', () => {
+        btnEditar?.click();
       });
 
       // ---- GUARDAR CURSO ----
