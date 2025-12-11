@@ -251,9 +251,10 @@ function estado_precio($vd, $vh)
               <i class="fas fa-eye"></i> Modo Vista
             </div>
             <div class="course-id">Curso ID: #<?php echo $id_curso ?></div>
-            <h1 class="mb-1">
-              <?php echo h($nombre) ?>
-              <button type="button" class="edit-name-btn" id="btnEditarNombre" aria-label="Editar curso">
+            <h1 class="mb-1 d-flex align-items-center flex-wrap" style="gap: 10px;">
+              <span id="courseNameText"><?php echo h($nombre) ?></span>
+              <input required disabled form="form" value="<?php echo h($nombre) ?>" type="text" class="form-control form-control-sm d-none" id="courseName" name="nombre">
+              <button type="button" class="edit-name-btn" id="btnEditarNombre" aria-label="Editar nombre del curso">
                 <i class="fas fa-pencil-alt"></i>
               </button>
             </h1>
@@ -269,22 +270,22 @@ function estado_precio($vd, $vh)
                   <ul class="nav nav-tabs" id="custom-tabs" role="tablist">
                     <li class="nav-item">
                       <a class="nav-link active" id="cap-tab" data-toggle="pill" href="#cap-info" role="tab" aria-label="Información de Capacitación">
-                        <i class="fas fa-chalkboard-teacher"></i>
+                        <i class="fas fa-chalkboard-teacher"></i> Capacitación
                       </a>
                     </li>
                     <li class="nav-item">
                       <a class="nav-link" id="cert-tab" data-toggle="pill" href="#cert-info" role="tab" aria-label="Información de Certificación">
-                        <i class="fas fa-certificate"></i>
+                        <i class="fas fa-certificate"></i> Certificación
                       </a>
                     </li>
                     <li class="nav-item">
                       <a class="nav-link" id="config-tab" data-toggle="pill" href="#course-config" role="tab" aria-label="Configuración">
-                        <i class="fas fa-cogs"></i>
+                        <i class="fas fa-cogs"></i> Configuración
                       </a>
                     </li>
                     <li class="nav-item">
                       <a class="nav-link" id="prices-tab" data-toggle="pill" href="#course-prices" role="tab" aria-label="Precios">
-                        <i class="fas fa-dollar-sign"></i>
+                        <i class="fas fa-dollar-sign"></i> Precios
                       </a>
                     </li>
                   </ul>
@@ -301,12 +302,6 @@ function estado_precio($vd, $vh)
                     <div class="tab-pane fade show active" id="cap-info" role="tabpanel">
                       <div class="card-body">
                         <div class="row">
-                          <div class="col-md-6">
-                            <div class="form-group">
-                              <label for="courseName" class="required-field"><i class="fas fa-tag"></i> Nombre del Curso</label>
-                              <input required disabled value="<?php echo h($nombre) ?>" type="text" class="form-control" id="courseName" name="nombre">
-                            </div>
-                          </div>
                           <div class="col-md-6">
                             <div class="form-group">
                               <label for="courseDuration" class="required-field"><i class="fas fa-clock"></i> Duración (Capacitación)</label>
@@ -583,6 +578,9 @@ function estado_precio($vd, $vh)
       const btnVolver = document.getElementById('btnVolver');
       const btnGuardarPrecio = document.getElementById('btnGuardarPrecio');
       const btnEditarNombre = document.getElementById('btnEditarNombre');
+      const courseNameInput = document.getElementById('courseName');
+      const courseNameText = document.getElementById('courseNameText');
+      const originalName = courseNameInput ? courseNameInput.value : '';
       const accion = document.getElementById('__accion');
 
       // ---- NUEVOS FLAGS ----
@@ -623,6 +621,18 @@ function estado_precio($vd, $vh)
         });
         document.querySelectorAll('input[type="checkbox"][name="modalidades[]"]').forEach(cb => cb.disabled = disabled);
         form.classList.toggle('edit-mode', !disabled);
+      }
+
+      function toggleCourseNameDisplay(editing) {
+        if (!courseNameInput || !courseNameText) return;
+        if (editing) {
+          courseNameText.classList.add('d-none');
+          courseNameInput.classList.remove('d-none');
+        } else {
+          courseNameInput.classList.add('d-none');
+          courseNameText.classList.remove('d-none');
+          courseNameText.textContent = courseNameInput.value;
+        }
       }
 
       function setButtons(editMode) {
@@ -745,7 +755,8 @@ function estado_precio($vd, $vh)
         setDisabledAll(false);
         setButtons(true);
         setStatus(true);
-        document.getElementById('courseName')?.focus();
+        toggleCourseNameDisplay(true);
+        courseNameInput?.focus();
       });
 
       btnCancelar?.addEventListener('click', async () => {
@@ -763,6 +774,8 @@ function estado_precio($vd, $vh)
         setDisabledAll(true);
         setButtons(false);
         setStatus(false);
+        if (courseNameInput) courseNameInput.value = originalName;
+        toggleCourseNameDisplay(false);
         Swal.fire({
           toast: true,
           position: 'top-end',
@@ -776,6 +789,8 @@ function estado_precio($vd, $vh)
       btnEditarNombre?.addEventListener('click', () => {
         btnEditar?.click();
       });
+
+      toggleCourseNameDisplay(false);
 
       // ---- GUARDAR CURSO ----
       btnGuardar?.addEventListener('click', async () => {

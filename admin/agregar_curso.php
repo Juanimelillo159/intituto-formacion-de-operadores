@@ -70,18 +70,18 @@ include '../admin/footer.php';
                                 <div class="card-header p-0 pt-1 border-bottom-0">
                                     <ul class="nav nav-tabs" id="tabs-curso" role="tablist">
                                         <li class="nav-item">
-                                            <a class="nav-link active" id="capacitacion-tab" data-toggle="tab" href="#info-cap" role="tab" aria-controls="info-cap" aria-selected="true" aria-label="Información de Capacitación">
-                                                <i class="fas fa-chalkboard-teacher"></i>
+                                            <a class="nav-link active" id="capacitacion-tab" data-toggle="tab" href="#info-cap" role="tab" aria-controls="info-cap" aria-selected="true">
+                                                <i class="fas fa-chalkboard-teacher"></i> Capacitación
                                             </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" id="certificacion-tab" data-toggle="tab" href="#info-cert" role="tab" aria-controls="info-cert" aria-selected="false" aria-label="Información de Certificación">
-                                                <i class="fas fa-certificate"></i>
+                                            <a class="nav-link" id="certificacion-tab" data-toggle="tab" href="#info-cert" role="tab" aria-controls="info-cert" aria-selected="false">
+                                                <i class="fas fa-certificate"></i> Certificación
                                             </a>
                                         </li>
                                         <li class="nav-item">
-                                            <a class="nav-link" id="configuracion-tab" data-toggle="tab" href="#configuracion" role="tab" aria-controls="configuracion" aria-selected="false" aria-label="Configuración">
-                                                <i class="fas fa-cogs"></i>
+                                            <a class="nav-link" id="configuracion-tab" data-toggle="tab" href="#configuracion" role="tab" aria-controls="configuracion" aria-selected="false">
+                                                <i class="fas fa-cogs"></i> Configuración
                                             </a>
                                         </li>
                                     </ul>
@@ -89,6 +89,12 @@ include '../admin/footer.php';
 
                                 <div class="card-body">
                                     <form action="procesarsbd.php" method="POST" id="courseForm">
+                                        <div class="form-group">
+                                            <label for="courseName" class="required-field"><i class="fas fa-graduation-cap"></i> Nombre del Curso</label>
+                                            <input required type="text" class="form-control form-control-lg" id="courseName" name="nombre" placeholder="Ingrese el nombre del curso">
+                                            <small class="form-text text-muted">Nombre descriptivo y atractivo del curso</small>
+                                        </div>
+
                                         <div class="tab-content" id="tabs-curso-content">
 
                                             <!-- TAB CAPACITACIÓN -->
@@ -96,19 +102,10 @@ include '../admin/footer.php';
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label for="courseName" class="required-field"><i class="fas fa-graduation-cap"></i> Nombre del Curso</label>
-                        <input required type="text" class="form-control form-control-lg" id="courseName" name="nombre" placeholder="Ingrese el nombre del curso">
-                        <small class="form-text text-muted">Nombre descriptivo y atractivo del curso</small>
-                    </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="form-group">
                         <label for="courseDuration" class="required-field"><i class="fas fa-clock"></i> Duración (Capacitación)</label>
                         <input required type="text" class="form-control" id="courseDuration" name="duracion" placeholder="Ej: 20 horas, 3 semanas">
                     </div>
                 </div>
-            </div>
 
             <div class="form-group">
                 <label for="courseDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Capacitación)</label>
