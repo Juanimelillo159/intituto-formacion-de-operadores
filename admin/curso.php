@@ -28,6 +28,16 @@ $cronograma    = $curso["cronograma"] ?? '';
 $requisitos    = $curso["requisitos"] ?? '';
 $observaciones = $curso["observaciones"] ?? '';
 
+// Información específica para certificación
+$descripcionCertificacion   = $curso["descripcion_certificacion"] ?? $descripcion;
+$duracionCertificacion      = $curso["duracion_certificacion"] ?? $duracion;
+$objetivosCertificacion     = $curso["objetivos_certificacion"] ?? $objetivos;
+$programaCertificacion      = $curso["programa_certificacion"] ?? $programa;
+$publicoCertificacion       = $curso["publico_certificacion"] ?? $publico;
+$cronogramaCertificacion    = $curso["cronograma_certificacion"] ?? $cronograma;
+$requisitosCertificacion    = $curso["requisitos_certificacion"] ?? $requisitos;
+$observacionesCertificacion = $curso["observaciones_certificacion"] ?? $observaciones;
+
 // Modalidades
 $sql_curso_modalidades = $con->prepare("SELECT id_modalidad FROM curso_modalidad WHERE id_curso = :id_curso");
 $sql_curso_modalidades->bindParam(':id_curso', $id_curso, PDO::PARAM_INT);
@@ -228,13 +238,13 @@ function estado_precio($vd, $vh)
                 <div class="card-header p-0 border-bottom-0">
                   <ul class="nav nav-tabs" id="custom-tabs" role="tablist">
                     <li class="nav-item">
-                      <a class="nav-link active" id="basic-tab" data-toggle="pill" href="#basic-info" role="tab">
-                        <i class="fas fa-info-circle"></i> Información Básica
+                      <a class="nav-link active" id="cap-tab" data-toggle="pill" href="#cap-info" role="tab">
+                        <i class="fas fa-chalkboard-teacher"></i> Información de Capacitación
                       </a>
                     </li>
                     <li class="nav-item">
-                      <a class="nav-link" id="content-tab" data-toggle="pill" href="#course-content" role="tab">
-                        <i class="fas fa-book"></i> Contenido del Curso
+                      <a class="nav-link" id="cert-tab" data-toggle="pill" href="#cert-info" role="tab">
+                        <i class="fas fa-certificate"></i> Información de Certificación
                       </a>
                     </li>
                     <li class="nav-item">
@@ -257,8 +267,8 @@ function estado_precio($vd, $vh)
                   <input type="hidden" id="__accion" name="__accion" value="">
 
                   <div class="tab-content" id="custom-tabsContent">
-                    <!-- Info básica -->
-                    <div class="tab-pane fade show active" id="basic-info" role="tabpanel">
+                    <!-- Información de capacitación -->
+                    <div class="tab-pane fade show active" id="cap-info" role="tabpanel">
                       <div class="card-body">
                         <div class="row">
                           <div class="col-md-6">
@@ -269,14 +279,14 @@ function estado_precio($vd, $vh)
                           </div>
                           <div class="col-md-6">
                             <div class="form-group">
-                              <label for="courseDuration" class="required-field"><i class="fas fa-clock"></i> Duración</label>
+                              <label for="courseDuration" class="required-field"><i class="fas fa-clock"></i> Duración (Capacitación)</label>
                               <input required disabled value="<?php echo h($duracion) ?>" type="text" class="form-control" id="courseDuration" name="duracion">
                             </div>
                           </div>
                         </div>
 
                         <div class="form-group">
-                          <label for="courseDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción</label>
+                          <label for="courseDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Capacitación)</label>
                           <textarea required disabled class="form-control" id="courseDescription" rows="4" name="descripcion"><?php echo h($descripcion) ?></textarea>
                         </div>
 
@@ -284,12 +294,7 @@ function estado_precio($vd, $vh)
                           <label for="publico"><i class="fas fa-users"></i> Público Objetivo</label>
                           <textarea disabled class="form-control" id="publico" rows="3" name="publico"><?php echo h($publico) ?></textarea>
                         </div>
-                      </div>
-                    </div>
 
-                    <!-- Contenido -->
-                    <div class="tab-pane fade" id="course-content" role="tabpanel">
-                      <div class="card-body">
                         <div class="form-group">
                           <label for="courseObjectives" class="required-field"><i class="fas fa-bullseye"></i> Objetivos de Aprendizaje</label>
                           <textarea required disabled class="form-control" id="courseObjectives" rows="4" name="objetivos"><?php echo h($objetivos) ?></textarea>
@@ -313,6 +318,66 @@ function estado_precio($vd, $vh)
                               <textarea disabled class="form-control" id="requisitos" rows="4" name="requisitos"><?php echo h($requisitos) ?></textarea>
                             </div>
                           </div>
+                        </div>
+
+                        <div class="form-group">
+                          <label for="observaciones"><i class="fas fa-sticky-note"></i> Observaciones Adicionales</label>
+                          <textarea disabled class="form-control" id="observaciones" rows="4" name="observaciones"><?php echo h($observaciones) ?></textarea>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Información de certificación -->
+                    <div class="tab-pane fade" id="cert-info" role="tabpanel">
+                      <div class="card-body">
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="certDuration" class="required-field"><i class="fas fa-stopwatch"></i> Duración (Certificación)</label>
+                              <input required disabled value="<?php echo h($duracionCertificacion) ?>" type="text" class="form-control" id="certDuration" name="duracion_certificacion">
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="certPublico"><i class="fas fa-users"></i> Público Objetivo (Certificación)</label>
+                              <textarea disabled class="form-control" id="certPublico" rows="3" name="publico_certificacion"><?php echo h($publicoCertificacion) ?></textarea>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="form-group">
+                          <label for="certDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Certificación)</label>
+                          <textarea required disabled class="form-control" id="certDescription" rows="4" name="descripcion_certificacion"><?php echo h($descripcionCertificacion) ?></textarea>
+                        </div>
+
+                        <div class="form-group">
+                          <label for="certObjectives" class="required-field"><i class="fas fa-bullseye"></i> Objetivos de Aprendizaje (Certificación)</label>
+                          <textarea required disabled class="form-control" id="certObjectives" rows="4" name="objetivos_certificacion"><?php echo h($objetivosCertificacion) ?></textarea>
+                        </div>
+
+                        <div class="form-group">
+                          <label for="certPrograma"><i class="fas fa-list-ol"></i> Programa (Certificación)</label>
+                          <textarea disabled class="form-control" id="certPrograma" rows="6" name="programa_certificacion"><?php echo h($programaCertificacion) ?></textarea>
+                        </div>
+
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="certCronograma"><i class="fas fa-calendar-alt"></i> Cronograma (Certificación)</label>
+                              <textarea disabled class="form-control" id="certCronograma" rows="4" name="cronograma_certificacion"><?php echo h($cronogramaCertificacion) ?></textarea>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="certRequisitos"><i class="fas fa-check-circle"></i> Requisitos (Certificación)</label>
+                              <textarea disabled class="form-control" id="certRequisitos" rows="4" name="requisitos_certificacion"><?php echo h($requisitosCertificacion) ?></textarea>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="form-group">
+                          <label for="certObservaciones"><i class="fas fa-sticky-note"></i> Observaciones (Certificación)</label>
+                          <textarea disabled class="form-control" id="certObservaciones" rows="4" name="observaciones_certificacion"><?php echo h($observacionesCertificacion) ?></textarea>
                         </div>
                       </div>
                     </div>
@@ -338,11 +403,6 @@ function estado_precio($vd, $vh)
                               </div>
                             <?php endforeach; ?>
                           </div>
-                        </div>
-
-                        <div class="form-group">
-                          <label for="observaciones"><i class="fas fa-sticky-note"></i> Observaciones Adicionales</label>
-                          <textarea disabled class="form-control" id="observaciones" rows="4" name="observaciones"><?php echo h($observaciones) ?></textarea>
                         </div>
                       </div>
                     </div>
@@ -522,6 +582,8 @@ function estado_precio($vd, $vh)
         const ids = [
           'courseName', 'courseDescription', 'courseDuration', 'courseObjectives',
           'programa', 'publico', 'cronograma', 'requisitos', 'observaciones',
+          'certDescription', 'certDuration', 'certObjectives', 'certPrograma',
+          'certPublico', 'certCronograma', 'certRequisitos', 'certObservaciones',
           'tipo_precio_nuevo', 'precio_nuevo', 'desde_nuevo', 'comentario_nuevo'
         ];
         ids.forEach(id => {

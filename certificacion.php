@@ -74,18 +74,27 @@ try {
 // ===== 2) Fallback: usar tabla cursos cuando no haya certificación específica =====
 if (!$cert) {
     $sql_curso = $con->prepare(
-        "SELECT 
+        "SELECT
         id_curso,
         nombre_curso,
         descripcion_curso,
+        descripcion_certificacion,
         duracion,
+        duracion_certificacion,
         objetivos,
+        objetivos_certificacion,
         cronograma,
+        cronograma_certificacion,
         publico,
+        publico_certificacion,
         programa,
+        programa_certificacion,
         requisitos,
+        requisitos_certificacion,
         observaciones,
-        documentacion
+        observaciones_certificacion,
+        documentacion,
+        documentacion_certificacion
      FROM cursos
      WHERE id_curso = :id"
     );
@@ -115,16 +124,38 @@ $page_description = h($cert['descripcion'] ?? $curso_fallback['descripcion_curso
 
 // ===== Campos a mostrar =====
 $certNombre      = h($cert['nombre_certificacion'] ?? $curso_fallback['nombre_curso'] ?? 'Certificación');
-$certDescripcion = p($cert['descripcion'] ?? $curso_fallback['descripcion_curso'] ?? 'Pronto publicaremos la información detallada de esta certificación.');
-$certRequisitos  = p($cert['requisitos_evaluacion'] ?? $cert['requisitos'] ?? $curso_fallback['requisitos'] ?? 'Revisaremos tu perfil y la documentación para confirmar los requisitos.');
-$certDuracion    = h($cert['plazo'] ?? $curso_fallback['duracion'] ?? 'A definir');
+$certDescripcion = p($cert['descripcion']
+    ?? $curso_fallback['descripcion_certificacion']
+    ?? $curso_fallback['descripcion_curso']
+    ?? 'Pronto publicaremos la información detallada de esta certificación.');
+$certRequisitos  = p($cert['requisitos_evaluacion']
+    ?? $cert['requisitos']
+    ?? $curso_fallback['requisitos_certificacion']
+    ?? $curso_fallback['requisitos']
+    ?? 'Revisaremos tu perfil y la documentación para confirmar los requisitos.');
+$certDuracion    = h($cert['plazo'] ?? $curso_fallback['duracion_certificacion'] ?? $curso_fallback['duracion'] ?? 'A definir');
 
 // Acordeón dinámico: intenta usar campos específicos de certificaciones y sino mapea a los de cursos
-$accProceso = p($cert['proceso'] ?? $curso_fallback['cronograma'] ?? 'Información no disponible.');
-$accAlcance = p($cert['alcance'] ?? $curso_fallback['publico'] ?? 'Información no disponible.');
-$accReqs    = p($cert['requisitos'] ?? $curso_fallback['requisitos'] ?? 'Información no disponible.');
-$accVig     = p($cert['vigencia'] ?? $curso_fallback['observaciones'] ?? 'Información no disponible.');
-$accDocs    = p($cert['documentacion'] ?? $curso_fallback['documentacion'] ?? 'Información no disponible.');
+$accProceso = p($cert['proceso']
+    ?? $curso_fallback['cronograma_certificacion']
+    ?? $curso_fallback['cronograma']
+    ?? 'Información no disponible.');
+$accAlcance = p($cert['alcance']
+    ?? $curso_fallback['publico_certificacion']
+    ?? $curso_fallback['publico']
+    ?? 'Información no disponible.');
+$accReqs    = p($cert['requisitos']
+    ?? $curso_fallback['requisitos_certificacion']
+    ?? $curso_fallback['requisitos']
+    ?? 'Información no disponible.');
+$accVig     = p($cert['vigencia']
+    ?? $curso_fallback['observaciones_certificacion']
+    ?? $curso_fallback['observaciones']
+    ?? 'Información no disponible.');
+$accDocs    = p($cert['documentacion']
+    ?? $curso_fallback['documentacion_certificacion']
+    ?? $curso_fallback['documentacion']
+    ?? 'Información no disponible.');
 
 $enlaceCheckoutId = (int)($curso_fallback['id_curso'] ?? $cert['id_certificacion'] ?? $id_certificacion);
 
