@@ -25,7 +25,7 @@ $objetivos     = $curso["objetivos"] ?? '';
 $programa      = $curso["programa"] ?? '';
 $publico       = $curso["publico"] ?? '';
 $cronograma    = $curso["cronograma"] ?? '';
-$requisitos    = $curso["requisitos"] ?? '';
+$prerrequisitos = $curso["prerrequisitos"] ?? '';
 $observaciones = $curso["observaciones"] ?? '';
 
 // Información específica para certificación
@@ -35,7 +35,7 @@ $objetivosCertificacion     = $curso["objetivos_certificacion"] ?? $objetivos;
 $programaCertificacion      = $curso["programa_certificacion"] ?? $programa;
 $publicoCertificacion       = $curso["publico_certificacion"] ?? $publico;
 $cronogramaCertificacion    = $curso["cronograma_certificacion"] ?? $cronograma;
-$requisitosCertificacion    = $curso["requisitos_certificacion"] ?? $requisitos;
+$prerrequisitosCertificacion = $curso["prerrequisitos_certificacion"] ?? $prerrequisitos;
 $observacionesCertificacion = $curso["observaciones_certificacion"] ?? $observaciones;
 
 // Modalidades
@@ -339,8 +339,8 @@ function estado_precio($vd, $vh)
                           </div>
                           <div class="col-md-6">
                             <div class="form-group">
-                              <label for="requisitos"><i class="fas fa-check-circle"></i> Requisitos Previos</label>
-                              <textarea disabled class="form-control" id="requisitos" rows="4" name="requisitos"><?php echo h($requisitos) ?></textarea>
+                              <label for="prerrequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos</label>
+                              <textarea disabled class="form-control" id="prerrequisitos" rows="4" name="prerrequisitos"><?php echo h($prerrequisitos) ?></textarea>
                             </div>
                           </div>
                         </div>
@@ -394,8 +394,8 @@ function estado_precio($vd, $vh)
                           </div>
                           <div class="col-md-6">
                             <div class="form-group">
-                              <label for="certRequisitos"><i class="fas fa-check-circle"></i> Requisitos (Certificación)</label>
-                              <textarea disabled class="form-control" id="certRequisitos" rows="4" name="requisitos_certificacion"><?php echo h($requisitosCertificacion) ?></textarea>
+                              <label for="certPrerrequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos (Certificación)</label>
+                              <textarea disabled class="form-control" id="certPrerrequisitos" rows="4" name="prerrequisitos_certificacion"><?php echo h($prerrequisitosCertificacion) ?></textarea>
                             </div>
                           </div>
                         </div>
@@ -610,9 +610,9 @@ function estado_precio($vd, $vh)
       function setDisabledAll(disabled) {
         const ids = [
           'courseName', 'courseDescription', 'courseDuration', 'courseObjectives',
-          'programa', 'publico', 'cronograma', 'requisitos', 'observaciones',
+          'programa', 'publico', 'cronograma', 'prerrequisitos', 'observaciones',
           'certDescription', 'certDuration', 'certObjectives', 'certPrograma',
-          'certPublico', 'certCronograma', 'certRequisitos', 'certObservaciones',
+          'certPublico', 'certCronograma', 'certPrerrequisitos', 'certObservaciones',
           'tipo_precio_nuevo', 'precio_nuevo', 'desde_nuevo', 'comentario_nuevo'
         ];
         ids.forEach(id => {

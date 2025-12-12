@@ -17,7 +17,7 @@ $sql_cursos = $con->prepare(
         cronograma,
         publico,
         programa,
-        requisitos,
+        prerrequisitos,
         observaciones,
         documentacion
      FROM cursos
@@ -174,7 +174,7 @@ $page_description = h($curso['descripcion_curso']) ?: 'Página de capacitación 
                                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cReqs" aria-expanded="false" aria-controls="cReqs">Requisitos</button>
                                     </h2>
                                     <div id="cReqs" class="accordion-collapse collapse" aria-labelledby="hReqs" data-bs-parent="#cursoAccordion">
-                                        <div class="accordion-body"><?php echo p($curso['requisitos'], 'Información no disponible.'); ?></div>
+                                        <div class="accordion-body"><?php echo p($curso['prerrequisitos'], 'Información no disponible.'); ?></div>
                                     </div>
                                 </div>
 

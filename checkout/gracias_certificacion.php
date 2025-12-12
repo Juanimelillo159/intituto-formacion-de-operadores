@@ -762,7 +762,7 @@ $backLink = '../index.php#certificaciones';
                                         </div>
                                         <div class="timeline-content">
                                             <h3>Revisión de tu formulario</h3>
-                                            <p>Verificaremos que la documentación esté completa y cumpla con los requisitos establecidos para la certificación.</p>
+                                            <p>Verificaremos que la documentación esté completa y cumpla con los prerrequisitos establecidos para la certificación.</p>
                                         </div>
                                     </div>
 

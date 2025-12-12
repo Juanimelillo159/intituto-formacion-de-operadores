@@ -61,8 +61,7 @@ try {
         proceso,
         alcance AS alcance_certificacion,          -- opcional si existe
         alcance,
-        requisitos AS prerequisitos,               -- opcional si existe
-        requisitos,
+        prerrequisitos AS prerequisitos,
         vigencia AS vigencia_renovacion,           -- opcional si existe
         vigencia,
         documentacion AS documentacion_certificacion, -- opcional si existe
@@ -96,9 +95,9 @@ if (!$cert) {
         publico_certificacion,
         programa,
         programa_certificacion,
-        requisitos AS prerequisitos,
-        requisitos,
-        requisitos_certificacion,
+        prerrequisitos AS prerequisitos,
+        prerrequisitos,
+        prerrequisitos_certificacion,
         observaciones AS vigencia_renovacion,
         observaciones,
         observaciones_certificacion,
@@ -141,7 +140,8 @@ $certDescripcion = p($cert['descripcion']
 $certRequisitos  = p($cert['prerequisitos']
     ?? $cert['requisitos_evaluacion']
     ?? $cert['requisitos']
-    ?? $curso_fallback['prerequisitos']
+    ?? $curso_fallback['prerrequisitos_certificacion']
+    ?? $curso_fallback['prerrequisitos']
     ?? $curso_fallback['requisitos_certificacion']
     ?? $curso_fallback['requisitos']
     ?? 'Revisaremos tu perfil y la documentación para confirmar los prerequisitos.');
@@ -162,7 +162,8 @@ $accAlcance = p($cert['alcance_certificacion']
     ?? 'Información no disponible.');
 $accReqs    = p($cert['prerequisitos']
     ?? $cert['requisitos']
-    ?? $curso_fallback['prerequisitos']
+    ?? $curso_fallback['prerrequisitos_certificacion']
+    ?? $curso_fallback['prerrequisitos']
     ?? $curso_fallback['requisitos_certificacion']
     ?? $curso_fallback['requisitos']
     ?? 'Información no disponible.');

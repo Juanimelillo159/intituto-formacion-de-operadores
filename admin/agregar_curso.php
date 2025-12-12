@@ -155,8 +155,8 @@ include '../admin/footer.php';
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label for="courseRequisitos"><i class="fas fa-check-circle"></i> Requisitos Previos</label>
-                        <textarea class="form-control" id="courseRequisitos" rows="3" name="requisitos" placeholder="Conocimientos, experiencia o documentos requeridos"></textarea>
+                        <label for="coursePrerequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos</label>
+                        <textarea class="form-control" id="coursePrerequisitos" rows="3" name="prerrequisitos" placeholder="Conocimientos, experiencia o documentos requeridos"></textarea>
                     </div>
                 </div>
             </div>
@@ -214,8 +214,8 @@ include '../admin/footer.php';
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label for="certRequisitos"><i class="fas fa-check-circle"></i> Requisitos (Certificación)</label>
-                        <textarea class="form-control" id="certRequisitos" rows="3" name="requisitos_certificacion" placeholder="Documentación, exámenes o experiencia"></textarea>
+                        <label for="certPrerequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos (Certificación)</label>
+                        <textarea class="form-control" id="certPrerequisitos" rows="3" name="prerrequisitos_certificacion" placeholder="Documentación, exámenes o experiencia"></textarea>
                     </div>
                 </div>
             </div>
