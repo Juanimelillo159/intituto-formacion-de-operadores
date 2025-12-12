@@ -1374,16 +1374,25 @@ try {
 
     /* ======================== EDITAR CURSO ======================== */
     if ($isEditarCurso) {
-        $id_curso     = (int)($_POST['id_curso'] ?? 0);
-        $nombre       = trim($_POST['nombre'] ?? '');
-        $descripcion  = trim($_POST['descripcion'] ?? '');
-        $duracion     = trim($_POST['duracion'] ?? '');
-        $objetivos    = trim($_POST['objetivos'] ?? '');
-        $programa     = trim($_POST['programa'] ?? '');
-        $publico      = trim($_POST['publico'] ?? '');
-        $cronograma   = trim($_POST['cronograma'] ?? '');
-        $requisitos   = trim($_POST['requisitos'] ?? '');
+        $id_curso      = (int)($_POST['id_curso'] ?? 0);
+        $nombre        = trim($_POST['nombre'] ?? '');
+        $descripcion   = trim($_POST['descripcion'] ?? '');
+        $duracion      = trim($_POST['duracion'] ?? '');
+        $objetivos     = trim($_POST['objetivos'] ?? '');
+        $programa      = trim($_POST['programa'] ?? '');
+        $publico       = trim($_POST['publico'] ?? '');
+        $cronograma    = trim($_POST['cronograma'] ?? '');
+        $requisitos    = trim($_POST['requisitos'] ?? '');
         $observaciones = trim($_POST['observaciones'] ?? '');
+
+        $descripcionCertificacion   = trim($_POST['descripcion_certificacion'] ?? '');
+        $duracionCertificacion      = trim($_POST['duracion_certificacion'] ?? '');
+        $objetivosCertificacion     = trim($_POST['objetivos_certificacion'] ?? '');
+        $programaCertificacion      = trim($_POST['programa_certificacion'] ?? '');
+        $publicoCertificacion       = trim($_POST['publico_certificacion'] ?? '');
+        $cronogramaCertificacion    = trim($_POST['cronograma_certificacion'] ?? '');
+        $requisitosCertificacion    = trim($_POST['requisitos_certificacion'] ?? '');
+        $observacionesCertificacion = trim($_POST['observaciones_certificacion'] ?? '');
         $modalidades  = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
 
         if ($id_curso <= 0 || $nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '') {
@@ -1402,7 +1411,15 @@ try {
                    publico           = :publico,
                    cronograma        = :cronograma,
                    requisitos        = :requisitos,
-                   observaciones     = :observaciones
+                   observaciones     = :observaciones,
+                   descripcion_certificacion   = :descripcion_certificacion,
+                   duracion_certificacion      = :duracion_certificacion,
+                   objetivos_certificacion     = :objetivos_certificacion,
+                   programa_certificacion      = :programa_certificacion,
+                   publico_certificacion       = :publico_certificacion,
+                   cronograma_certificacion    = :cronograma_certificacion,
+                   requisitos_certificacion    = :requisitos_certificacion,
+                   observaciones_certificacion = :observaciones_certificacion
              WHERE id_curso         = :id
         ");
         $sql->execute([
@@ -1415,6 +1432,14 @@ try {
             ':cronograma' => $cronograma,
             ':requisitos' => $requisitos,
             ':observaciones' => $observaciones,
+            ':descripcion_certificacion' => $descripcionCertificacion,
+            ':duracion_certificacion' => $duracionCertificacion,
+            ':objetivos_certificacion' => $objetivosCertificacion,
+            ':programa_certificacion' => $programaCertificacion,
+            ':publico_certificacion' => $publicoCertificacion,
+            ':cronograma_certificacion' => $cronogramaCertificacion,
+            ':requisitos_certificacion' => $requisitosCertificacion,
+            ':observaciones_certificacion' => $observacionesCertificacion,
             ':id' => $id_curso,
         ]);
 
@@ -1446,6 +1471,15 @@ try {
         $cronograma    = trim($_POST['cronograma'] ?? '');
         $requisitos    = trim($_POST['requisitos'] ?? '');
         $observaciones = trim($_POST['observaciones'] ?? '');
+
+        $descripcionCertificacion   = trim($_POST['descripcion_certificacion'] ?? '');
+        $duracionCertificacion      = trim($_POST['duracion_certificacion'] ?? '');
+        $objetivosCertificacion     = trim($_POST['objetivos_certificacion'] ?? '');
+        $programaCertificacion      = trim($_POST['programa_certificacion'] ?? '');
+        $publicoCertificacion       = trim($_POST['publico_certificacion'] ?? '');
+        $cronogramaCertificacion    = trim($_POST['cronograma_certificacion'] ?? '');
+        $requisitosCertificacion    = trim($_POST['requisitos_certificacion'] ?? '');
+        $observacionesCertificacion = trim($_POST['observaciones_certificacion'] ?? '');
         $modalidades   = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
 
         // Precio inicial opcional (si el form manda "precio")
@@ -1463,10 +1497,16 @@ try {
         $insCurso = $con->prepare("
             INSERT INTO cursos (
                 nombre_curso, descripcion_curso, duracion, objetivos,
-                cronograma, publico, programa, requisitos, observaciones
+                cronograma, publico, programa, requisitos, observaciones,
+                descripcion_certificacion, duracion_certificacion, objetivos_certificacion,
+                programa_certificacion, publico_certificacion, cronograma_certificacion,
+                requisitos_certificacion, observaciones_certificacion
             ) VALUES (
                 :nombre, :descripcion, :duracion, :objetivos,
-                :cronograma, :publico, :programa, :requisitos, :observaciones
+                :cronograma, :publico, :programa, :requisitos, :observaciones,
+                :descripcion_certificacion, :duracion_certificacion, :objetivos_certificacion,
+                :programa_certificacion, :publico_certificacion, :cronograma_certificacion,
+                :requisitos_certificacion, :observaciones_certificacion
             )
         ");
         $insCurso->execute([
@@ -1479,6 +1519,14 @@ try {
             ':programa'      => $programa,
             ':requisitos'    => $requisitos,
             ':observaciones' => $observaciones,
+            ':descripcion_certificacion' => $descripcionCertificacion ?: $descripcion,
+            ':duracion_certificacion' => $duracionCertificacion ?: $duracion,
+            ':objetivos_certificacion' => $objetivosCertificacion ?: $objetivos,
+            ':programa_certificacion' => $programaCertificacion ?: $programa,
+            ':publico_certificacion' => $publicoCertificacion ?: $publico,
+            ':cronograma_certificacion' => $cronogramaCertificacion ?: $cronograma,
+            ':requisitos_certificacion' => $requisitosCertificacion ?: $requisitos,
+            ':observaciones_certificacion' => $observacionesCertificacion ?: $observaciones,
         ]);
 
         $id_curso = (int)$con->lastInsertId();
