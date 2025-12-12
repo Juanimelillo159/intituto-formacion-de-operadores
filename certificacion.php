@@ -51,17 +51,21 @@ $modalidades = [];
 // ===== 1) Intentar cargar desde tabla certificaciones =====
 try {
     $sql_cert = $con->prepare(
-        "SELECT 
+        "SELECT
         id_certificacion,
         nombre_certificacion,
         descripcion,
         requisitos_evaluacion,
         plazo,
-        proceso,          -- opcional si existe
-        alcance,          -- opcional si existe
-        requisitos,       -- opcional si existe
-        vigencia,         -- opcional si existe
-        documentacion     -- opcional si existe
+        proceso AS proceso_certificacion,          -- opcional si existe
+        proceso,
+        alcance AS alcance_certificacion,          -- opcional si existe
+        alcance,
+        prerrequisitos AS prerequisitos,
+        vigencia AS vigencia_renovacion,           -- opcional si existe
+        vigencia,
+        documentacion AS documentacion_certificacion, -- opcional si existe
+        documentacion
      FROM certificaciones
      WHERE id_certificacion = :id"
     );
@@ -79,22 +83,21 @@ if (!$cert) {
         nombre_curso,
         descripcion_curso,
         descripcion_certificacion,
-        duracion,
-        duracion_certificacion,
-        objetivos,
-        objetivos_certificacion,
+        requisitos_evaluacion_certificacion,
+        proceso_certificacion,
+        alcance_certificacion,
         cronograma,
-        cronograma_certificacion,
         publico,
-        publico_certificacion,
-        programa,
-        programa_certificacion,
-        requisitos,
-        requisitos_certificacion,
-        observaciones,
-        observaciones_certificacion,
+        prerrequisitos AS prerequisitos,
+        prerrequisitos,
+        prerrequisitos_certificacion,
+        vigencia_certificacion,
+        observaciones AS vigencia_renovacion,
+        documentacion AS documentacion_base,
         documentacion,
-        documentacion_certificacion
+        documentacion_certificacion,
+        plazo_certificacion,
+        duracion
      FROM cursos
      WHERE id_curso = :id"
     );
@@ -128,33 +131,42 @@ $certDescripcion = p($cert['descripcion']
     ?? $curso_fallback['descripcion_certificacion']
     ?? $curso_fallback['descripcion_curso']
     ?? 'Pronto publicaremos la información detallada de esta certificación.');
-$certRequisitos  = p($cert['requisitos_evaluacion']
+$certRequisitos  = p($cert['prerequisitos']
+    ?? $cert['requisitos_evaluacion']
     ?? $cert['requisitos']
-    ?? $curso_fallback['requisitos_certificacion']
-    ?? $curso_fallback['requisitos']
-    ?? 'Revisaremos tu perfil y la documentación para confirmar los requisitos.');
-$certDuracion    = h($cert['plazo'] ?? $curso_fallback['duracion_certificacion'] ?? $curso_fallback['duracion'] ?? 'A definir');
+    ?? $curso_fallback['prerrequisitos_certificacion']
+    ?? $curso_fallback['requisitos_evaluacion_certificacion']
+    ?? $curso_fallback['prerrequisitos']
+    ?? 'Revisaremos tu perfil y la documentación para confirmar los prerequisitos.');
+$certDuracion    = h($cert['plazo'] ?? $curso_fallback['plazo_certificacion'] ?? $curso_fallback['duracion'] ?? 'A definir');
 
 // Acordeón dinámico: intenta usar campos específicos de certificaciones y sino mapea a los de cursos
-$accProceso = p($cert['proceso']
-    ?? $curso_fallback['cronograma_certificacion']
+$accProceso = p($cert['proceso_certificacion']
+    ?? $cert['proceso']
+    ?? $curso_fallback['proceso_certificacion']
     ?? $curso_fallback['cronograma']
     ?? 'Información no disponible.');
-$accAlcance = p($cert['alcance']
-    ?? $curso_fallback['publico_certificacion']
+$accAlcance = p($cert['alcance_certificacion']
+    ?? $cert['alcance']
+    ?? $curso_fallback['alcance_certificacion']
     ?? $curso_fallback['publico']
     ?? 'Información no disponible.');
-$accReqs    = p($cert['requisitos']
-    ?? $curso_fallback['requisitos_certificacion']
-    ?? $curso_fallback['requisitos']
+$accReqs    = p($cert['prerequisitos']
+    ?? $cert['requisitos']
+    ?? $cert['requisitos_evaluacion']
+    ?? $curso_fallback['prerrequisitos_certificacion']
+    ?? $curso_fallback['requisitos_evaluacion_certificacion']
+    ?? $curso_fallback['prerrequisitos']
     ?? 'Información no disponible.');
-$accVig     = p($cert['vigencia']
-    ?? $curso_fallback['observaciones_certificacion']
-    ?? $curso_fallback['observaciones']
+$accVig     = p($cert['vigencia_renovacion']
+    ?? $cert['vigencia']
+    ?? $curso_fallback['vigencia_certificacion']
+    ?? $curso_fallback['vigencia_renovacion']
     ?? 'Información no disponible.');
-$accDocs    = p($cert['documentacion']
+$accDocs    = p($cert['documentacion_certificacion']
+    ?? $cert['documentacion']
     ?? $curso_fallback['documentacion_certificacion']
-    ?? $curso_fallback['documentacion']
+    ?? $curso_fallback['documentacion_base']
     ?? 'Información no disponible.');
 
 $enlaceCheckoutId = (int)($curso_fallback['id_curso'] ?? $cert['id_certificacion'] ?? $id_certificacion);
@@ -211,7 +223,7 @@ if (!$cert && !$curso_fallback) {
                             <p class="mb-0"><?php echo $certDescripcion; ?></p>
                         </div>
 
-                        <h3 class="section-title"><i class="fa-solid fa-list-check"></i>Requisitos de Evaluación</h3>
+                        <h3 class="section-title"><i class="fa-solid fa-list-check"></i>Prerrequisitos de Evaluación</h3>
                         <div class="objectives-list">
                             <p class="mb-0"><?php echo $certRequisitos; ?></p>
                         </div>
@@ -239,7 +251,7 @@ if (!$cert && !$curso_fallback) {
 
                             <div class="accordion-item">
                                 <h2 class="accordion-header" id="hReqs">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cReqs" aria-expanded="false" aria-controls="cReqs">Requisitos</button>
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#cReqs" aria-expanded="false" aria-controls="cReqs">Prerrequisitos</button>
                                 </h2>
                                 <div id="cReqs" class="accordion-collapse collapse" aria-labelledby="hReqs" data-bs-parent="#certAccordion">
                                     <div class="accordion-body"><?php echo $accReqs; ?></div>
