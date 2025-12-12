@@ -1385,14 +1385,14 @@ try {
         $prerrequisitos = trim($_POST['prerrequisitos'] ?? ($_POST['requisitos'] ?? ''));
         $observaciones  = trim($_POST['observaciones'] ?? '');
 
-        $descripcionCertificacion   = trim($_POST['descripcion_certificacion'] ?? '');
-        $duracionCertificacion      = trim($_POST['duracion_certificacion'] ?? '');
-        $objetivosCertificacion     = trim($_POST['objetivos_certificacion'] ?? '');
-        $programaCertificacion      = trim($_POST['programa_certificacion'] ?? '');
-        $publicoCertificacion       = trim($_POST['publico_certificacion'] ?? '');
-        $cronogramaCertificacion     = trim($_POST['cronograma_certificacion'] ?? '');
+        $descripcionCertificacion    = trim($_POST['descripcion_certificacion'] ?? '');
+        $requisitosEvaluacionCert    = trim($_POST['requisitos_evaluacion_certificacion'] ?? '');
+        $procesoCertificacion        = trim($_POST['proceso_certificacion'] ?? '');
+        $alcanceCertificacion        = trim($_POST['alcance_certificacion'] ?? '');
         $prerrequisitosCertificacion = trim($_POST['prerrequisitos_certificacion'] ?? ($_POST['requisitos_certificacion'] ?? ''));
-        $observacionesCertificacion  = trim($_POST['observaciones_certificacion'] ?? '');
+        $vigenciaCertificacion       = trim($_POST['vigencia_certificacion'] ?? '');
+        $documentacionCertificacion  = trim($_POST['documentacion_certificacion'] ?? '');
+        $plazoCertificacion          = trim($_POST['plazo_certificacion'] ?? '');
         $modalidades  = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
 
         if ($id_curso <= 0 || $nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '') {
@@ -1412,14 +1412,14 @@ try {
                    cronograma        = :cronograma,
                    prerrequisitos    = :prerrequisitos,
                    observaciones     = :observaciones,
-                   descripcion_certificacion   = :descripcion_certificacion,
-                   duracion_certificacion      = :duracion_certificacion,
-                   objetivos_certificacion     = :objetivos_certificacion,
-                   programa_certificacion      = :programa_certificacion,
-                   publico_certificacion       = :publico_certificacion,
-                   cronograma_certificacion    = :cronograma_certificacion,
-                   prerrequisitos_certificacion = :prerrequisitos_certificacion,
-                   observaciones_certificacion = :observaciones_certificacion
+                   descripcion_certificacion      = :descripcion_certificacion,
+                   requisitos_evaluacion_certificacion = :requisitos_evaluacion_certificacion,
+                   proceso_certificacion          = :proceso_certificacion,
+                   alcance_certificacion          = :alcance_certificacion,
+                   prerrequisitos_certificacion   = :prerrequisitos_certificacion,
+                   vigencia_certificacion         = :vigencia_certificacion,
+                   documentacion_certificacion    = :documentacion_certificacion,
+                   plazo_certificacion            = :plazo_certificacion
              WHERE id_curso         = :id
         ");
         $sql->execute([
@@ -1433,13 +1433,13 @@ try {
             ':prerrequisitos' => $prerrequisitos,
             ':observaciones' => $observaciones,
             ':descripcion_certificacion' => $descripcionCertificacion,
-            ':duracion_certificacion' => $duracionCertificacion,
-            ':objetivos_certificacion' => $objetivosCertificacion,
-            ':programa_certificacion' => $programaCertificacion,
-            ':publico_certificacion' => $publicoCertificacion,
-            ':cronograma_certificacion' => $cronogramaCertificacion,
+            ':requisitos_evaluacion_certificacion' => $requisitosEvaluacionCert,
+            ':proceso_certificacion' => $procesoCertificacion,
+            ':alcance_certificacion' => $alcanceCertificacion,
             ':prerrequisitos_certificacion' => $prerrequisitosCertificacion,
-            ':observaciones_certificacion' => $observacionesCertificacion,
+            ':vigencia_certificacion' => $vigenciaCertificacion,
+            ':documentacion_certificacion' => $documentacionCertificacion,
+            ':plazo_certificacion' => $plazoCertificacion,
             ':id' => $id_curso,
         ]);
 
@@ -1472,14 +1472,14 @@ try {
         $prerrequisitos = trim($_POST['prerrequisitos'] ?? ($_POST['requisitos'] ?? ''));
         $observaciones  = trim($_POST['observaciones'] ?? '');
 
-        $descripcionCertificacion   = trim($_POST['descripcion_certificacion'] ?? '');
-        $duracionCertificacion      = trim($_POST['duracion_certificacion'] ?? '');
-        $objetivosCertificacion     = trim($_POST['objetivos_certificacion'] ?? '');
-        $programaCertificacion      = trim($_POST['programa_certificacion'] ?? '');
-        $publicoCertificacion       = trim($_POST['publico_certificacion'] ?? '');
-        $cronogramaCertificacion     = trim($_POST['cronograma_certificacion'] ?? '');
+        $descripcionCertificacion    = trim($_POST['descripcion_certificacion'] ?? '');
+        $requisitosEvaluacionCert    = trim($_POST['requisitos_evaluacion_certificacion'] ?? '');
+        $procesoCertificacion        = trim($_POST['proceso_certificacion'] ?? '');
+        $alcanceCertificacion        = trim($_POST['alcance_certificacion'] ?? '');
         $prerrequisitosCertificacion = trim($_POST['prerrequisitos_certificacion'] ?? ($_POST['requisitos_certificacion'] ?? ''));
-        $observacionesCertificacion  = trim($_POST['observaciones_certificacion'] ?? '');
+        $vigenciaCertificacion       = trim($_POST['vigencia_certificacion'] ?? '');
+        $documentacionCertificacion  = trim($_POST['documentacion_certificacion'] ?? '');
+        $plazoCertificacion          = trim($_POST['plazo_certificacion'] ?? '');
         $modalidades   = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
 
         // Precio inicial opcional (si el form manda "precio")
@@ -1498,15 +1498,15 @@ try {
             INSERT INTO cursos (
                 nombre_curso, descripcion_curso, duracion, objetivos,
                 cronograma, publico, programa, prerrequisitos, observaciones,
-                descripcion_certificacion, duracion_certificacion, objetivos_certificacion,
-                programa_certificacion, publico_certificacion, cronograma_certificacion,
-                prerrequisitos_certificacion, observaciones_certificacion
+                descripcion_certificacion, requisitos_evaluacion_certificacion, proceso_certificacion,
+                alcance_certificacion, prerrequisitos_certificacion, vigencia_certificacion,
+                documentacion_certificacion, plazo_certificacion
             ) VALUES (
                 :nombre, :descripcion, :duracion, :objetivos,
                 :cronograma, :publico, :programa, :prerrequisitos, :observaciones,
-                :descripcion_certificacion, :duracion_certificacion, :objetivos_certificacion,
-                :programa_certificacion, :publico_certificacion, :cronograma_certificacion,
-                :prerrequisitos_certificacion, :observaciones_certificacion
+                :descripcion_certificacion, :requisitos_evaluacion_certificacion, :proceso_certificacion,
+                :alcance_certificacion, :prerrequisitos_certificacion, :vigencia_certificacion,
+                :documentacion_certificacion, :plazo_certificacion
             )
         ");
         $insCurso->execute([
@@ -1520,13 +1520,13 @@ try {
             ':prerrequisitos'    => $prerrequisitos,
             ':observaciones' => $observaciones,
             ':descripcion_certificacion' => $descripcionCertificacion ?: $descripcion,
-            ':duracion_certificacion' => $duracionCertificacion ?: $duracion,
-            ':objetivos_certificacion' => $objetivosCertificacion ?: $objetivos,
-            ':programa_certificacion' => $programaCertificacion ?: $programa,
-            ':publico_certificacion' => $publicoCertificacion ?: $publico,
-            ':cronograma_certificacion' => $cronogramaCertificacion ?: $cronograma,
+            ':requisitos_evaluacion_certificacion' => $requisitosEvaluacionCert,
+            ':proceso_certificacion' => $procesoCertificacion,
+            ':alcance_certificacion' => $alcanceCertificacion,
             ':prerrequisitos_certificacion' => $prerrequisitosCertificacion ?: $prerrequisitos,
-            ':observaciones_certificacion' => $observacionesCertificacion ?: $observaciones,
+            ':vigencia_certificacion' => $vigenciaCertificacion,
+            ':documentacion_certificacion' => $documentacionCertificacion,
+            ':plazo_certificacion' => $plazoCertificacion,
         ]);
 
         $id_curso = (int)$con->lastInsertId();

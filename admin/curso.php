@@ -29,14 +29,14 @@ $prerrequisitos = $curso["prerrequisitos"] ?? '';
 $observaciones = $curso["observaciones"] ?? '';
 
 // Información específica para certificación
-$descripcionCertificacion   = $curso["descripcion_certificacion"] ?? $descripcion;
-$duracionCertificacion      = $curso["duracion_certificacion"] ?? $duracion;
-$objetivosCertificacion     = $curso["objetivos_certificacion"] ?? $objetivos;
-$programaCertificacion      = $curso["programa_certificacion"] ?? $programa;
-$publicoCertificacion       = $curso["publico_certificacion"] ?? $publico;
-$cronogramaCertificacion    = $curso["cronograma_certificacion"] ?? $cronograma;
+$descripcionCertificacion    = $curso["descripcion_certificacion"] ?? $descripcion;
+$requisitosEvaluacionCert    = $curso["requisitos_evaluacion_certificacion"] ?? '';
+$procesoCertificacion        = $curso["proceso_certificacion"] ?? '';
+$alcanceCertificacion        = $curso["alcance_certificacion"] ?? '';
 $prerrequisitosCertificacion = $curso["prerrequisitos_certificacion"] ?? $prerrequisitos;
-$observacionesCertificacion = $curso["observaciones_certificacion"] ?? $observaciones;
+$vigenciaCertificacion       = $curso["vigencia_certificacion"] ?? '';
+$documentacionCertificacion  = $curso["documentacion_certificacion"] ?? ($curso["documentacion"] ?? '');
+$plazoCertificacion          = $curso["plazo_certificacion"] ?? '';
 
 // Modalidades
 $sql_curso_modalidades = $con->prepare("SELECT id_modalidad FROM curso_modalidad WHERE id_curso = :id_curso");
@@ -355,54 +355,59 @@ function estado_precio($vd, $vh)
                     <!-- Información de certificación -->
                     <div class="tab-pane fade" id="cert-info" role="tabpanel">
                       <div class="card-body">
-                        <div class="row">
-                          <div class="col-md-6">
-                            <div class="form-group">
-                              <label for="certDuration" class="required-field"><i class="fas fa-stopwatch"></i> Duración (Certificación)</label>
-                              <input required disabled value="<?php echo h($duracionCertificacion) ?>" type="text" class="form-control" id="certDuration" name="duracion_certificacion">
-                            </div>
-                          </div>
-                          <div class="col-md-6">
-                            <div class="form-group">
-                              <label for="certPublico"><i class="fas fa-users"></i> Público Objetivo (Certificación)</label>
-                              <textarea disabled class="form-control" id="certPublico" rows="3" name="publico_certificacion"><?php echo h($publicoCertificacion) ?></textarea>
-                            </div>
-                          </div>
-                        </div>
-
                         <div class="form-group">
                           <label for="certDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Certificación)</label>
                           <textarea required disabled class="form-control" id="certDescription" rows="4" name="descripcion_certificacion"><?php echo h($descripcionCertificacion) ?></textarea>
                         </div>
 
                         <div class="form-group">
-                          <label for="certObjectives" class="required-field"><i class="fas fa-bullseye"></i> Objetivos de Aprendizaje (Certificación)</label>
-                          <textarea required disabled class="form-control" id="certObjectives" rows="4" name="objetivos_certificacion"><?php echo h($objetivosCertificacion) ?></textarea>
-                        </div>
-
-                        <div class="form-group">
-                          <label for="certPrograma"><i class="fas fa-list-ol"></i> Programa (Certificación)</label>
-                          <textarea disabled class="form-control" id="certPrograma" rows="6" name="programa_certificacion"><?php echo h($programaCertificacion) ?></textarea>
+                          <label for="certEvaluation"><i class="fas fa-clipboard-check"></i> Requisitos de evaluación</label>
+                          <textarea disabled class="form-control" id="certEvaluation" rows="4" name="requisitos_evaluacion_certificacion"><?php echo h($requisitosEvaluacionCert) ?></textarea>
                         </div>
 
                         <div class="row">
                           <div class="col-md-6">
                             <div class="form-group">
-                              <label for="certCronograma"><i class="fas fa-calendar-alt"></i> Cronograma (Certificación)</label>
-                              <textarea disabled class="form-control" id="certCronograma" rows="4" name="cronograma_certificacion"><?php echo h($cronogramaCertificacion) ?></textarea>
+                              <label for="certProcess"><i class="fas fa-sitemap"></i> Proceso de certificación</label>
+                              <textarea disabled class="form-control" id="certProcess" rows="3" name="proceso_certificacion"><?php echo h($procesoCertificacion) ?></textarea>
                             </div>
                           </div>
                           <div class="col-md-6">
                             <div class="form-group">
-                              <label for="certPrerrequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos (Certificación)</label>
-                              <textarea disabled class="form-control" id="certPrerrequisitos" rows="4" name="prerrequisitos_certificacion"><?php echo h($prerrequisitosCertificacion) ?></textarea>
+                              <label for="certScope"><i class="fas fa-bullseye"></i> Alcance</label>
+                              <textarea disabled class="form-control" id="certScope" rows="3" name="alcance_certificacion"><?php echo h($alcanceCertificacion) ?></textarea>
                             </div>
                           </div>
                         </div>
 
-                        <div class="form-group">
-                          <label for="certObservaciones"><i class="fas fa-sticky-note"></i> Observaciones (Certificación)</label>
-                          <textarea disabled class="form-control" id="certObservaciones" rows="4" name="observaciones_certificacion"><?php echo h($observacionesCertificacion) ?></textarea>
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="certPrerrequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos</label>
+                              <textarea disabled class="form-control" id="certPrerrequisitos" rows="3" name="prerrequisitos_certificacion"><?php echo h($prerrequisitosCertificacion) ?></textarea>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="certVigencia"><i class="fas fa-hourglass-half"></i> Vigencia y renovación</label>
+                              <textarea disabled class="form-control" id="certVigencia" rows="3" name="vigencia_certificacion"><?php echo h($vigenciaCertificacion) ?></textarea>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="row">
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="certDocs"><i class="fas fa-file-alt"></i> Documentación</label>
+                              <textarea disabled class="form-control" id="certDocs" rows="3" name="documentacion_certificacion"><?php echo h($documentacionCertificacion) ?></textarea>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-group">
+                              <label for="certPlazo"><i class="fas fa-clock"></i> Plazos</label>
+                              <input disabled type="text" class="form-control" id="certPlazo" name="plazo_certificacion" value="<?php echo h($plazoCertificacion) ?>">
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

@@ -175,54 +175,59 @@ include '../admin/footer.php';
 
         <!-- TAB CERTIFICACIÓN -->
         <div class="tab-pane fade" id="info-cert" role="tabpanel" aria-labelledby="certificacion-tab">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="certDuration" class="required-field"><i class="fas fa-stopwatch"></i> Duración (Certificación)</label>
-                        <input required type="text" class="form-control" id="certDuration" name="duracion_certificacion" placeholder="Ej: 10 horas, 1 mes">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="certPublico"><i class="fas fa-users"></i> Público Objetivo (Certificación)</label>
-                        <textarea class="form-control" id="certPublico" rows="3" name="publico_certificacion" placeholder="¿A quién aplica la certificación?"></textarea>
-                    </div>
-                </div>
-            </div>
-
             <div class="form-group">
                 <label for="certDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Certificación)</label>
                 <textarea required class="form-control" id="certDescription" rows="4" name="descripcion_certificacion" placeholder="Detalle la certificación"></textarea>
             </div>
 
             <div class="form-group">
-                <label for="certObjectives" class="required-field"><i class="fas fa-bullseye"></i> Objetivos (Certificación)</label>
-                <textarea required class="form-control" id="certObjectives" rows="4" name="objetivos_certificacion" placeholder="¿Qué valida esta certificación?"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="certPrograma"><i class="fas fa-list-ol"></i> Programa (Certificación)</label>
-                <textarea class="form-control" id="certPrograma" rows="4" name="programa_certificacion" placeholder="Temario o alcance de la certificación"></textarea>
+                <label for="certEvaluation"><i class="fas fa-clipboard-check"></i> Requisitos de evaluación</label>
+                <textarea class="form-control" id="certEvaluation" rows="4" name="requisitos_evaluacion_certificacion" placeholder="Criterios, exámenes o evidencias necesarias"></textarea>
             </div>
 
             <div class="row">
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label for="certCronograma"><i class="fas fa-calendar-alt"></i> Cronograma (Certificación)</label>
-                        <textarea class="form-control" id="certCronograma" rows="3" name="cronograma_certificacion" placeholder="Fechas o hitos del proceso"></textarea>
+                        <label for="certProcess"><i class="fas fa-sitemap"></i> Proceso de certificación</label>
+                        <textarea class="form-control" id="certProcess" rows="3" name="proceso_certificacion" placeholder="Pasos o etapas del proceso"></textarea>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="form-group">
-                        <label for="certPrerequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos (Certificación)</label>
-                        <textarea class="form-control" id="certPrerequisitos" rows="3" name="prerrequisitos_certificacion" placeholder="Documentación, exámenes o experiencia"></textarea>
+                        <label for="certScope"><i class="fas fa-bullseye"></i> Alcance</label>
+                        <textarea class="form-control" id="certScope" rows="3" name="alcance_certificacion" placeholder="Cobertura o perfil de la certificación"></textarea>
                     </div>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label for="certObservaciones"><i class="fas fa-sticky-note"></i> Observaciones (Certificación)</label>
-                <textarea class="form-control" id="certObservaciones" rows="4" name="observaciones_certificacion" placeholder="Notas adicionales"></textarea>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="certPrerequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos</label>
+                        <textarea class="form-control" id="certPrerequisitos" rows="3" name="prerrequisitos_certificacion" placeholder="Documentación o experiencia requerida"></textarea>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="certVigencia"><i class="fas fa-hourglass-half"></i> Vigencia y renovación</label>
+                        <textarea class="form-control" id="certVigencia" rows="3" name="vigencia_certificacion" placeholder="Plazos de validez y condiciones de renovación"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="certDocs"><i class="fas fa-file-alt"></i> Documentación</label>
+                        <textarea class="form-control" id="certDocs" rows="3" name="documentacion_certificacion" placeholder="Documentos solicitados"></textarea>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="certPlazo"><i class="fas fa-clock"></i> Plazos</label>
+                        <input type="text" class="form-control" id="certPlazo" name="plazo_certificacion" placeholder="Duración o plazos estimados">
+                    </div>
+                </div>
             </div>
 
             <div class="d-flex justify-content-between btn-spacer">
