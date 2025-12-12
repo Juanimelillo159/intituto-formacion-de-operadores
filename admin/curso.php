@@ -614,10 +614,13 @@ function estado_precio($vd, $vh)
       // helpers existentes tuyos...
       function setDisabledAll(disabled) {
         const ids = [
+          // Curso
           'courseName', 'courseDescription', 'courseDuration', 'courseObjectives',
           'programa', 'publico', 'cronograma', 'prerrequisitos', 'observaciones',
-          'certDescription', 'certDuration', 'certObjectives', 'certPrograma',
-          'certPublico', 'certCronograma', 'certPrerrequisitos', 'certObservaciones',
+          // Certificación (solo los campos activos en el front)
+          'certDescription', 'certEvaluation', 'certProcess', 'certScope',
+          'certPrerrequisitos', 'certVigencia', 'certDocs', 'certPlazo',
+          // Precios
           'tipo_precio_nuevo', 'precio_nuevo', 'desde_nuevo', 'comentario_nuevo'
         ];
         ids.forEach(id => {
