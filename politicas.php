@@ -45,13 +45,19 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_politicas.css">
                             <li><i class="fa-solid fa-circle-check"></i> Seguimiento continuo del desempeño.</li>
                         </ul>
                         <div class="policy-actions">
-                            <a class="policy-btn primary" href="assets/pdf/manual_certificacion.pdf" target="_blank" rel="noopener">
-                                <i class="fa-solid fa-book"></i> Manual de certificación de personas
-                            </a>
-                            <a class="policy-btn secondary" href="assets/pdf/politica_conducta.pdf" target="_blank" rel="noopener">
-                                <i class="fa-solid fa-scale-balanced"></i> Política de conducta
-                            </a>
-                        </div>
+    <a class="policy-btn primary" href="assets/pdf/PE%2001-Anexo%20IV.%20Diagrama%20de%20flujo%20del%20proceso%20Rev.00.pdf" target="_blank" rel="noopener">
+        <i class="fa-solid fa-book"></i> Proceso de certificacion de personas
+    </a>
+    <a class="policy-btn secondary" href="assets/pdf/Pol%C3%ADtica%20de%20%C3%A9tica%20y%20conducta.%20Rev.00..pdf" target="_blank" rel="noopener">
+        <i class="fa-solid fa-scale-balanced"></i> Politica de conducta
+    </a>
+    <a class="policy-btn secondary" href="assets/pdf/Pol%C3%ADtica%20de%20Imparcialidad%20Rev.00.pdf" target="_blank" rel="noopener">
+        <i class="fa-solid fa-handshake"></i> Politica de imparcialidad
+    </a>
+    <a class="policy-btn secondary" href="assets/pdf/PG-06%20Apelaciones%20y%20quejas%20Rev.01.pdf" target="_blank" rel="noopener">
+        <i class="fa-solid fa-gavel"></i> Apelaciones y quejas
+    </a>
+</div>
                     </div>
                     <div class="policy-visual">
                         <img src="assets/imagenes/fondo/img1.jpg" alt="Equipo técnico revisando documentación" loading="lazy">
