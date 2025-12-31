@@ -851,7 +851,7 @@ include '../head.php';
                                                                         <h6 class="mb-0">Descargar formulario</h6>
                                                                     </div>
                                                                     <p class="small text-muted mb-3">Descargá el PDF oficial con los campos a completar</p>
-                                                                    <a class="btn btn-sm w-100" href="../assets/pdf/solicitud_certificacion.pdf" target="_blank" rel="noopener" style="background: #2563eb; color: white; border-radius: 8px; padding: 10px; font-weight: 500;">
+                                                                    <a class="btn btn-sm w-100" href="../assets/pdf/PE 01-Anexo I. Solicitud de certificación Rev.01.pdf" target="_blank" rel="noopener" style="background: #2563eb; color: white; border-radius: 8px; padding: 10px; font-weight: 500;">
                                                                         <i class="fas fa-download me-2"></i>Descargar PDF
                                                                     </a>
                                                                 </div>
