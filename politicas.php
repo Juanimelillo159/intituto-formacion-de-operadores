@@ -54,7 +54,7 @@ $page_styles = '<link rel="stylesheet" href="assets/styles/style_politicas.css">
     <a class="policy-btn secondary" href="assets/pdf/Pol%C3%ADtica%20de%20Imparcialidad%20Rev.00.pdf" target="_blank" rel="noopener">
         <i class="fa-solid fa-handshake"></i> Politica de imparcialidad
     </a>
-    <a class="policy-btn secondary" href="assets/pdf/PG-06%20Apelaciones%20y%20quejas%20Rev.01.pdf" target="_blank" rel="noopener">
+    <a class="policy-btn secondary" href="assets/pdf/FG-06-1%20Apelaciones%20y%20quejas.pdf" target="_blank" rel="noopener">
         <i class="fa-solid fa-gavel"></i> Apelaciones y quejas
     </a>
 </div>
