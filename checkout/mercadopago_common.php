@@ -79,6 +79,29 @@ function mp_notification_url(): string
 }
 
 /**
+ * Devuelve la configuración de cuotas para la preferencia.
+ */
+function mp_preference_payment_methods(): array
+{
+    $maxInstallments = defined('MP_MAX_INSTALLMENTS') ? (int) MP_MAX_INSTALLMENTS : 0;
+    $defaultInstallments = defined('MP_DEFAULT_INSTALLMENTS') ? (int) MP_DEFAULT_INSTALLMENTS : 0;
+
+    if ($maxInstallments > 0 && $defaultInstallments > $maxInstallments) {
+        $defaultInstallments = $maxInstallments;
+    }
+
+    $methods = [];
+    if ($maxInstallments > 0) {
+        $methods['installments'] = $maxInstallments;
+    }
+    if ($defaultInstallments > 0) {
+        $methods['default_installments'] = $defaultInstallments;
+    }
+
+    return $methods;
+}
+
+/**
  * Obtiene un identificador numérico del usuario autenticado en sesión.
  */
 function mp_current_user_id(): int

@@ -217,6 +217,7 @@ try {
         ],
         'auto_return' => 'approved',
         'notification_url' => mp_notification_url(),
+        'payment_methods' => mp_preference_payment_methods(),
         'metadata' => [
             'id_pago' => $pagoId,
             'id_inscripcion' => $registroId,

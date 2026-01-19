@@ -15,6 +15,11 @@ const MP_CLIENT_ID = '697544312345765';
 // La public key de prueba existente se mantiene para el frontend.
 const MP_PUBLIC_KEY = 'APP_USR-f6bee8bf-0ec6-4ce2-810e-c0011329fc31';
 
+// Configuración de cuotas para Checkout Pro.
+// Ajustá estos valores según el máximo de cuotas que quieras ofrecer.
+const MP_MAX_INSTALLMENTS = 12;
+const MP_DEFAULT_INSTALLMENTS = 1;
+
 // URLs auxiliares empleadas durante el flujo de pago. Si necesitás utilizarlas
 // en otro dominio, modificá BASE_URL por el dominio público correspondiente.
 const MP_BASE_URL = 'https://c6063fb185d9.ngrok-free.app/intituto-formacion-de-operadores';
@@ -32,4 +37,6 @@ return [
     'failure_url' => MP_URL_FAILURE,
     'pending_url' => MP_URL_PENDING,
     'notification_url' => MP_URL_WEBHOOK,
+    'max_installments' => MP_MAX_INSTALLMENTS,
+    'default_installments' => MP_DEFAULT_INSTALLMENTS,
 ];
