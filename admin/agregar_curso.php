@@ -84,6 +84,11 @@ include '../admin/footer.php';
                                                 <i class="fas fa-cogs"></i> Configuración
                                             </a>
                                         </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link" id="precios-tab" data-toggle="tab" href="#precios" role="tab" aria-controls="precios" aria-selected="false">
+                                                <i class="fas fa-dollar-sign"></i> Precios
+                                            </a>
+                                        </li>
                                     </ul>
                                 </div>
 
@@ -95,177 +100,264 @@ include '../admin/footer.php';
                                             <small class="form-text text-muted">Nombre descriptivo y atractivo del curso</small>
                                         </div>
 
+                                        <div class="form-group">
+                                            <label class="required-field"><i class="fas fa-layer-group"></i> Tipo de curso</label>
+                                            <div class="row">
+                                                <div class="col-md-6 mb-2">
+                                                    <div class="custom-control custom-checkbox">
+                                                        <input class="custom-control-input" type="checkbox" id="tipo_capacitacion" name="tipos_curso[]" value="capacitacion" checked>
+                                                        <label class="custom-control-label" for="tipo_capacitacion">Capacitación</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6 mb-2">
+                                                    <div class="custom-control custom-checkbox">
+                                                        <input class="custom-control-input" type="checkbox" id="tipo_certificacion" name="tipos_curso[]" value="certificacion" checked>
+                                                        <label class="custom-control-label" for="tipo_certificacion">Certificación</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <small class="form-text text-muted">Seleccioná al menos una modalidad (capacitación, certificación o ambas).</small>
+                                        </div>
+
                                         <div class="tab-content" id="tabs-curso-content">
 
                                             <!-- TAB CAPACITACIÓN -->
-        <div class="tab-pane fade show active" id="info-cap" role="tabpanel" aria-labelledby="capacitacion-tab">
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="courseDuration" class="required-field"><i class="fas fa-clock"></i> Duración (Capacitación)</label>
-                        <input required type="text" class="form-control" id="courseDuration" name="duracion" placeholder="Ej: 20 horas, 3 semanas">
-                    </div>
-                </div>
-
-            <div class="form-group">
-                <label for="courseDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Capacitación)</label>
-                <textarea required class="form-control" id="courseDescription" rows="4" name="descripcion" placeholder="Descripción detallada del curso"></textarea>
-                <small class="form-text text-muted">Descripción que aparecerá en el catálogo de cursos</small>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="precio_capacitacion" class="required-field"><i class="fas fa-chalkboard-teacher"></i> Precio capacitación (ARS)</label>
-                        <input required type="text" inputmode="decimal" class="form-control" id="precio_capacitacion" name="precio_capacitacion" placeholder="Ej: 120000,00 o 120000.00">
-                        <small class="form-text text-muted">Usá coma o punto como separador decimal.</small>
-                    </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="precio_certificacion"><i class="fas fa-certificate"></i> Precio certificación (ARS)</label>
-                        <input type="text" inputmode="decimal" class="form-control" id="precio_certificacion" name="precio_certificacion" placeholder="Ingresá el valor si aplica">
-                        <small class="form-text text-muted">Completalo solo si el curso tiene certificación.</small>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="courseObjectives" class="required-field"><i class="fas fa-bullseye"></i> Objetivos de Aprendizaje</label>
-                <textarea required class="form-control" id="courseObjectives" rows="4" name="objetivos" placeholder="¿Qué aprenderán los participantes al finalizar?"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="coursePublico"><i class="fas fa-users"></i> Público Objetivo</label>
-                <textarea class="form-control" id="coursePublico" rows="3" name="publico" placeholder="¿A quién está dirigido este curso?"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="coursePrograma"><i class="fas fa-list-ol"></i> Programa del Curso</label>
-                <textarea class="form-control" id="coursePrograma" rows="4" name="programa" placeholder="Detalle de módulos, temas y contenidos"></textarea>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="courseCronograma"><i class="fas fa-calendar-alt"></i> Cronograma</label>
-                        <textarea class="form-control" id="courseCronograma" rows="3" name="cronograma" placeholder="Distribución temporal del curso"></textarea>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="coursePrerequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos</label>
-                        <textarea class="form-control" id="coursePrerequisitos" rows="3" name="prerrequisitos" placeholder="Conocimientos, experiencia o documentos requeridos"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="courseObservaciones"><i class="fas fa-sticky-note"></i> Observaciones (Capacitación)</label>
-                <textarea class="form-control" id="courseObservaciones" rows="4" name="observaciones" placeholder="Notas, comentarios o información adicional"></textarea>
-            </div>
-
-            <div class="d-flex justify-content-end btn-spacer">
-                <button type="button" class="btn btn-primary" id="btnNextCap">
-                    Siguiente <i class="fas fa-arrow-right ml-1"></i>
-                </button>
-            </div>
-        </div>
-
-        <!-- TAB CERTIFICACIÓN -->
-        <div class="tab-pane fade" id="info-cert" role="tabpanel" aria-labelledby="certificacion-tab">
-            <div class="form-group">
-                <label for="certDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Certificación)</label>
-                <textarea required class="form-control" id="certDescription" rows="4" name="descripcion_certificacion" placeholder="Detalle la certificación"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label for="certEvaluation"><i class="fas fa-clipboard-check"></i> Requisitos de evaluación</label>
-                <textarea class="form-control" id="certEvaluation" rows="4" name="requisitos_evaluacion_certificacion" placeholder="Criterios, exámenes o evidencias necesarias"></textarea>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="certProcess"><i class="fas fa-sitemap"></i> Proceso de certificación</label>
-                        <textarea class="form-control" id="certProcess" rows="3" name="proceso_certificacion" placeholder="Pasos o etapas del proceso"></textarea>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="certScope"><i class="fas fa-bullseye"></i> Alcance</label>
-                        <textarea class="form-control" id="certScope" rows="3" name="alcance_certificacion" placeholder="Cobertura o perfil de la certificación"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="certPrerequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos</label>
-                        <textarea class="form-control" id="certPrerequisitos" rows="3" name="prerrequisitos_certificacion" placeholder="Documentación o experiencia requerida"></textarea>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="certVigencia"><i class="fas fa-hourglass-half"></i> Vigencia y renovación</label>
-                        <textarea class="form-control" id="certVigencia" rows="3" name="vigencia_certificacion" placeholder="Plazos de validez y condiciones de renovación"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="certDocs"><i class="fas fa-file-alt"></i> Documentación</label>
-                        <textarea class="form-control" id="certDocs" rows="3" name="documentacion_certificacion" placeholder="Documentos solicitados"></textarea>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label for="certPlazo"><i class="fas fa-clock"></i> Plazos</label>
-                        <input type="text" class="form-control" id="certPlazo" name="plazo_certificacion" placeholder="Duración o plazos estimados">
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-flex justify-content-between btn-spacer">
-                <button type="button" class="btn btn-secondary" id="btnPrevCert"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
-                <button type="button" class="btn btn-primary" id="btnNextCert">Siguiente <i class="fas fa-arrow-right ml-1"></i></button>
-            </div>
-        </div>
-        <!-- TAB 3 -->
-                                            <div class="tab-pane fade" id="configuracion" role="tabpanel" aria-labelledby="configuracion-tab">
+                                            <div class="tab-pane fade show active" id="info-cap" role="tabpanel" aria-labelledby="capacitacion-tab">
                                                 <div class="row">
                                                     <div class="col-md-6">
                                                         <div class="form-group">
-                                                            <label><i class="fas fa-desktop"></i> Modalidades Disponibles</label>
-                                                            <div class="card">
-                                                                <div class="card-body">
-                                                                    <?php
-                                                                    $sql_modalidades = $con->prepare("SELECT * FROM modalidades");
-                                                                    $sql_modalidades->execute();
-                                                                    $modalidades = $sql_modalidades->fetchAll(PDO::FETCH_ASSOC);
-                                                                    foreach ($modalidades as $modalidad) { ?>
-                                                                        <div class="form-check">
-                                                                            <input class="form-check-input" type="checkbox" name="modalidades[]"
-                                                                                value="<?php echo $modalidad['id_modalidad']; ?>"
-                                                                                id="modalidad_<?php echo $modalidad['id_modalidad']; ?>">
-                                                                            <label class="form-check-label" for="modalidad_<?php echo $modalidad['id_modalidad']; ?>">
-                                                                                <?php echo $modalidad['nombre_modalidad']; ?>
-                                                                            </label>
-                                                                        </div>
-                                                                    <?php } ?>
+                                                            <label for="courseDuration" class="required-field"><i class="fas fa-clock"></i> Duración (Capacitación)</label>
+                                                            <input required type="text" class="form-control" id="courseDuration" name="duracion" placeholder="Ej: 20 horas, 3 semanas">
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="courseDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Capacitación)</label>
+                                                    <textarea required class="form-control" id="courseDescription" rows="4" name="descripcion" placeholder="Descripción detallada del curso"></textarea>
+                                                    <small class="form-text text-muted">Descripción que aparecerá en el catálogo de cursos</small>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="coursePublico"><i class="fas fa-users"></i> Público Objetivo</label>
+                                                    <textarea class="form-control" id="coursePublico" rows="3" name="publico" placeholder="¿A quién está dirigido este curso?"></textarea>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="courseObjectives" class="required-field"><i class="fas fa-bullseye"></i> Objetivos de Aprendizaje</label>
+                                                    <textarea required class="form-control" id="courseObjectives" rows="4" name="objetivos" placeholder="¿Qué aprenderán los participantes al finalizar?"></textarea>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="coursePrograma"><i class="fas fa-list-ol"></i> Programa del Curso</label>
+                                                    <textarea class="form-control" id="coursePrograma" rows="4" name="programa" placeholder="Detalle de módulos, temas y contenidos"></textarea>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="courseCronograma"><i class="fas fa-calendar-alt"></i> Cronograma</label>
+                                                            <textarea class="form-control" id="courseCronograma" rows="3" name="cronograma" placeholder="Distribución temporal del curso"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="coursePrerequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos</label>
+                                                            <textarea class="form-control" id="coursePrerequisitos" rows="3" name="prerrequisitos" placeholder="Conocimientos, experiencia o documentos requeridos"></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="courseObservaciones"><i class="fas fa-sticky-note"></i> Observaciones (Capacitación)</label>
+                                                    <textarea class="form-control" id="courseObservaciones" rows="4" name="observaciones" placeholder="Notas, comentarios o información adicional"></textarea>
+                                                </div>
+
+                                                <div class="d-flex justify-content-end btn-spacer">
+                                                    <button type="button" class="btn btn-primary" id="btnNextCap">
+                                                        Siguiente <i class="fas fa-arrow-right ml-1"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <!-- TAB CERTIFICACIÓN -->
+                                            <div class="tab-pane fade" id="info-cert" role="tabpanel" aria-labelledby="certificacion-tab">
+                                                <div class="form-group">
+                                                    <label for="certDescription" class="required-field"><i class="fas fa-align-left"></i> Descripción (Certificación)</label>
+                                                    <textarea required class="form-control" id="certDescription" rows="4" name="descripcion_certificacion" placeholder="Detalle la certificación"></textarea>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="certEvaluation"><i class="fas fa-clipboard-check"></i> Requisitos de evaluación</label>
+                                                    <textarea class="form-control" id="certEvaluation" rows="4" name="requisitos_evaluacion_certificacion" placeholder="Criterios, exámenes o evidencias necesarias"></textarea>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="certProcess"><i class="fas fa-sitemap"></i> Proceso de certificación</label>
+                                                            <textarea class="form-control" id="certProcess" rows="3" name="proceso_certificacion" placeholder="Pasos o etapas del proceso"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="certScope"><i class="fas fa-bullseye"></i> Alcance</label>
+                                                            <textarea class="form-control" id="certScope" rows="3" name="alcance_certificacion" placeholder="Cobertura o perfil de la certificación"></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="certPrerequisitos"><i class="fas fa-check-circle"></i> Prerrequisitos</label>
+                                                            <textarea class="form-control" id="certPrerequisitos" rows="3" name="prerrequisitos_certificacion" placeholder="Documentación o experiencia requerida"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="certVigencia"><i class="fas fa-hourglass-half"></i> Vigencia y renovación</label>
+                                                            <textarea class="form-control" id="certVigencia" rows="3" name="vigencia_certificacion" placeholder="Plazos de validez y condiciones de renovación"></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="certDocs"><i class="fas fa-file-alt"></i> Documentación</label>
+                                                            <textarea class="form-control" id="certDocs" rows="3" name="documentacion_certificacion" placeholder="Documentos solicitados"></textarea>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label for="certPlazo"><i class="fas fa-clock"></i> Plazos</label>
+                                                            <input type="text" class="form-control" id="certPlazo" name="plazo_certificacion" placeholder="Duración o plazos estimados">
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="d-flex justify-content-between btn-spacer">
+                                                    <button type="button" class="btn btn-secondary" id="btnPrevCert"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
+                                                    <button type="button" class="btn btn-primary" id="btnNextCert">Siguiente <i class="fas fa-arrow-right ml-1"></i></button>
+                                                </div>
+                                            </div>
+                                            <!-- TAB 3 -->
+                                            <div class="tab-pane fade" id="configuracion" role="tabpanel" aria-labelledby="configuracion-tab">
+                                                <div class="form-group">
+                                                    <label><i class="fas fa-desktop"></i> Modalidades Disponibles</label>
+                                                    <div class="row">
+                                                        <?php
+                                                        $sql_modalidades = $con->prepare("SELECT * FROM modalidades");
+                                                        $sql_modalidades->execute();
+                                                        $modalidades = $sql_modalidades->fetchAll(PDO::FETCH_ASSOC);
+                                                        foreach ($modalidades as $modalidad) {
+                                                            $id_modalidad = (int)$modalidad['id_modalidad'];
+                                                            $nombre_modalidad = $modalidad['nombre_modalidad'] ?? ('Modalidad ' . $id_modalidad);
+                                                        ?>
+                                                            <div class="col-md-4 mb-2">
+                                                                <div class="custom-control custom-checkbox">
+                                                                    <input class="custom-control-input" type="checkbox" name="modalidades[]"
+                                                                        value="<?php echo $id_modalidad; ?>"
+                                                                        id="modalidad_<?php echo $id_modalidad; ?>">
+                                                                    <label class="custom-control-label" for="modalidad_<?php echo $id_modalidad; ?>">
+                                                                        <?php echo $nombre_modalidad; ?>
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                        <?php } ?>
+                                                    </div>
+                                                </div>
+
+                                                <div class="d-flex justify-content-between btn-spacer">
+                                                    <button type="button" class="btn btn-secondary" id="btnPrevConfig"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
+                                                    <div>
+                                                        <button type="button" class="btn btn-primary mr-2" id="btnNextConfig">Siguiente <i class="fas fa-arrow-right ml-1"></i></button>
+                                                        <button type="button" class="btn btn-warning mr-2" onclick="limpiarFormulario()"><i class="fas fa-eraser"></i> Limpiar</button>
+                                                        <button type="submit" name="agregar_curso" class="btn btn-success"><i class="fas fa-save"></i> Guardar Curso</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="tab-pane fade" id="precios" role="tabpanel" aria-labelledby="precios-tab">
+                                                <div class="card-body px-0">
+                                                    <div class="mb-5">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                            <h5 class="mb-0"><i class="fas fa-tags"></i> Capacitaciones</h5>
+                                                            <span class="badge badge-pill badge-primary text-uppercase">capacitacion</span>
+                                                        </div>
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm table-hover">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Estado</th>
+                                                                        <th>Precio</th>
+                                                                        <th>Moneda</th>
+                                                                        <th>Vigente desde</th>
+                                                                        <th>Vigente hasta</th>
+                                                                        <th>Comentario</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td colspan="6" class="text-center text-muted">Sin registros de precio</td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-md-4">
+                                                                <div class="form-group">
+                                                                    <label for="precio_capacitacion"><i class="fas fa-chalkboard-teacher"></i> Precio inicial (ARS)</label>
+                                                                    <input type="text" inputmode="decimal" class="form-control" id="precio_capacitacion" name="precio_capacitacion" placeholder="Ej: 120000,00 o 120000.00">
+                                                                    <small class="form-text text-muted">Opcional, podés cargarlo más adelante.</small>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
 
+                                                    <div class="mb-3">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                            <h5 class="mb-0"><i class="fas fa-tags"></i> Certificaciones</h5>
+                                                            <span class="badge badge-pill badge-primary text-uppercase">certificacion</span>
+                                                        </div>
+                                                        <div class="table-responsive">
+                                                            <table class="table table-sm table-hover">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Estado</th>
+                                                                        <th>Precio</th>
+                                                                        <th>Moneda</th>
+                                                                        <th>Vigente desde</th>
+                                                                        <th>Vigente hasta</th>
+                                                                        <th>Comentario</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <tr>
+                                                                        <td colspan="6" class="text-center text-muted">Sin registros de precio</td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        <div class="row">
+                                                            <div class="col-md-4">
+                                                                <div class="form-group">
+                                                                    <label for="precio_certificacion"><i class="fas fa-certificate"></i> Precio inicial (ARS)</label>
+                                                                    <input type="text" inputmode="decimal" class="form-control" id="precio_certificacion" name="precio_certificacion" placeholder="Ingresá el valor si aplica">
+                                                                    <small class="form-text text-muted">Opcional, solo si el curso ofrece certificación.</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="alert alert-info mb-0" role="alert">
+                                                        Podés cargar precios ahora o gestionarlos luego desde la pestaña de precios del curso.
+                                                    </div>
                                                 </div>
 
                                                 <div class="d-flex justify-content-between btn-spacer">
-                                                    <button type="button" class="btn btn-secondary" id="btnPrevConfig"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
+                                                    <button type="button" class="btn btn-secondary" id="btnPrevPrecios"><i class="fas fa-arrow-left mr-1"></i> Anterior</button>
                                                     <div>
                                                         <button type="button" class="btn btn-warning mr-2" onclick="limpiarFormulario()"><i class="fas fa-eraser"></i> Limpiar</button>
                                                         <button type="submit" name="agregar_curso" class="btn btn-success"><i class="fas fa-save"></i> Guardar Curso</button>
@@ -295,6 +387,9 @@ include '../admin/footer.php';
             if (confirm('¿Está seguro que desea limpiar todos los campos?')) {
                 document.getElementById('courseForm').reset();
                 $('.is-valid, .is-invalid').removeClass('is-valid is-invalid');
+                if (window.syncTipoCampos) {
+                    window.syncTipoCampos();
+                }
             }
         }
 
@@ -309,8 +404,7 @@ include '../admin/footer.php';
             const req = [{ sel: '#courseName', label: 'Nombre del Curso' },
                 { sel: '#courseDuration', label: 'Duración de capacitación' },
                 { sel: '#courseDescription', label: 'Descripción de capacitación' },
-                { sel: '#courseObjectives', label: 'Objetivos de capacitación' },
-                { sel: '#precio_capacitacion', label: 'Precio capacitación' }
+                { sel: '#courseObjectives', label: 'Objetivos de capacitación' }
             ];
             req.forEach(c => {
                 const $el = $(c.sel);
@@ -335,10 +429,10 @@ include '../admin/footer.php';
         function validateCert() {
             let ok = true,
                 errores = [];
-            const req = [{ sel: '#certDuration', label: 'Duración de certificación' },
-                { sel: '#certDescription', label: 'Descripción de certificación' },
-                { sel: '#certObjectives', label: 'Objetivos de certificación' }
-            ];
+            if (!$('#tipo_certificacion').is(':checked')) {
+                return true;
+            }
+            const req = [{ sel: '#certDescription', label: 'Descripción de certificación' }];
             req.forEach(c => {
                 const $el = $(c.sel);
                 if (!$el.val() || $el.val().toString().trim() === '') {
@@ -362,6 +456,10 @@ include '../admin/footer.php';
         function validateFinal() {
             let ok = true,
                 errores = [];
+            if ($('input[name="tipos_curso[]"]:checked').length === 0) {
+                ok = false;
+                errores.push('Seleccionar al menos un tipo de curso (capacitación o certificación)');
+            }
             if ($('input[name="modalidades[]"]:checked').length === 0) {
                 ok = false;
                 errores.push('Seleccionar al menos una modalidad');
@@ -377,6 +475,43 @@ include '../admin/footer.php';
         }
 
         $(function() {
+            function toggleFieldState(selector, enabled, isRequired = false) {
+                const $field = $(selector);
+                $field.prop('disabled', !enabled);
+                if (enabled && isRequired) {
+                    $field.prop('required', true);
+                } else {
+                    $field.prop('required', false);
+                }
+                if (!enabled) {
+                    $field.removeClass('is-valid is-invalid');
+                }
+            }
+
+            function syncTipoCampos() {
+                const capEnabled = $('#tipo_capacitacion').is(':checked');
+                const certEnabled = $('#tipo_certificacion').is(':checked');
+
+                toggleFieldState('#precio_capacitacion', capEnabled, false);
+
+                toggleFieldState('#certDescription', certEnabled, true);
+                toggleFieldState('#certEvaluation', certEnabled, false);
+                toggleFieldState('#certProcess', certEnabled, false);
+                toggleFieldState('#certScope', certEnabled, false);
+                toggleFieldState('#certPrerequisitos', certEnabled, false);
+                toggleFieldState('#certVigencia', certEnabled, false);
+                toggleFieldState('#certDocs', certEnabled, false);
+                toggleFieldState('#certPlazo', certEnabled, false);
+                toggleFieldState('#precio_certificacion', certEnabled, false);
+            }
+
+            syncTipoCampos();
+            window.syncTipoCampos = syncTipoCampos;
+
+            $('#tipo_capacitacion, #tipo_certificacion').on('change', function() {
+                syncTipoCampos();
+            });
+
             $('#btnNextCap').on('click', function() {
                 if (validateCap()) showTab('#info-cert');
             });
@@ -388,6 +523,12 @@ include '../admin/footer.php';
             });
             $('#btnPrevConfig').on('click', function() {
                 showTab('#info-cert');
+            });
+            $('#btnNextConfig').on('click', function() {
+                showTab('#precios');
+            });
+            $('#btnPrevPrecios').on('click', function() {
+                showTab('#configuracion');
             });
 
             // Validación final antes de enviar

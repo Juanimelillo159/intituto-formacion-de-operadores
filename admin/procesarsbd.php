@@ -1481,12 +1481,23 @@ try {
         $documentacionCertificacion  = trim($_POST['documentacion_certificacion'] ?? '');
         $plazoCertificacion          = trim($_POST['plazo_certificacion'] ?? '');
         $modalidades   = (isset($_POST['modalidades']) && is_array($_POST['modalidades'])) ? $_POST['modalidades'] : [];
+        $tiposCurso    = (isset($_POST['tipos_curso']) && is_array($_POST['tipos_curso'])) ? $_POST['tipos_curso'] : [];
+        $tieneCapacitacion = in_array('capacitacion', $tiposCurso, true);
+        $tieneCertificacion = in_array('certificacion', $tiposCurso, true);
 
         // Precio inicial opcional (si el form manda "precio")
         $precioInicialCapRaw = $_POST['precio_capacitacion'] ?? ($_POST['precio'] ?? null);
         $precioInicialCap    = normalizar_precio($precioInicialCapRaw);
         $precioInicialCertRaw = $_POST['precio_certificacion'] ?? null;
         $precioInicialCert    = normalizar_precio($precioInicialCertRaw);
+
+        if (!$tieneCapacitacion && !$tieneCertificacion) {
+            throw new InvalidArgumentException('Debés seleccionar si el curso es capacitación o certificación.');
+        }
+
+        if ($tieneCertificacion && $descripcionCertificacion === '') {
+            throw new InvalidArgumentException('La descripción de certificación es obligatoria.');
+        }
 
         if ($nombre === '' || $descripcion === '' || $duracion === '' || $objetivos === '') {
             throw new InvalidArgumentException('Faltan campos obligatorios.');
@@ -1519,14 +1530,14 @@ try {
             ':programa'      => $programa,
             ':prerrequisitos'    => $prerrequisitos,
             ':observaciones' => $observaciones,
-            ':descripcion_certificacion' => $descripcionCertificacion ?: $descripcion,
+            ':descripcion_certificacion' => $tieneCertificacion ? ($descripcionCertificacion ?: $descripcion) : '',
             ':requisitos_evaluacion_certificacion' => $requisitosEvaluacionCert,
             ':proceso_certificacion' => $procesoCertificacion,
             ':alcance_certificacion' => $alcanceCertificacion,
-            ':prerrequisitos_certificacion' => $prerrequisitosCertificacion ?: $prerrequisitos,
-            ':vigencia_certificacion' => $vigenciaCertificacion,
-            ':documentacion_certificacion' => $documentacionCertificacion,
-            ':plazo_certificacion' => $plazoCertificacion,
+            ':prerrequisitos_certificacion' => $tieneCertificacion ? ($prerrequisitosCertificacion ?: $prerrequisitos) : '',
+            ':vigencia_certificacion' => $tieneCertificacion ? $vigenciaCertificacion : '',
+            ':documentacion_certificacion' => $tieneCertificacion ? $documentacionCertificacion : '',
+            ':plazo_certificacion' => $tieneCertificacion ? $plazoCertificacion : '',
         ]);
 
         $id_curso = (int)$con->lastInsertId();
@@ -1540,8 +1551,8 @@ try {
 
         // Precio inicial (si vino). Fecha = NOW()
         $preciosIniciales = [
-            'capacitacion' => $precioInicialCap,
-            'certificacion' => $precioInicialCert,
+            'capacitacion' => $tieneCapacitacion ? $precioInicialCap : null,
+            'certificacion' => $tieneCertificacion ? $precioInicialCert : null,
         ];
 
         foreach ($preciosIniciales as $tipoPrecio => $valorInicial) {
@@ -1587,6 +1598,7 @@ try {
             'id_curso'    => $id_curso,
             'nombre'      => $nombre,
             'modalidades' => $modalidades,
+            'tipos_curso' => $tiposCurso,
             'precio_inicial_capacitacion' => $precioInicialCap,
             'precio_inicial_certificacion' => $precioInicialCert,
         ]);
