@@ -89,6 +89,23 @@ function registrar_historico_capacitacion(PDO $con, int $idCapacitacion, int $es
     ]);
 }
 
+function columna_existe(PDO $con, string $tabla, string $columna): bool
+{
+    $stmt = $con->prepare('
+        SELECT COUNT(*)
+          FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = :tabla
+           AND COLUMN_NAME = :columna
+    ');
+    $stmt->execute([
+        ':tabla' => $tabla,
+        ':columna' => $columna,
+    ]);
+
+    return (int)$stmt->fetchColumn() > 0;
+}
+
 function obtener_usuario_id_de_sesion(): int
 {
     if (isset($_SESSION['id_usuario']) && is_numeric($_SESSION['id_usuario'])) {
@@ -396,37 +413,34 @@ try {
 
             $con->beginTransaction();
 
+            $certPrevColumnExists = columna_existe($con, 'checkout_certificaciones', 'tenia_certificacion_previa');
+            $certEmitidaPorColumnExists = columna_existe($con, 'checkout_certificaciones', 'certificacion_emitida_por');
+
             if ($certificacionRow) {
                 $observacionesBase = 'Formulario reenviado el ' . date('d/m/Y H:i');
                 $observacionesExistentes = trim((string)($certificacionRow['observaciones'] ?? ''));
                 if ($observacionesExistentes !== '') {
                     $observacionesBase .= ' | ' . $observacionesExistentes;
                 }
-                $update = $con->prepare('
-                    UPDATE checkout_certificaciones
-                       SET nombre = :nombre,
-                           apellido = :apellido,
-                           email = :email,
-                           telefono = :telefono,
-                           tenia_certificacion_previa = :tenia_previa,
-                           certificacion_emitida_por = :cert_emisor,
-                           acepta_tyc = :acepta,
-                           precio_total = :precio,
-                           moneda = :moneda,
-                           pdf_path = :pdf_path,
-                           pdf_nombre = :pdf_nombre,
-                           pdf_mime = :pdf_mime,
-                           observaciones = :obs,
-                           id_estado = 1
-                     WHERE id_certificacion = :id
-                ');
-                $update->execute([
+                $updateParts = [
+                    'nombre = :nombre',
+                    'apellido = :apellido',
+                    'email = :email',
+                    'telefono = :telefono',
+                    'acepta_tyc = :acepta',
+                    'precio_total = :precio',
+                    'moneda = :moneda',
+                    'pdf_path = :pdf_path',
+                    'pdf_nombre = :pdf_nombre',
+                    'pdf_mime = :pdf_mime',
+                    'observaciones = :obs',
+                    'id_estado = 1',
+                ];
+                $updateParams = [
                     ':nombre' => $nombreInscrito,
                     ':apellido' => $apellidoInscrito,
                     ':email' => $emailInscrito,
                     ':telefono' => $telefonoInscrito,
-                    ':tenia_previa' => $teniaCertificacionPrevia,
-                    ':cert_emisor' => $certificacionEmitidaPor,
                     ':acepta' => $aceptaTyC,
                     ':precio' => $precioFinal,
                     ':moneda' => strtoupper($monedaPrecio),
@@ -435,22 +449,56 @@ try {
                     ':pdf_mime' => 'application/pdf',
                     ':obs' => $observacionesBase,
                     ':id' => $certificacionId,
-                ]);
+                ];
+
+                if ($certPrevColumnExists) {
+                    $updateParts[] = 'tenia_certificacion_previa = :tenia_previa';
+                    $updateParams[':tenia_previa'] = $teniaCertificacionPrevia;
+                }
+                if ($certEmitidaPorColumnExists) {
+                    $updateParts[] = 'certificacion_emitida_por = :cert_emisor';
+                    $updateParams[':cert_emisor'] = $certificacionEmitidaPor;
+                }
+
+                $update = $con->prepare(sprintf(
+                    'UPDATE checkout_certificaciones SET %s WHERE id_certificacion = :id',
+                    implode(', ', $updateParts)
+                ));
+                $update->execute($updateParams);
             } else {
-                $insert = $con->prepare('
-                    INSERT INTO checkout_certificaciones (
-                        creado_por, acepta_tyc, precio_total, moneda, id_curso,
-                        pdf_path, pdf_nombre, pdf_mime, observaciones, id_estado,
-                        nombre, apellido, email, telefono,
-                        tenia_certificacion_previa, certificacion_emitida_por
-                    ) VALUES (
-                        :usuario, :acepta, :precio, :moneda, :curso,
-                        :pdf_path, :pdf_nombre, :pdf_mime, NULL, 1,
-                        :nombre, :apellido, :email, :telefono,
-                        :tenia_previa, :cert_emisor
-                    )
-                ');
-                $insert->execute([
+                $insertColumns = [
+                    'creado_por',
+                    'acepta_tyc',
+                    'precio_total',
+                    'moneda',
+                    'id_curso',
+                    'pdf_path',
+                    'pdf_nombre',
+                    'pdf_mime',
+                    'observaciones',
+                    'id_estado',
+                    'nombre',
+                    'apellido',
+                    'email',
+                    'telefono',
+                ];
+                $insertValues = [
+                    ':usuario',
+                    ':acepta',
+                    ':precio',
+                    ':moneda',
+                    ':curso',
+                    ':pdf_path',
+                    ':pdf_nombre',
+                    ':pdf_mime',
+                    'NULL',
+                    '1',
+                    ':nombre',
+                    ':apellido',
+                    ':email',
+                    ':telefono',
+                ];
+                $insertParams = [
                     ':usuario' => $usuarioId,
                     ':acepta' => $aceptaTyC,
                     ':precio' => $precioFinal,
@@ -463,9 +511,25 @@ try {
                     ':apellido' => $apellidoInscrito,
                     ':email' => $emailInscrito,
                     ':telefono' => $telefonoInscrito,
-                    ':tenia_previa' => $teniaCertificacionPrevia,
-                    ':cert_emisor' => $certificacionEmitidaPor,
-                ]);
+                ];
+
+                if ($certPrevColumnExists) {
+                    $insertColumns[] = 'tenia_certificacion_previa';
+                    $insertValues[] = ':tenia_previa';
+                    $insertParams[':tenia_previa'] = $teniaCertificacionPrevia;
+                }
+                if ($certEmitidaPorColumnExists) {
+                    $insertColumns[] = 'certificacion_emitida_por';
+                    $insertValues[] = ':cert_emisor';
+                    $insertParams[':cert_emisor'] = $certificacionEmitidaPor;
+                }
+
+                $insert = $con->prepare(sprintf(
+                    'INSERT INTO checkout_certificaciones (%s) VALUES (%s)',
+                    implode(', ', $insertColumns),
+                    implode(', ', $insertValues)
+                ));
+                $insert->execute($insertParams);
                 $certificacionId = (int)$con->lastInsertId();
             }
 
