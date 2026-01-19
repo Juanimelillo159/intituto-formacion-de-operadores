@@ -165,6 +165,7 @@ try {
             ],
             'auto_return' => 'approved',
             'notification_url' => mp_notification_url(),
+            'payment_methods' => mp_preference_payment_methods(),
             'metadata' => [
                 'id_pago' => $pagoId,
                 'id_capacitacion' => $registroId,
@@ -318,6 +319,7 @@ try {
         ],
         'auto_return' => 'approved',
         'notification_url' => mp_notification_url(),
+        'payment_methods' => mp_preference_payment_methods(),
         'metadata' => [
             'id_pago' => $pagoId,
             'id_certificacion' => $registroId,
@@ -366,4 +368,3 @@ try {
     mp_log('mp_retry_preference_failed', ['tipo' => $tipo, 'registro' => $registroId, 'error' => $exception->getMessage()]);
     $redirectMisCursos($exception->getMessage());
 }
-
